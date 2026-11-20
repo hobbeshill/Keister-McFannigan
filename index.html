@@ -325,6 +325,8 @@
     </div>
     <div class="hud-right">
       <div class="hud-collect">
+        <span id="hud-foes-stat" title="Remaining Enemies">Foes: --</span>
+        <span>·</span>
         <span id="hud-shell-stat" title="Stage Sea Shell">Shell: --</span>
         <span>·</span>
         <span id="hud-clue-stat" title="Stage Clue">Clue: --</span>
@@ -339,7 +341,7 @@
     <div class="boss-track"><div id="boss-fill" class="boss-fill"></div></div>
   </div>
 
-  <div id="touch-hint">Left side: Touch & drag to Move/Jump · Right side: Swipe Up=Fart-Jet, Down=Parachute, 2x Down=Butt Slam</div>
+  <div id="touch-hint">Left: Move/Jump · Right: Hold Up=Fart-Jet, Swipe Down=Glide (hands-free), Swipe Down Again=Butt Slam · Defeat all foes to exit!</div>
 
   <!-- Title Screen Overlay -->
   <div id="title-overlay" class="overlay active">
@@ -736,7 +738,7 @@
     jumpPressed: false,
     downHeld: false,
     fartHeld: false,
-    parachuteHeld: false,
+    parachuteTriggered: false,
     poundQueue: null, // 'butt' | 'corkscrew' | 'vault' | 'meteora'
 
     init(canvas) {
@@ -854,12 +856,18 @@
 
     handleRightSwipe(dir) {
       const now = performance.now();
-      const isDouble = this.lastRightSwipe.dir === dir && (now - this.lastRightSwipe.time) < 380;
+      const isDouble = this.lastRightSwipe.dir === dir && (now - this.lastRightSwipe.time) < 420;
       this.lastRightSwipe = { dir, time: isDouble ? 0 : now };
 
-      if (dir === 'down' && isDouble) {
-        this.poundQueue = 'butt';
-        this.showFeedback('BUTT SLAM!');
+      if (dir === 'down') {
+        const alreadyGliding = !!(Game.player && Game.player.parachuting);
+        if (isDouble || alreadyGliding) {
+          this.parachuteTriggered = false;
+          this.poundQueue = 'butt';
+          this.showFeedback('BUTT SLAM!');
+        } else {
+          this.parachuteTriggered = true;
+        }
       } else if (dir === 'up' && isDouble) {
         if (Save.hasMeteoraFlip()) {
           this.poundQueue = 'meteora';
@@ -905,7 +913,15 @@
 
       // Right Joystick Holds + Keyboard Aerials
       this.fartHeld = !!(this.keys['KeyZ'] || this.keys['KeyJ'] || (this.rightTouch && this.rightTouch.dir === 'up'));
-      this.parachuteHeld = !!(this.keys['KeyX'] || this.keys['KeyK'] || (this.rightTouch && this.rightTouch.dir === 'down'));
+
+      // Desktop Parachute toggle (X / K): 1st press glides hands-free, 2nd press while gliding slams!
+      if (this.justPressed['KeyX'] || this.justPressed['KeyK']) {
+        if (Game.player && Game.player.parachuting) {
+          this.poundQueue = 'butt'; this.showFeedback('BUTT SLAM!');
+        } else {
+          this.parachuteTriggered = true;
+        }
+      }
 
       // Desktop Ground Pound hotkeys
       if (this.justPressed['KeyC'] || this.justPressed['KeyL']) {
@@ -2046,21 +2062,33 @@
         ctx.restore();
       }
 
-      // Stage Goal Lucha Ring Arch
+      // Stage Goal Lucha Ring Arch (Locked until all enemies in the level are defeated!)
       if (lvl.goal) {
         const gx = lvl.goal.x, gy = lvl.goal.y;
-        ctx.fillStyle = '#f59e0b'; ctx.strokeStyle = '#111827'; ctx.lineWidth = 3;
+        const foesLeft = lvl.enemies.filter(e => !e.dead).length;
+        const locked = foesLeft > 0;
+        ctx.fillStyle = locked ? '#64748b' : '#f59e0b';
+        ctx.strokeStyle = '#111827'; ctx.lineWidth = 3;
         ctx.fillRect(gx - 42, gy - 118, 14, 118); ctx.strokeRect(gx - 42, gy - 118, 14, 118);
         ctx.fillRect(gx + 28, gy - 118, 14, 118); ctx.strokeRect(gx + 28, gy - 118, 14, 118);
         // Arch banner
-        ctx.fillStyle = '#0f7a43';
-        ctx.beginPath(); ctx.roundRect(gx - 52, gy - 142, 104, 32, 8); ctx.fill(); ctx.stroke();
-        ctx.fillStyle = '#fef08a';
-        ctx.font = '900 13px "Trebuchet MS", sans-serif'; ctx.textAlign = 'center';
-        ctx.fillText('GOAL RING', gx, gy - 121);
-        // Fluttering bell
-        ctx.fillStyle = '#fde047';
-        ctx.beginPath(); ctx.arc(gx, gy - 95 + Math.sin(t * 5) * 4, 12, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = locked ? '#991b1b' : '#0f7a43';
+        ctx.beginPath(); ctx.roundRect(gx - 62, gy - 142, 124, 32, 8); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = locked ? '#fecaca' : '#fef08a';
+        ctx.font = '900 12px "Trebuchet MS", sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText(locked ? `LOCKED (${foesLeft} FOE${foesLeft === 1 ? '' : 'S'})` : 'GOAL RING OPEN!', gx, gy - 121);
+        if (locked) {
+          // Crossed barrier rope across locked ring
+          ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 4;
+          ctx.beginPath();
+          ctx.moveTo(gx - 28, gy - 82); ctx.lineTo(gx + 28, gy - 26);
+          ctx.moveTo(gx + 28, gy - 82); ctx.lineTo(gx - 28, gy - 26);
+          ctx.stroke();
+        } else {
+          // Fluttering golden bell
+          ctx.fillStyle = '#fde047';
+          ctx.beginPath(); ctx.arc(gx, gy - 95 + Math.sin(t * 5) * 4, 12, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        }
       }
     },
 
@@ -2577,11 +2605,16 @@
           Audio.stopFartLoop();
         }
 
-        // Underwear Parachute (Swipe Down & Hold / X / K)
-        if (Input.parachuteHeld && !p.onGround && !p.farting && p.vy > -120) {
-          if (!p.parachuting) Audio.sfxParachute();
-          p.parachuting = true;
-        } else {
+        // Underwear Parachute (Single Swipe Down / X / K deploys hands-free glide until landing, farting, grabbing bars, or 2nd Swipe Down Butt Slam!)
+        if (Input.parachuteTriggered) {
+          Input.parachuteTriggered = false;
+          if (!p.onGround && !p.farting && !p.parachuting) {
+            p.parachuting = true;
+            Audio.sfxParachute();
+            Input.showFeedback('PARACHUTE GLIDE!');
+          }
+        }
+        if (p.onGround || p.farting) {
           p.parachuting = false;
         }
 
@@ -2742,9 +2775,17 @@
       // 10. Boss Update & Combat
       if (lvl.boss) this.updateBoss(dt);
 
-      // 11. Goal Ring Check (for non-boss levels)
+      // 11. Goal Ring Check (all enemies must be defeated to leave non-boss levels!)
+      if (this.goalLockToastCooldown > 0) this.goalLockToastCooldown -= dt;
       if (lvl.goal && Math.abs((p.x + p.w * 0.5) - lvl.goal.x) < 42 && Math.abs((p.y + p.h) - lvl.goal.y) < 90) {
-        this.completeStage();
+        const foesLeft = this.remainingEnemies();
+        if (foesLeft === 0) {
+          this.completeStage();
+        } else if (!this.goalLockToastCooldown || this.goalLockToastCooldown <= 0) {
+          this.goalLockToastCooldown = 1.4;
+          Audio.tone(170, 0.14, 'square', 0.08, 120);
+          Input.showFeedback(`DEFEAT ${foesLeft} MORE ENEM${foesLeft === 1 ? 'Y' : 'IES'} TO EXIT!`);
+        }
       }
 
       // 12. Particles
@@ -2802,7 +2843,13 @@
       }
     },
 
+    remainingEnemies() {
+      if (!this.lvl) return 0;
+      return this.lvl.enemies.filter(e => !e.dead).length;
+    },
+
     hitEnemy(e, dmg) {
+      if (e.dead) return;
       e.hp -= dmg;
       e.hitFlash = 0.16;
       Audio.sfxHitEnemy();
@@ -2810,6 +2857,10 @@
       if (e.hp <= 0) {
         e.dead = true;
         this.spawnBurst(e.x + e.w * 0.5, e.y + e.h * 0.5, '#f97316', 16, 260);
+        if (this.lvl.goal && this.remainingEnemies() === 0) {
+          Audio.sfxShell();
+          Input.showFeedback('ALL ENEMIES DEFEATED — GOAL RING OPEN!');
+        }
       }
     },
 
@@ -3160,7 +3211,17 @@
         fuelEl.classList.remove('infinite');
       }
 
-      // Collectibles status
+      // Collectibles & Remaining Foes status
+      const foesEl = document.getElementById('hud-foes-stat');
+      if (lvl.isBoss) {
+        const bossAlive = lvl.boss && lvl.boss.hp > 0;
+        foesEl.textContent = bossAlive ? 'Boss: Fight!' : 'Boss: KO!';
+        foesEl.style.color = bossAlive ? '#fb923c' : '#4ade80';
+      } else {
+        const foesLeft = Game.remainingEnemies();
+        foesEl.textContent = foesLeft > 0 ? `Foes: ${foesLeft}` : 'Foes: Clear!';
+        foesEl.style.color = foesLeft > 0 ? '#fb923c' : '#4ade80';
+      }
       const hasShell = Save.data.shellsCollected[lvl.idx];
       const hasClue = Save.data.cluesCollected[lvl.idx];
       document.getElementById('hud-shell-stat').textContent = hasShell ? 'Shell: Found' : 'Shell: Hidden';
@@ -3256,10 +3317,10 @@
             desc: 'Touch anywhere on the left half of the screen to move left/right, push Up to jump, or Down to drop through platforms & release ceiling monkey bars. Hanging drains your circular stamina ring!' },
           { name: 'Fart-Jet Flight', gesture: 'Right Joystick: Swipe Up & Hold · Z / J', unlocked: true,
             desc: 'Blasts green & gold shamrock clouds to fly upward. Drains your Bean/Cabbage GAS meter, which refills rapidly on the ground.' },
-          { name: 'Underwear Parachute', gesture: 'Right Joystick: Swipe Down & Hold · X / K', unlocked: true,
-            desc: 'Deploys oversized shamrock-print briefs to glide slowly and ride glowing upward wind vents to high secret perches.' },
-          { name: 'Original Butt Slam', gesture: 'Right Joystick: Double-Swipe Down · C / L', unlocked: true,
-            desc: 'Vertical ground pound attack! Crushes enemies below and smashes cracked floor panels.' },
+          { name: 'Underwear Parachute', gesture: 'Right Joystick: Swipe Down (No Hold Needed) · X / K', unlocked: true,
+            desc: 'Single Swipe Down pops open Keister\'s oversized shamrock briefs for a hands-free glide down and upward wind-vent lift — leaving your thumb free to swipe down a second time for a Butt Slam!' },
+          { name: 'Original Butt Slam', gesture: 'Right Joystick: Double-Swipe Down (or Swipe Down while Gliding) · C / L', unlocked: true,
+            desc: 'Vertical ground pound attack! Swipe down again anytime while parachuting (or double-swipe down) to crash onto foes and smash cracked floor panels.' },
           { name: 'Corkscrew Ground Pound', gesture: 'Right Joystick: Swipe Left · Q / U', unlocked: Save.hasCorkscrew(),
             desc: 'Unlocked by beating World 1 Boss (Ireland). Gymnastic horizontal spin-slam dealing higher damage and shattering red cracked side barriers!' },
           { name: 'Lucha Vault Ground Pound', gesture: 'Right Joystick: Swipe Right · E / I', unlocked: Save.hasLuchaVault(),
