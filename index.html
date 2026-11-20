@@ -433,7 +433,7 @@
     <div class="boss-track"><div id="boss-fill" class="boss-fill"></div></div>
   </div>
 
-  <div id="touch-hint">Left: Move/Jump (hold = higher) · Right: Up = Fart-Jet, Down = Drop through platforms · Falls auto-glide!</div>
+  <div id="touch-hint">Left: Move/Jump · Up (either stick) = Fart-Jet · Right Down = Drop through platforms · Falls auto-glide!</div>
 
   <!-- Title Screen Overlay -->
   <div id="title-overlay" class="overlay active">
@@ -1013,8 +1013,9 @@
       this.downHeld = !!(this.keys['ArrowDown'] || this.keys['KeyS'] ||
         (this.leftTouch && this.leftTouch.dy > 24) || rtDown);
 
-      // Right Joystick Holds + Keyboard Aerials
-      this.fartHeld = !!(this.keys['KeyZ'] || this.keys['KeyJ'] || rtUp);
+      // Fart-Jet: hold Up on either joystick, or Z / J
+      const ltUp = !!(this.leftTouch && this.leftTouch.dy < -26);
+      this.fartHeld = !!(this.keys['KeyZ'] || this.keys['KeyJ'] || rtUp || ltUp);
 
       // Desktop Parachute toggle (X / K): 1st press glides hands-free, 2nd press while gliding slams!
       if (this.justPressed['KeyX'] || this.justPressed['KeyK']) {
@@ -4312,7 +4313,7 @@
       } else if (this.scrapTab === 'moves') {
         const moves = [
           { name: 'Move, Jump & Monkey Bars', gesture: 'Left Dynamic Joystick · WASD / Arrows + Space', unlocked: true,
-            desc: 'Touch anywhere on the left half of the screen to move left/right, push Up to jump, or Down to drop through platforms & release ceiling monkey bars. Hanging drains your circular stamina ring!' },
+            desc: 'Touch anywhere on the left half of the screen to move left/right, push Up to jump (hold it and Keister\'s Fart-Jet kicks in too), or Down to drop through platforms & release ceiling monkey bars. Hanging drains your circular stamina ring!' },
           { name: 'Fart-Jet Flight', gesture: 'Right Joystick: Up & Hold · Z / J', unlocked: true,
             desc: 'Blasts green & gold shamrock clouds to fly upward for as long as you hold up on the right joystick. Drains your Bean/Cabbage GAS meter, which refills rapidly on the ground.' },
           { name: 'Platform Drop', gesture: 'Right Joystick: Down & Hold · S / Arrow Down', unlocked: true,
