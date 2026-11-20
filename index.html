@@ -433,7 +433,7 @@
     <div class="boss-track"><div id="boss-fill" class="boss-fill"></div></div>
   </div>
 
-  <div id="touch-hint">Left: Move/Jump (hold = higher) · Right: Up = Fart-Jet, Down = Slam · Falls auto-glide!</div>
+  <div id="touch-hint">Left: Move/Jump (hold = higher) · Right: Up = Fart-Jet, Down = Drop through platforms · Falls auto-glide!</div>
 
   <!-- Title Screen Overlay -->
   <div id="title-overlay" class="overlay active">
@@ -1005,10 +1005,16 @@
       // Held jump keeps the arc high; releasing early cuts it short.
       this.jumpHeld = !!(this.keys['ArrowUp'] || this.keys['KeyW'] || this.keys['Space'] ||
         (this.leftTouch && this.leftTouch.dy < -18));
-      this.downHeld = !!(this.keys['ArrowDown'] || this.keys['KeyS'] || (this.leftTouch && this.leftTouch.dy > 24));
+      // Right joystick held directions: Up = Fart-Jet, Down = drop through platforms / parachute
+      const rt = this.rightTouch;
+      const rtUp = !!(rt && (rt.dir === 'up' || rt.dy < -26));
+      const rtDown = !!(rt && (rt.dir === 'down' || rt.dy > 26));
+
+      this.downHeld = !!(this.keys['ArrowDown'] || this.keys['KeyS'] ||
+        (this.leftTouch && this.leftTouch.dy > 24) || rtDown);
 
       // Right Joystick Holds + Keyboard Aerials
-      this.fartHeld = !!(this.keys['KeyZ'] || this.keys['KeyJ'] || (this.rightTouch && this.rightTouch.dir === 'up'));
+      this.fartHeld = !!(this.keys['KeyZ'] || this.keys['KeyJ'] || rtUp);
 
       // Desktop Parachute toggle (X / K): 1st press glides hands-free, 2nd press while gliding slams!
       if (this.justPressed['KeyX'] || this.justPressed['KeyK']) {
@@ -1110,7 +1116,7 @@
         ctx.fillStyle = rt.dir === 'up' ? '#fef9c3' : 'rgba(254,215,170,0.7)';
         ctx.fillText('FART', rt.ox, rt.oy - 30);
         ctx.fillStyle = rt.dir === 'down' ? '#fef9c3' : 'rgba(254,215,170,0.7)';
-        ctx.fillText('SLAM', rt.ox, rt.oy + 34);
+        ctx.fillText('DROP', rt.ox, rt.oy + 34);
         ctx.fillStyle = rt.dir === 'left' ? '#fef9c3' : 'rgba(254,215,170,0.55)';
         ctx.fillText('◀', rt.ox - 34, rt.oy + 3);
         ctx.fillStyle = rt.dir === 'right' ? '#fef9c3' : 'rgba(254,215,170,0.55)';
@@ -3527,9 +3533,11 @@
           p.coyote = Math.max(0, p.coyote - dt);
         }
 
-        // Drop through one-way platform
+        // Drop through one-way platform (intentional drop — the briefs stay shut)
         if (Input.downHeld && p.onGround) {
           p.dropThrough = 0.24;
+          p.jumped = true;
+          p.fallDrop = 0;
         }
 
         // Jump — buffered a few frames so a press just before landing still fires
@@ -4305,8 +4313,10 @@
         const moves = [
           { name: 'Move, Jump & Monkey Bars', gesture: 'Left Dynamic Joystick · WASD / Arrows + Space', unlocked: true,
             desc: 'Touch anywhere on the left half of the screen to move left/right, push Up to jump, or Down to drop through platforms & release ceiling monkey bars. Hanging drains your circular stamina ring!' },
-          { name: 'Fart-Jet Flight', gesture: 'Right Joystick: Swipe Up & Hold · Z / J', unlocked: true,
-            desc: 'Blasts green & gold shamrock clouds to fly upward. Drains your Bean/Cabbage GAS meter, which refills rapidly on the ground.' },
+          { name: 'Fart-Jet Flight', gesture: 'Right Joystick: Up & Hold · Z / J', unlocked: true,
+            desc: 'Blasts green & gold shamrock clouds to fly upward for as long as you hold up on the right joystick. Drains your Bean/Cabbage GAS meter, which refills rapidly on the ground.' },
+          { name: 'Platform Drop', gesture: 'Right Joystick: Down & Hold · S / Arrow Down', unlocked: true,
+            desc: 'Holding down while standing on a one-way platform makes Keister slip straight through it, and also releases ceiling monkey bars. In mid-air, down opens the parachute.' },
           { name: 'Underwear Parachute', gesture: 'Automatic on any fall · X / K to deploy early', unlocked: true,
             desc: 'Walk off any ledge or drop from a height and Keister\'s oversized shamrock briefs pop open by themselves for a hands-free glide and upward wind-vent lift — leaving your thumb free to swipe down for a Butt Slam. Tap X / K to open them early in mid-air.' },
           { name: 'Original Butt Slam', gesture: 'Right Joystick: Double-Swipe Down (or Swipe Down while Gliding) · C / L', unlocked: true,
