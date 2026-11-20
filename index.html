@@ -8,6 +8,9 @@
 <meta property="og:title" content="The Mask of Keister McFannigan" />
 <meta property="og:description" content="Help Irish Luchador Keister McFannigan recover his stolen mask across Ireland, Japan, Las Vegas, and Mexico!" />
 <meta property="og:type" content="website" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet" />
 <style>
   :root {
     --emerald: #0f7a43;
@@ -46,46 +49,65 @@
   .overlay.active { display: flex; }
   .scrim { background: rgba(9, 13, 22, 0.72); backdrop-filter: blur(4px); }
 
-  /* HUD (Minimal, unobtrusive, touch-friendly) */
+  /* In-game HUD: engraved glass panels with brass hairlines */
   #hud {
     position: absolute; top: 0; left: 0; right: 0;
-    padding: max(10px, env(safe-area-inset-top)) 14px 6px;
+    padding: max(12px, env(safe-area-inset-top)) 16px 0;
     display: none; align-items: flex-start; justify-content: space-between;
     pointer-events: none; z-index: 10;
+    font-family: "Avenir Next", "Segoe UI", system-ui, -apple-system, sans-serif;
+  }
+  #hud::before {
+    content: ''; position: absolute; left: 0; right: 0; top: 0; height: 108px;
+    background: linear-gradient(180deg, rgba(5,9,18,0.52), rgba(5,9,18,0));
+    pointer-events: none;
   }
   #hud.active { display: flex; }
+  #hud > * { position: relative; }
   .hud-left {
-    display: flex; align-items: center; gap: 10px;
-    background: rgba(15, 23, 42, 0.78);
-    border: 2px solid rgba(255,255,255,0.16);
-    border-radius: 12px; padding: 6px 12px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.35);
+    display: flex; align-items: center; gap: 11px;
+    background: linear-gradient(180deg, rgba(25,35,55,0.92), rgba(10,16,29,0.9));
+    border: 1px solid rgba(253,224,71,0.26);
+    border-radius: 14px; padding: 7px 15px 7px 8px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.12), 0 10px 26px rgba(2,6,16,0.45);
+    backdrop-filter: blur(8px);
   }
   .hud-mask-icon {
-    width: 34px; height: 34px; border-radius: 8px;
-    background: #0f7a43; border: 2px solid #fde047;
+    width: 38px; height: 38px; border-radius: 11px;
+    background: linear-gradient(160deg, #1f8a52, #0a5a31);
+    border: 1px solid rgba(253,224,71,0.85);
     display: flex; align-items: center; justify-content: center;
-    font-weight: 900; font-size: 16px; color: #fde047; flex-shrink: 0;
+    font-size: 18px; color: #fde047; flex-shrink: 0;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), 0 2px 7px rgba(0,0,0,0.45);
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
   }
-  .hud-mask-icon.gold { background: linear-gradient(135deg, #f59e0b, #fef08a); color: #451a03; border-color: #fff; }
-  .hud-mask-icon.true { background: linear-gradient(135deg, #0f7a43, #dc2626); color: #fde047; border-color: #fde047; }
-  .hud-meters { display: flex; flex-direction: column; gap: 4px; min-width: 150px; }
+  .hud-mask-icon.gold { background: linear-gradient(160deg, #fcd34d, #c2740a); color: #451a03; border-color: #fff7d6; }
+  .hud-mask-icon.true { background: linear-gradient(160deg, #15803d, #b91c1c); color: #fef3c7; }
+  .hud-meters { display: flex; flex-direction: column; gap: 5px; min-width: 168px; }
   .hud-stage-line {
-    font-size: 12px; font-weight: 800; letter-spacing: 0.02em;
+    font-size: 11.5px; font-weight: 800; letter-spacing: 0.055em; text-transform: uppercase;
     color: #f8fafc; white-space: nowrap;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.55);
   }
-  .hud-stage-line span.muted { color: #94a3b8; font-weight: 600; }
-  .hud-bars { display: flex; align-items: center; gap: 8px; }
-  .hp-hearts { display: flex; gap: 3px; font-size: 14px; line-height: 1; }
+  .hud-stage-line span.muted { color: #93a4bd; font-weight: 700; letter-spacing: 0.03em; }
+  .hud-bars { display: flex; align-items: center; gap: 10px; }
+  .hp-hearts { display: flex; gap: 2px; font-size: 15px; line-height: 1; }
+  .hp-hearts span { filter: drop-shadow(0 1px 2px rgba(0,0,0,0.6)); transition: color .15s ease; }
   .fuel-wrap {
-    display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 800; color: #bef264;
+    display: flex; align-items: center; gap: 6px;
+    font-size: 8.5px; font-weight: 900; letter-spacing: 0.14em; color: #a3e635;
   }
   .fuel-track {
-    width: 78px; height: 9px; background: rgba(0,0,0,0.55);
-    border: 1.5px solid rgba(255,255,255,0.3); border-radius: 5px; overflow: hidden;
+    width: 92px; height: 8px;
+    background: rgba(3,7,16,0.78);
+    border: 1px solid rgba(255,255,255,0.18);
+    border-radius: 99px; overflow: hidden;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.6);
   }
   .fuel-fill {
-    height: 100%; width: 100%; background: linear-gradient(90deg, #4ade80, #facc15);
+    height: 100%; width: 100%; border-radius: 99px;
+    background: linear-gradient(90deg, #34d399, #a3e635 55%, #fbbf24);
+    box-shadow: 0 0 8px rgba(163,230,53,0.4);
     transition: width 0.06s linear;
   }
   .fuel-fill.infinite { background: linear-gradient(90deg, #f59e0b, #fef08a, #f59e0b); }
@@ -93,46 +115,102 @@
     display: flex; align-items: center; gap: 8px; pointer-events: auto;
   }
   .hud-collect {
-    display: flex; align-items: center; gap: 10px;
-    background: rgba(15, 23, 42, 0.78);
-    border: 2px solid rgba(255,255,255,0.16);
-    border-radius: 12px; padding: 6px 11px; font-size: 12px; font-weight: 800;
+    display: flex; align-items: center; gap: 9px;
+    background: linear-gradient(180deg, rgba(25,35,55,0.9), rgba(10,16,29,0.88));
+    border: 1px solid rgba(255,255,255,0.14);
+    border-radius: 12px; padding: 8px 13px;
+    font-size: 11px; font-weight: 800; letter-spacing: 0.035em;
     font-variant-numeric: tabular-nums;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.1), 0 8px 20px rgba(2,6,16,0.4);
+    backdrop-filter: blur(8px);
   }
+  .hud-collect > span:not([id]) { color: rgba(148,163,184,0.5); }
   .hud-btn {
-    min-width: 44px; height: 44px; padding: 0 12px;
-    border-radius: 10px; border: 2px solid rgba(255,255,255,0.22);
-    background: rgba(15, 23, 42, 0.86); color: #f8fafc;
-    font-weight: 800; font-size: 13px; cursor: pointer;
+    min-width: 40px; height: 40px; padding: 0 13px;
+    border-radius: 11px;
+    border: 1px solid rgba(255,255,255,0.16);
+    background: linear-gradient(180deg, rgba(31,43,66,0.92), rgba(11,17,31,0.92));
+    color: #e8eefb;
+    font-family: inherit; font-weight: 800; font-size: 10.5px;
+    letter-spacing: 0.09em; text-transform: uppercase; cursor: pointer;
     display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-    transition: transform 0.12s ease, background 0.12s ease;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.14), 0 8px 20px rgba(2,6,16,0.4);
+    transition: transform 0.12s ease, background 0.12s ease, border-color 0.12s ease;
     white-space: nowrap;
   }
   .hud-btn:active { transform: scale(0.95); }
-  .hud-btn:hover { background: rgba(30, 41, 59, 0.96); }
+  .hud-btn:hover { background: linear-gradient(180deg, rgba(43,59,87,0.96), rgba(17,25,43,0.96)); border-color: rgba(253,224,71,0.35); }
+  @media (max-width: 720px) {
+    #hud { padding-left: 9px; padding-right: 9px; flex-wrap: wrap; row-gap: 6px; }
+    .hud-left { gap: 8px; padding: 6px 11px 6px 7px; }
+    .hud-mask-icon { width: 32px; height: 32px; font-size: 15px; }
+    .hud-meters { min-width: 0; }
+    .hud-stage-line { font-size: 10px; letter-spacing: 0.02em; }
+    .hud-stage-line span.muted { display: none; }
+    .hp-hearts { font-size: 13px; }
+    .fuel-track { width: 54px; height: 7px; }
+    .fuel-wrap { font-size: 7.5px; letter-spacing: 0.1em; }
+    .hud-collect {
+      order: 3; flex: 1 1 100%;
+      justify-content: center;
+      padding: 5px 10px; font-size: 9.5px; gap: 7px;
+    }
+    #hud .hud-btn {
+      width: 36px; min-width: 36px; height: 36px; padding: 0;
+      font-size: 0; letter-spacing: 0;
+    }
+    #hud .hud-btn::before {
+      content: attr(data-icon);
+      font-size: 15px; line-height: 1;
+      letter-spacing: 0;
+    }
+  }
 
   /* Subtle Touch Hint Bar */
   #touch-hint {
-    position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);
-    background: rgba(15, 23, 42, 0.72); color: #e2e8f0;
-    padding: 6px 14px; border-radius: 8px; font-size: 12px; font-weight: 600;
+    position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%);
+    background: rgba(8, 13, 24, 0.62); color: #c3cee0;
+    border: 1px solid rgba(255,255,255,0.08);
+    padding: 7px 16px; border-radius: 99px; font-size: 11px; font-weight: 600;
+    letter-spacing: 0.02em; backdrop-filter: blur(6px);
     pointer-events: none; z-index: 9; white-space: nowrap;
     max-width: 92vw; overflow: hidden; text-overflow: ellipsis;
     opacity: 0; transition: opacity 0.35s ease;
   }
   #touch-hint.visible { opacity: 1; }
+  @media (max-width: 640px) {
+    #touch-hint {
+      white-space: normal; text-align: center; line-height: 1.35;
+      max-width: 90vw; border-radius: 14px;
+    }
+  }
 
   /* Boss Health Bar */
   #boss-bar {
-    position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
-    width: min(460px, 84vw); display: none; flex-direction: column; gap: 4px;
-    background: rgba(15, 23, 42, 0.85); border: 2px solid #f59e0b;
-    border-radius: 10px; padding: 7px 12px; pointer-events: none; z-index: 10;
+    position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%);
+    width: min(470px, 86vw); display: none; flex-direction: column; gap: 6px;
+    background: linear-gradient(180deg, rgba(26,20,30,0.94), rgba(12,10,18,0.94));
+    border: 1px solid rgba(253,224,71,0.45);
+    border-radius: 12px; padding: 9px 14px; pointer-events: none; z-index: 10;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.1), 0 12px 30px rgba(0,0,0,0.5);
+    backdrop-filter: blur(8px);
   }
   #boss-bar.active { display: flex; }
-  .boss-name { font-size: 13px; font-weight: 900; color: #fde047; display: flex; justify-content: space-between; }
-  .boss-track { width: 100%; height: 11px; background: #1e293b; border-radius: 6px; overflow: hidden; border: 1px solid rgba(255,255,255,0.2); }
-  .boss-fill { height: 100%; width: 100%; background: linear-gradient(90deg, #dc2626, #f59e0b); transition: width 0.12s ease; }
+  .boss-name {
+    font-size: 11px; font-weight: 900; letter-spacing: 0.12em; text-transform: uppercase;
+    color: #fde047; display: flex; justify-content: space-between; gap: 10px;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.6);
+  }
+  .boss-track {
+    width: 100%; height: 10px; background: rgba(0,0,0,0.55); border-radius: 99px; overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.14); box-shadow: inset 0 1px 3px rgba(0,0,0,0.7);
+  }
+  .boss-fill {
+    height: 100%; width: 100%; border-radius: 99px;
+    background: linear-gradient(90deg, #dc2626, #f97316 60%, #fde047);
+    box-shadow: 0 0 10px rgba(248,113,113,0.5);
+    transition: width 0.12s ease;
+  }
 
   /* Title Screen Overlay */
   #title-overlay {
@@ -141,50 +219,67 @@
   }
   .title-card {
     pointer-events: auto; width: min(560px, 94vw);
-    background: rgba(13, 21, 34, 0.88);
-    border: 3px solid #f59e0b; border-radius: 18px;
-    padding: 20px 24px; text-align: center;
-    box-shadow: 0 18px 40px rgba(0,0,0,0.55);
+    position: relative;
+    background:
+      radial-gradient(120% 90% at 50% 0%, rgba(59,82,120,0.55), transparent 60%),
+      linear-gradient(180deg, rgba(18,27,44,0.94), rgba(9,14,26,0.95));
+    border: 1px solid rgba(253,224,71,0.55); border-radius: 20px;
+    padding: 26px 28px 22px; text-align: center;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.14),
+      inset 0 0 0 5px rgba(253,224,71,0.06),
+      0 24px 60px rgba(0,0,0,0.6);
+    backdrop-filter: blur(10px);
   }
   .title-kicker {
-    font-size: 12px; font-weight: 800; color: #86efac; letter-spacing: 0.08em;
-    margin-bottom: 4px;
+    display: inline-block;
+    font-size: 10.5px; font-weight: 800; color: #a7f3c8;
+    letter-spacing: 0.22em; text-transform: uppercase;
+    padding-bottom: 10px; margin-bottom: 12px;
+    border-bottom: 1px solid rgba(167,243,200,0.22);
   }
   .title-main {
-    margin: 0; font-size: clamp(1.65rem, 4.2vw, 2.55rem);
-    line-height: 1.08; font-weight: 900; color: #fef08a;
-    text-shadow: 0 3px 0 #7c2d12, 0 6px 14px rgba(0,0,0,0.6);
+    margin: 0; font-size: clamp(1.6rem, 4.1vw, 2.5rem);
+    line-height: 1.06; font-weight: 900; letter-spacing: -0.015em;
+    color: #fdf3c4;
+    text-shadow: 0 2px 0 rgba(120,53,15,0.85), 0 10px 26px rgba(0,0,0,0.7);
     text-wrap: balance;
   }
   .title-sub {
-    margin: 8px 0 16px; font-size: 13.5px; color: #cbd5e1; line-height: 1.45;
+    margin: 12px auto 20px; max-width: 44ch;
+    font-size: 13px; color: #b7c4d8; line-height: 1.55;
   }
   .btn-row {
     display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;
   }
   .btn {
-    min-height: 46px; padding: 10px 20px; border-radius: 10px;
-    font-weight: 900; font-size: 14px; cursor: pointer;
-    border: 2.5px solid #111827; letter-spacing: 0.01em;
-    transition: transform 0.12s ease, filter 0.12s ease;
+    min-height: 46px; padding: 10px 22px; border-radius: 12px;
+    font-weight: 900; font-size: 13.5px; cursor: pointer;
+    letter-spacing: 0.02em;
+    border: 1px solid rgba(0,0,0,0.4);
+    transition: transform 0.12s ease, filter 0.12s ease, box-shadow 0.12s ease;
     white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   }
-  .btn:active { transform: scale(0.96); }
-  .btn:hover { filter: brightness(1.07); }
+  .btn:active { transform: translateY(2px) scale(0.99); }
+  .btn:hover { filter: brightness(1.06); }
   .btn-primary {
-    background: linear-gradient(180deg, #22c55e, #15803d); color: #fff;
-    box-shadow: 0 4px 0 #052e16;
+    background: linear-gradient(180deg, #2fd06a, #149244);
+    color: #06230f;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.45), 0 5px 0 #0a5a2b, 0 12px 24px rgba(6,60,30,0.45);
   }
   .btn-gold {
-    background: linear-gradient(180deg, #fbbf24, #d97706); color: #1c1917;
-    box-shadow: 0 4px 0 #78350f;
+    background: linear-gradient(180deg, #ffd76a, #e09a13);
+    color: #2a1602;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.55), 0 5px 0 #8a5a06, 0 12px 24px rgba(90,50,4,0.4);
   }
   .btn-secondary {
-    background: #1e293b; color: #f8fafc; border-color: #475569;
-    box-shadow: 0 4px 0 #0f172a;
+    background: linear-gradient(180deg, #2b3a54, #172236);
+    color: #eaf1ff; border-color: rgba(255,255,255,0.14);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.14), 0 5px 0 #0b1220;
   }
   .btn-danger {
-    background: #dc2626; color: #fff; box-shadow: 0 4px 0 #7f1d1d;
+    background: linear-gradient(180deg, #ef4444, #b91c1c); color: #fff;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.3), 0 5px 0 #7f1d1d;
   }
   .title-meta {
     margin-top: 12px; font-size: 12px; color: #94a3b8;
@@ -302,6 +397,253 @@
     cursor: pointer; color: #1e293b;
   }
   .toggle-label input { width: 18px; height: 18px; accent-color: #0f7a43; }
+
+  /* =====================================================================
+     16-BIT TRIBUTE SKIN
+     Everything above this point is the old glossy vector UI; these rules
+     re-skin the whole interface as a cartridge-era console adventure:
+     square corners, thick ink outlines, hard offset shadows, stepped
+     gradients and a bitmap font pairing.
+     ===================================================================== */
+  :root {
+    --px-ink: #0a0f1e;
+    --px-ink-soft: #16203a;
+    --px-navy: #1b2a4a;
+    --px-navy-lite: #2c4470;
+    --px-cream: #fdf3d3;
+    --px-gold: #f6c445;
+    --px-gold-dark: #a8720f;
+    --px-emerald: #23a455;
+    --px-emerald-dark: #146b34;
+    --px-crimson: #d63b3b;
+    --px-paper: #f7e9c8;
+    --px-paper-dark: #e0cda2;
+    --px-leather: #4a2d1a;
+    --px-head: "Press Start 2P", ui-monospace, "Courier New", monospace;
+    --px-body: "VT323", ui-monospace, "Courier New", monospace;
+  }
+  html, body { font-family: var(--px-body); font-size: 18px; }
+  canvas#gameCanvas {
+    image-rendering: -moz-crisp-edges;
+    image-rendering: crisp-edges;
+    image-rendering: pixelated;
+  }
+  /* Cartridge panels: ink outline, inner highlight, hard cast shadow */
+  .hud-left, .hud-collect, .hud-btn, #boss-bar, #touch-hint,
+  .title-card, .modal-box, .popup-box, .level-card, .scrap-item,
+  .beat-box, .tab-btn, .popup-note, .btn {
+    border-radius: 0 !important;
+    backdrop-filter: none !important;
+  }
+  .hud-left, .hud-collect {
+    background: var(--px-navy) !important;
+    border: 3px solid var(--px-ink) !important;
+    box-shadow: inset 0 0 0 2px var(--px-navy-lite), 3px 3px 0 rgba(0,0,0,0.55) !important;
+    padding: 8px 14px 8px 9px !important;
+  }
+  #hud::before { display: none; }
+  #hud { font-family: var(--px-head); }
+  .hud-mask-icon {
+    border-radius: 0 !important;
+    border: 3px solid var(--px-ink) !important;
+    background: var(--px-emerald) !important;
+    color: var(--px-cream) !important;
+    box-shadow: inset 0 -4px 0 rgba(0,0,0,0.28), inset 0 3px 0 rgba(255,255,255,0.28) !important;
+    font-size: 16px !important;
+  }
+  .hud-mask-icon.gold { background: var(--px-gold) !important; color: #3a2402 !important; }
+  .hud-mask-icon.true { background: var(--px-crimson) !important; color: var(--px-cream) !important; }
+  .hud-stage-line {
+    font-family: var(--px-head); font-size: 9px; letter-spacing: 0.04em;
+    color: var(--px-cream); text-shadow: 2px 2px 0 var(--px-ink);
+  }
+  .hud-stage-line span.muted { color: var(--px-gold); }
+  .hud-collect {
+    font-family: var(--px-head); font-size: 8.5px; letter-spacing: 0;
+    color: var(--px-cream); text-shadow: 2px 2px 0 var(--px-ink);
+  }
+  .hud-collect > span:not([id]) { color: var(--px-navy-lite) !important; }
+  /* Stepped "segmented" meters, like a cartridge life bar */
+  .fuel-wrap { font-family: var(--px-head); font-size: 8px; letter-spacing: 0.08em; color: var(--px-gold); }
+  .fuel-track {
+    border-radius: 0 !important; height: 10px; width: 96px;
+    background: #0a0f1e !important;
+    border: 2px solid var(--px-ink) !important;
+    box-shadow: inset 0 0 0 1px #35446b !important;
+  }
+  .fuel-fill {
+    border-radius: 0 !important;
+    background:
+      repeating-linear-gradient(90deg, rgba(0,0,0,0.22) 0 2px, transparent 2px 6px),
+      linear-gradient(180deg, #b6f06a 0 40%, #5fbe2f 40% 100%) !important;
+    box-shadow: none !important;
+    transition: width 0.08s steps(6, end);
+  }
+  .fuel-fill.infinite {
+    background:
+      repeating-linear-gradient(90deg, rgba(0,0,0,0.22) 0 2px, transparent 2px 6px),
+      linear-gradient(180deg, #ffe27a 0 40%, #e0a51b 40% 100%) !important;
+  }
+  .hp-hearts { gap: 3px; align-items: center; }
+  .hp-hearts span {
+    width: 15px; height: 13px; display: block; font-size: 0;
+    background-size: 100% 100%; background-repeat: no-repeat;
+    image-rendering: pixelated;
+    filter: drop-shadow(1px 2px 0 var(--px-ink));
+  }
+  .hp-hearts span.on {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='9' height='8' shape-rendering='crispEdges' fill='%23d63b3b'><rect x='1' y='0' width='2' height='1'/><rect x='6' y='0' width='2' height='1'/><rect x='0' y='1' width='4' height='1'/><rect x='5' y='1' width='4' height='1'/><rect x='0' y='2' width='9' height='2'/><rect x='1' y='4' width='7' height='1'/><rect x='2' y='5' width='5' height='1'/><rect x='3' y='6' width='3' height='1'/><rect x='4' y='7' width='1' height='1'/><rect x='2' y='1' width='1' height='1' fill='%23ff8a8a'/><rect x='1' y='2' width='2' height='1' fill='%23ff8a8a'/></svg>");
+  }
+  .hp-hearts span.off {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='9' height='8' shape-rendering='crispEdges' fill='%233b4a68'><rect x='1' y='0' width='2' height='1'/><rect x='6' y='0' width='2' height='1'/><rect x='0' y='1' width='4' height='1'/><rect x='5' y='1' width='4' height='1'/><rect x='0' y='2' width='9' height='2'/><rect x='1' y='4' width='7' height='1'/><rect x='2' y='5' width='5' height='1'/><rect x='3' y='6' width='3' height='1'/><rect x='4' y='7' width='1' height='1'/></svg>");
+  }
+  .hud-btn {
+    font-family: var(--px-head) !important; font-size: 8px !important;
+    letter-spacing: 0.02em; min-width: 44px; height: 42px; padding: 0 10px;
+    background: var(--px-navy) !important;
+    border: 3px solid var(--px-ink) !important;
+    color: var(--px-cream) !important;
+    box-shadow: inset 0 0 0 2px var(--px-navy-lite), 0 4px 0 var(--px-ink) !important;
+    transition: transform 0.06s steps(2, end), background 0.06s steps(2, end) !important;
+  }
+  .hud-btn:hover { background: var(--px-navy-lite) !important; border-color: var(--px-ink) !important; }
+  .hud-btn:active { transform: translateY(4px); box-shadow: inset 0 0 0 2px var(--px-navy-lite), 0 0 0 var(--px-ink) !important; }
+  #touch-hint {
+    background: var(--px-navy); color: var(--px-cream);
+    border: 3px solid var(--px-ink);
+    box-shadow: inset 0 0 0 2px var(--px-navy-lite), 3px 3px 0 rgba(0,0,0,0.5);
+    font-family: var(--px-head); font-size: 7.5px; line-height: 1.7;
+    letter-spacing: 0.02em; padding: 8px 14px;
+  }
+  #boss-bar {
+    background: var(--px-navy) !important;
+    border: 3px solid var(--px-ink) !important;
+    box-shadow: inset 0 0 0 2px var(--px-gold-dark), 4px 4px 0 rgba(0,0,0,0.55) !important;
+  }
+  .boss-name { font-family: var(--px-head); font-size: 9px; letter-spacing: 0.04em; color: var(--px-gold); text-shadow: 2px 2px 0 var(--px-ink); }
+  .boss-track { border-radius: 0 !important; height: 12px; border: 2px solid var(--px-ink) !important; background: #0a0f1e !important; }
+  .boss-fill {
+    border-radius: 0 !important;
+    background:
+      repeating-linear-gradient(90deg, rgba(0,0,0,0.2) 0 2px, transparent 2px 7px),
+      linear-gradient(180deg, #f2704a 0 40%, #c1272d 40% 100%) !important;
+    box-shadow: none !important;
+  }
+
+  /* Title screen */
+  .scrim { background: rgba(6, 10, 20, 0.86); backdrop-filter: none; }
+  .title-card {
+    background: var(--px-navy);
+    border: 4px solid var(--px-ink);
+    box-shadow: inset 0 0 0 3px var(--px-gold-dark), inset 0 0 0 6px var(--px-navy-lite), 8px 8px 0 rgba(0,0,0,0.5);
+    padding: 22px 22px 20px;
+  }
+  .title-kicker {
+    font-family: var(--px-head); font-size: 8px; letter-spacing: 0.06em;
+    color: var(--px-gold); text-shadow: 2px 2px 0 var(--px-ink);
+  }
+  .title-main {
+    font-family: var(--px-head) !important;
+    font-size: clamp(17px, 3.4vw, 27px) !important;
+    line-height: 1.45 !important; letter-spacing: 0 !important;
+    color: var(--px-cream) !important;
+    text-shadow: 3px 3px 0 var(--px-emerald-dark), 6px 6px 0 var(--px-ink) !important;
+    -webkit-text-fill-color: var(--px-cream);
+  }
+  .title-sub {
+    font-family: var(--px-body); font-size: 19px; line-height: 1.35;
+    color: #cfe0ff !important;
+  }
+  .title-meta { font-family: var(--px-head); font-size: 7.5px; color: var(--px-gold) !important; letter-spacing: 0.03em; }
+  .btn {
+    font-family: var(--px-head) !important; font-size: 9px !important;
+    letter-spacing: 0.03em; text-transform: uppercase;
+    border: 3px solid var(--px-ink) !important;
+    padding: 13px 16px !important; line-height: 1.4;
+    transition: transform 0.06s steps(2, end) !important;
+  }
+  .btn-primary {
+    background: linear-gradient(180deg, #46c96b 0 45%, #1c8a45 45% 100%) !important;
+    color: #04170c !important;
+    box-shadow: inset 0 0 0 2px #8ff0a8, 0 5px 0 #0b3a1e !important;
+  }
+  .btn-gold {
+    background: linear-gradient(180deg, #ffd977 0 45%, #d99a1f 45% 100%) !important;
+    color: #2a1602 !important;
+    box-shadow: inset 0 0 0 2px #ffeeb0, 0 5px 0 #7a4d05 !important;
+  }
+  .btn-secondary {
+    background: linear-gradient(180deg, #3b5384 0 45%, #23335a 45% 100%) !important;
+    color: var(--px-cream) !important;
+    box-shadow: inset 0 0 0 2px #5a78b3, 0 5px 0 #0b1220 !important;
+  }
+  .btn-danger { background: linear-gradient(180deg, #ef5a5a 0 45%, #b02020 45% 100%) !important; color: #fff !important; box-shadow: inset 0 0 0 2px #ff9a9a, 0 5px 0 #6d1010 !important; }
+  .btn:active { transform: translateY(5px) !important; box-shadow: inset 0 0 0 2px rgba(0,0,0,0.25) !important; }
+  .btn:hover { filter: none; }
+
+  /* Modals, stage select, popups: printed-manual paper with ink rules */
+  .modal-box, .popup-box {
+    background: var(--px-paper) !important;
+    border: 4px solid var(--px-ink) !important;
+    box-shadow: inset 0 0 0 3px var(--px-leather), 8px 8px 0 rgba(0,0,0,0.55) !important;
+  }
+  .modal-header { background: var(--px-leather) !important; border-bottom: 3px solid var(--px-ink); }
+  .modal-title { font-family: var(--px-head) !important; font-size: 11px !important; letter-spacing: 0.03em; color: var(--px-cream); }
+  .modal-tabs { background: var(--px-paper-dark) !important; border-bottom: 3px solid var(--px-ink) !important; }
+  .modal-footer { background: var(--px-paper-dark) !important; border-top: 3px solid var(--px-ink) !important; }
+  .tab-btn {
+    font-family: var(--px-head) !important; font-size: 8px !important;
+    border: 3px solid transparent !important; background: transparent;
+    color: #5b4526 !important; padding: 8px 10px; min-height: 34px;
+  }
+  .tab-btn.active { background: var(--px-paper) !important; color: var(--px-ink) !important; border-color: var(--px-ink) !important; }
+  .modal-body { font-family: var(--px-body); font-size: 19px; }
+  .beat-box { background: #fff8e2 !important; border: 3px solid var(--px-gold-dark) !important; }
+  .beat-box.locked { background: #ded0ac !important; border-color: #a08c60 !important; }
+  .beat-title { font-family: var(--px-head); font-size: 9px !important; color: #8a3d10 !important; line-height: 1.5; }
+  .beat-text { font-size: 19px !important; line-height: 1.3 !important; }
+  .scrap-item { background: #fffbe9 !important; border: 3px solid #b39d6c !important; }
+  .scrap-item.found { border-color: var(--px-emerald) !important; background: #f0ffe8 !important; }
+  .scrap-item.golden { border-color: var(--px-gold-dark) !important; background: #fff6d5 !important; }
+  .scrap-item h4 { font-family: var(--px-head); font-size: 9px !important; line-height: 1.5; }
+  .scrap-item p { font-size: 18px !important; line-height: 1.28 !important; }
+  .move-gesture { font-family: var(--px-head); font-size: 8px !important; color: var(--px-emerald-dark) !important; line-height: 1.6; }
+  .level-card {
+    background: #fffbe9 !important; border: 3px solid #b39d6c !important;
+    box-shadow: 4px 4px 0 rgba(10,15,30,0.35);
+  }
+  .level-card:hover { border-color: var(--px-emerald-dark) !important; transform: translate(-1px, -1px); }
+  .level-card.boss { border-color: var(--px-crimson) !important; background: #ffeaea !important; }
+  .level-num { font-family: var(--px-head); font-size: 8px !important; color: #6b5a3a !important; }
+  .level-name { font-family: var(--px-head); font-size: 9px !important; line-height: 1.5; }
+  .level-meta { font-family: var(--px-body); font-size: 17px !important; }
+  .popup-box h2 { font-family: var(--px-head) !important; font-size: 13px !important; color: #0b4a24 !important; line-height: 1.5; }
+  .popup-note { background: #fff8e2 !important; border: 3px solid var(--px-gold-dark) !important; font-size: 18px !important; }
+  .popup-stats { font-family: var(--px-head); font-size: 8px !important; }
+  .toggle-label { font-family: var(--px-body); font-size: 18px !important; }
+  .toggle-label input { border-radius: 0; width: 20px; height: 20px; accent-color: var(--px-emerald-dark); }
+  .world-tabs .tab-btn { border-color: #b39d6c !important; }
+  /* The bitmap font is wider than the old sans, so the HUD wraps onto a
+     second row on tablets instead of pushing the buttons off screen. */
+  @media (max-width: 1024px) {
+    #hud { flex-wrap: wrap; row-gap: 6px; padding-left: 9px; padding-right: 9px; }
+    .hud-left { padding: 6px 11px 6px 7px !important; gap: 8px; }
+    .hud-mask-icon { width: 30px !important; height: 30px !important; font-size: 13px !important; }
+    .hud-meters { min-width: 0; }
+    .hud-stage-line { font-size: 7px; }
+    .hud-collect { order: 3; flex: 1 1 100%; justify-content: center; padding: 5px 10px !important; font-size: 7px; }
+    .fuel-track { width: 62px; }
+    .hud-btn { font-size: 6.5px !important; padding: 0 8px !important; min-width: 36px; height: 38px; }
+  }
+  @media (max-width: 720px) {
+    .hud-stage-line { font-size: 6.5px; }
+    .hud-collect { font-size: 6.5px; }
+    .hud-btn { font-size: 6px !important; padding: 0 6px !important; }
+    #touch-hint { font-size: 6px; }
+    .title-main { font-size: 15px !important; }
+    .title-sub { font-size: 17px; }
+    .btn { font-size: 8px !important; padding: 11px 12px !important; }
+  }
 </style>
 </head>
 <body>
@@ -323,16 +665,16 @@
         </div>
       </div>
     </div>
+    <div class="hud-collect">
+      <span id="hud-foes-stat" title="Remaining Enemies">Foes: --</span>
+      <span>·</span>
+      <span id="hud-shell-stat" title="Stage Sea Shell">Shell: --</span>
+      <span>·</span>
+      <span id="hud-clue-stat" title="Stage Clue">Clue: --</span>
+    </div>
     <div class="hud-right">
-      <div class="hud-collect">
-        <span id="hud-foes-stat" title="Remaining Enemies">Foes: --</span>
-        <span>·</span>
-        <span id="hud-shell-stat" title="Stage Sea Shell">Shell: --</span>
-        <span>·</span>
-        <span id="hud-clue-stat" title="Stage Clue">Clue: --</span>
-      </div>
-      <button id="btn-mute" class="hud-btn" aria-label="Toggle Sound">Sound: On</button>
-      <button id="btn-pause" class="hud-btn" aria-label="Open Scrapbook">Scrapbook</button>
+      <button id="btn-mute" class="hud-btn" data-icon="♪" aria-label="Toggle Sound">Sound: On</button>
+      <button id="btn-pause" class="hud-btn" data-icon="☰" aria-label="Open Scrapbook">Scrapbook</button>
     </div>
   </div>
 
@@ -341,7 +683,7 @@
     <div class="boss-track"><div id="boss-fill" class="boss-fill"></div></div>
   </div>
 
-  <div id="touch-hint">Left: Move/Jump · Right: Hold Up=Fart-Jet, Swipe Down=Glide (hands-free), Swipe Down Again=Butt Slam · Defeat all foes to exit!</div>
+  <div id="touch-hint">Left: Move/Jump · Up = Fart-Jet · Right Down = Drop · Falls auto-glide!</div>
 
   <!-- Title Screen Overlay -->
   <div id="title-overlay" class="overlay active">
@@ -736,6 +1078,7 @@
     // Synthesized frame actions
     moveX: 0,
     jumpPressed: false,
+    jumpHeld: false,
     downHeld: false,
     fartHeld: false,
     parachuteTriggered: false,
@@ -909,10 +1252,20 @@
       if (this.justPressed['ArrowUp'] || this.justPressed['KeyW'] || this.justPressed['Space']) {
         this.jumpPressed = true;
       }
-      this.downHeld = !!(this.keys['ArrowDown'] || this.keys['KeyS'] || (this.leftTouch && this.leftTouch.dy > 24));
+      // Held jump keeps the arc high; releasing early cuts it short.
+      this.jumpHeld = !!(this.keys['ArrowUp'] || this.keys['KeyW'] || this.keys['Space'] ||
+        (this.leftTouch && this.leftTouch.dy < -18));
+      // Right joystick held directions: Up = Fart-Jet, Down = drop through platforms / parachute
+      const rt = this.rightTouch;
+      const rtUp = !!(rt && (rt.dir === 'up' || rt.dy < -26));
+      const rtDown = !!(rt && (rt.dir === 'down' || rt.dy > 26));
 
-      // Right Joystick Holds + Keyboard Aerials
-      this.fartHeld = !!(this.keys['KeyZ'] || this.keys['KeyJ'] || (this.rightTouch && this.rightTouch.dir === 'up'));
+      this.downHeld = !!(this.keys['ArrowDown'] || this.keys['KeyS'] ||
+        (this.leftTouch && this.leftTouch.dy > 24) || rtDown);
+
+      // Fart-Jet: hold Up on either joystick, or Z / J
+      const ltUp = !!(this.leftTouch && this.leftTouch.dy < -26);
+      this.fartHeld = !!(this.keys['KeyZ'] || this.keys['KeyJ'] || rtUp || ltUp);
 
       // Desktop Parachute toggle (X / K): 1st press glides hands-free, 2nd press while gliding slams!
       if (this.justPressed['KeyX'] || this.justPressed['KeyK']) {
@@ -955,82 +1308,71 @@
     },
 
     drawJoysticks(ctx, w, h) {
-      // Left dynamic joystick (emerald shamrock ring)
+      // Touch input is tracked in CSS pixels, but the canvas is now a small
+      // pixel buffer — convert once and draw the sticks as chunky pixel chrome.
+      const rect = canvas.getBoundingClientRect();
+      const k = w / (rect.width || w);
+      const px = (v) => Math.max(1, Math.round(v * k));
+
+      const stickRing = (ox, oy, r, hue, thumbX, thumbY, active) => {
+        ctx.save();
+        ctx.fillStyle = active ? 'rgba(9,15,28,0.44)' : 'rgba(9,15,28,0.26)';
+        ctx.beginPath(); ctx.arc(ox, oy, r, 0, Math.PI * 2); ctx.fill();
+        ctx.lineWidth = Math.max(1, Math.round(r * 0.18));
+        ctx.strokeStyle = `rgba(${hue}, ${active ? 0.95 : 0.55})`;
+        ctx.beginPath(); ctx.arc(ox, oy, r, 0, Math.PI * 2); ctx.stroke();
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+        ctx.beginPath(); ctx.arc(ox, oy, Math.round(r * 0.76), 0, Math.PI * 2); ctx.stroke();
+        const tr = Math.max(3, Math.round(r * 0.38));
+        ctx.fillStyle = `rgba(${hue}, 0.95)`;
+        ctx.beginPath(); ctx.arc(thumbX, thumbY, tr, 0, Math.PI * 2); ctx.fill();
+        ctx.lineWidth = Math.max(1, Math.round(tr * 0.4));
+        ctx.strokeStyle = '#0a0f1e';
+        ctx.beginPath(); ctx.arc(thumbX, thumbY, tr, 0, Math.PI * 2); ctx.stroke();
+        ctx.restore();
+      };
+
+      const label = (text, x, y, color) => {
+        ctx.font = `${Math.max(4, px(9))}px "Press Start 2P", ui-monospace, monospace`;
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#0a0f1e';
+        ctx.fillText(text, x + 1, y + 1);
+        ctx.fillStyle = color;
+        ctx.fillText(text, x, y);
+      };
+
+      // Left dynamic joystick (emerald)
       if (this.leftTouch) {
         const lt = this.leftTouch;
-        ctx.save();
-        ctx.globalAlpha = 0.72;
-        ctx.beginPath();
-        ctx.arc(lt.ox, lt.oy, 54, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(15, 122, 67, 0.22)';
-        ctx.fill();
-        ctx.lineWidth = 3;
-        ctx.strokeStyle = '#4ade80';
-        ctx.stroke();
-
-        // Directional ticks
-        ctx.fillStyle = '#bbf7d0';
-        ctx.font = 'bold 12px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('▲', lt.ox, lt.oy - 36);
-        ctx.fillText('▼', lt.ox, lt.oy + 45);
-        ctx.fillText('◀', lt.ox - 40, lt.oy + 4);
-        ctx.fillText('▶', lt.ox + 40, lt.oy + 4);
-
-        // Thumb nub
-        ctx.beginPath();
-        ctx.arc(lt.ox + lt.dx, lt.oy + lt.dy, 22, 0, Math.PI * 2);
-        ctx.fillStyle = '#22c55e';
-        ctx.fill();
-        ctx.lineWidth = 2.5;
-        ctx.strokeStyle = '#fef08a';
-        ctx.stroke();
-        ctx.restore();
+        const ox = lt.ox * k, oy = lt.oy * k;
+        const r = px(54);
+        stickRing(ox, oy, r, '74, 222, 128', ox + lt.dx * k, oy + lt.dy * k,
+          Math.abs(lt.dx) + Math.abs(lt.dy) > 4);
+        label('MOVE', ox, oy + r + px(14), '#bbf7d0');
       }
 
-      // Right dynamic joystick (gold/amber lucha swipe ring)
+      // Right dynamic joystick (amber)
       if (this.rightTouch) {
         const rt = this.rightTouch;
-        ctx.save();
-        ctx.globalAlpha = 0.78;
-        ctx.beginPath();
-        ctx.arc(rt.ox, rt.oy, 58, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(245, 158, 11, 0.20)';
-        ctx.fill();
-        ctx.lineWidth = 3;
-        ctx.strokeStyle = '#fbbf24';
-        ctx.stroke();
-
-        ctx.font = 'bold 10px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillStyle = rt.dir === 'up' ? '#fef08a' : '#fed7aa';
-        ctx.fillText('FART / 2xFLIP', rt.ox, rt.oy - 40);
-        ctx.fillStyle = rt.dir === 'down' ? '#fef08a' : '#fed7aa';
-        ctx.fillText('GLIDE / 2xSLAM', rt.ox, rt.oy + 48);
-        ctx.fillStyle = rt.dir === 'left' ? '#fef08a' : (Save.hasCorkscrew() ? '#fed7aa' : '#94a3b8');
-        ctx.fillText('◀', rt.ox - 44, rt.oy + 4);
-        ctx.fillStyle = rt.dir === 'right' ? '#fef08a' : (Save.hasLuchaVault() ? '#fed7aa' : '#94a3b8');
-        ctx.fillText('▶', rt.ox + 44, rt.oy + 4);
-
-        ctx.beginPath();
-        ctx.arc(rt.ox + rt.dx, rt.oy + rt.dy, 22, 0, Math.PI * 2);
-        ctx.fillStyle = '#f59e0b';
-        ctx.fill();
-        ctx.lineWidth = 2.5;
-        ctx.strokeStyle = '#fff';
-        ctx.stroke();
-        ctx.restore();
+        const ox = rt.ox * k, oy = rt.oy * k;
+        const r = px(58);
+        stickRing(ox, oy, r, '251, 191, 36', ox + rt.dx * k, oy + rt.dy * k, rt.dir !== null);
+        label('FART', ox, oy - r - px(8), rt.dir === 'up' ? '#fef9c3' : '#f2c98a');
+        label('DROP', ox, oy + r + px(14), rt.dir === 'down' ? '#fef9c3' : '#f2c98a');
+        label('◀', ox - r - px(10), oy + px(4), rt.dir === 'left' ? '#fef9c3' : '#f2c98a');
+        label('▶', ox + r + px(10), oy + px(4), rt.dir === 'right' ? '#fef9c3' : '#f2c98a');
       }
 
       // Floating Gesture Toast
       if (this.gestureFeedback) {
         ctx.save();
         ctx.globalAlpha = Math.min(1, this.gestureFeedback.timer * 2);
-        ctx.font = '900 18px "Trebuchet MS", sans-serif';
+        ctx.font = `${Math.max(5, px(22))}px "Press Start 2P", ui-monospace, monospace`;
         ctx.textAlign = 'center';
-        const tx = w * 0.5, ty = 92;
-        ctx.lineWidth = 4;
-        ctx.strokeStyle = '#111827';
+        const tx = w * 0.5, ty = px(92);
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = '#0a0f1e';
         ctx.strokeText(this.gestureFeedback.text, tx, ty);
         ctx.fillStyle = '#fde047';
         ctx.fillText(this.gestureFeedback.text, tx, ty);
@@ -1184,6 +1526,14 @@
       const p = this.panels[this.index];
       if (!p) return;
 
+      // Comic pages are laid out in design pixels, then scaled onto the pixel
+      // grid — 470 design rows keeps the caption type legible once the buffer
+      // is blown up to the screen.
+      const S = h / 470;
+      ctx.save();
+      ctx.scale(S, S);
+      w = w / S; h = h / S;
+
       // Comic Book Background Desk
       ctx.fillStyle = '#1b1410';
       ctx.fillRect(0, 0, w, h);
@@ -1218,7 +1568,7 @@
       ctx.lineWidth = 3;
       ctx.strokeRect(px + 14, py + 12, pw - 28, 34);
       ctx.fillStyle = '#111827';
-      ctx.font = '900 15px "Trebuchet MS", sans-serif';
+      ctx.font = '13px "Press Start 2P", ui-monospace, monospace';
       ctx.textAlign = 'left';
       ctx.fillText(p.title, px + 26, py + 34);
       ctx.textAlign = 'right';
@@ -1245,20 +1595,22 @@
       ctx.strokeRect(bx, by, bw, bh);
 
       // Speaker tag
+      ctx.font = '10px "Press Start 2P", ui-monospace, monospace';
+      const tagW = Math.min(300, ctx.measureText(p.speaker).width + 26);
       ctx.fillStyle = '#0f7a43';
-      ctx.fillRect(bx + 12, by - 12, Math.min(230, ctx.measureText(p.speaker).width + 36), 24);
+      ctx.fillRect(bx + 12, by - 14, tagW, 26);
       ctx.strokeStyle = '#111827';
       ctx.lineWidth = 2.5;
-      ctx.strokeRect(bx + 12, by - 12, Math.min(230, ctx.measureText(p.speaker).width + 36), 24);
+      ctx.strokeRect(bx + 12, by - 14, tagW, 26);
       ctx.fillStyle = '#fef08a';
-      ctx.font = '900 13px "Trebuchet MS", sans-serif';
       ctx.textAlign = 'left';
-      ctx.fillText(p.speaker, bx + 22, by + 5);
+      ctx.fillText(p.speaker, bx + 22, by + 4);
 
       // Wrapped dialogue text
       ctx.fillStyle = '#111827';
-      ctx.font = `700 ${pw < 480 ? 13 : 15}px "Trebuchet MS", sans-serif`;
-      drawWrappedText(ctx, p.text, bx + 16, by + 32, bw - 32, pw < 480 ? 18 : 21);
+      ctx.font = `${pw < 480 ? 14 : 17}px "VT323", ui-monospace, monospace`;
+      drawWrappedText(ctx, p.text, bx + 16, by + 34, bw - 32, pw < 480 ? 20 : 23);
+      ctx.restore();
     },
 
     drawPanelArt(ctx, art, x, y, w, h, t) {
@@ -1426,6 +1778,46 @@
       }
     }
   };
+
+  // Small colour helper so gradients can fade to transparent
+  function hexToRgba(hex, a) {
+    let h = hex.replace('#', '');
+    if (h.length === 3) h = h.split('').map(c => c + c).join('');
+    const n = parseInt(h, 16);
+    return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${a})`;
+  }
+
+  // Shift a hex colour toward white (amt > 0) or black (amt < 0), -1..1.
+  function shade(hex, amt) {
+    let h = hex.replace('#', '');
+    if (h.length === 3) h = h.split('').map(c => c + c).join('');
+    const n = parseInt(h, 16);
+    const t = amt < 0 ? 0 : 255, p = Math.min(1, Math.abs(amt));
+    const r = Math.round(((t - ((n >> 16) & 255)) * p) + ((n >> 16) & 255));
+    const g = Math.round(((t - ((n >> 8) & 255)) * p) + ((n >> 8) & 255));
+    const b = Math.round(((t - (n & 255)) * p) + (n & 255));
+    return `rgb(${r}, ${g}, ${b})`;
+  }
+
+  // Blend two hex colours — used to step the sky through flat cartridge bands.
+  function mixHex(a, b, t) {
+    const pa = parseInt(a.replace('#', ''), 16), pb = parseInt(b.replace('#', ''), 16);
+    const r = Math.round((((pa >> 16) & 255) * (1 - t)) + (((pb >> 16) & 255) * t));
+    const g = Math.round((((pa >> 8) & 255) * (1 - t)) + (((pb >> 8) & 255) * t));
+    const bl = Math.round(((pa & 255) * (1 - t)) + ((pb & 255) * t));
+    return `rgb(${r}, ${g}, ${bl})`;
+  }
+
+  // One sun for the whole game: it sits upper-right, so every material is
+  // painted in three tones — lit top, mid body, shadowed underside — instead
+  // of a flat fill. Keeps hero, foes, terrain and props in the same light.
+  function material(ctx, base, topY, botY, lift = 0.34, drop = 0.36) {
+    const g = ctx.createLinearGradient(0, topY, 0, botY);
+    g.addColorStop(0, shade(base, lift));
+    g.addColorStop(0.48, base);
+    g.addColorStop(1, shade(base, -drop));
+    return g;
+  }
 
   function drawWrappedText(ctx, text, x, y, maxW, lineH) {
     const words = text.split(' ');
@@ -1708,7 +2100,11 @@
     lvl.pickups.push({ kind: 'cabbage', x: 280, y: baseY - 140 });
 
     let cursor = 420;
-    const sections = 5 + stageInWorld; // 5..7 varied platforming set-pieces
+    // Longer stages: 8..10 handcrafted set-pieces, ramping steadily across world + stage
+    const sections = 8 + stageInWorld;
+    const tier = worldId * 3 + stageInWorld;   // 0..14 steady difficulty ramp
+    const foeHp = 2 + Math.floor(tier / 4);    // 2..5 HP, never a sudden jump
+    const foeLvl = Math.floor(tier / 5);       // extra pressure every few stages
 
     for (let s = 0; s < sections; s++) {
       const pattern = (idx * 3 + s) % 6;
@@ -1719,7 +2115,8 @@
         lvl.monkeyBars.push({ x: cursor - 10, y: baseY - 175, w: gap + 20 });
         cursor += gap;
         lvl.solids.push({ x: cursor, y: baseY, w: 340, h: 220, kind: 'ground' });
-        lvl.enemies.push({ type: enemyPool[0], x: cursor + 150, y: baseY - 46, minX: cursor + 24, maxX: cursor + 300, hp: 2 + worldId });
+        lvl.enemies.push({ type: enemyPool[0], x: cursor + 150, y: baseY - 46, minX: cursor + 24, maxX: cursor + 300, hp: foeHp });
+        if (foeLvl >= 1) lvl.enemies.push({ type: enemyPool[2], x: cursor + 240, y: baseY - 210, minX: cursor + 40, maxX: cursor + 320, hp: foeHp });
         if (s === 1) lvl.pickups.push({ kind: 'cabbage', x: cursor + 60, y: baseY - 36 });
         cursor += 340;
       } else if (pattern === 1) {
@@ -1727,9 +2124,10 @@
         lvl.solids.push({ x: cursor, y: baseY, w: 150, h: 220, kind: 'ground' });
         lvl.vents.push({ x: cursor + 45, y: baseY - 320, w: 72, h: 320 });
         lvl.oneWays.push({ x: cursor + 190, y: baseY - 220, w: 190 });
-        lvl.enemies.push({ type: enemyPool[2], x: cursor + 275, y: baseY - 266, minX: cursor + 200, maxX: cursor + 360, hp: 2 + worldId });
+        lvl.enemies.push({ type: enemyPool[2], x: cursor + 275, y: baseY - 266, minX: cursor + 200, maxX: cursor + 360, hp: foeHp });
         cursor += 370;
         lvl.solids.push({ x: cursor, y: baseY - 40, w: 280, h: 260, kind: 'ground' });
+        if (foeLvl >= 2) lvl.enemies.push({ type: enemyPool[0], x: cursor + 170, y: baseY - 82, minX: cursor + 20, maxX: cursor + 250, hp: foeHp + 1 });
         lvl.pickups.push({ kind: 'cabbage', x: cursor + 110, y: baseY - 80 });
         cursor += 280;
       } else if (pattern === 2) {
@@ -1741,7 +2139,8 @@
         lvl.pickups.push({ kind: 'heart', x: cursor + 175, y: baseY + 80 });
         lvl.vents.push({ x: cursor + 210, y: baseY - 40, w: 46, h: 155 });
         lvl.solids.push({ x: cursor + 230, y: baseY, w: 230, h: 220, kind: 'ground' });
-        lvl.enemies.push({ type: enemyPool[1], x: cursor + 330, y: baseY - 46, minX: cursor + 245, maxX: cursor + 440, hp: 3 + worldId });
+        lvl.enemies.push({ type: enemyPool[1], x: cursor + 330, y: baseY - 46, minX: cursor + 245, maxX: cursor + 440, hp: foeHp + 1 });
+        if (foeLvl >= 1) lvl.enemies.push({ type: enemyPool[2], x: cursor + 300, y: baseY - 205, minX: cursor + 240, maxX: cursor + 430, hp: foeHp });
         cursor += 460;
       } else if (pattern === 3) {
         // Multi-tier Luchador scaffolding + Overhead Monkey Bars
@@ -1749,8 +2148,9 @@
         lvl.oneWays.push({ x: cursor + 40, y: baseY - 110, w: 140 });
         lvl.oneWays.push({ x: cursor + 220, y: baseY - 190, w: 150 });
         lvl.monkeyBars.push({ x: cursor + 110, y: baseY - 280, w: 230 });
-        lvl.enemies.push({ type: enemyPool[0], x: cursor + 180, y: baseY - 46, minX: cursor + 25, maxX: cursor + 390, hp: 2 + worldId });
-        lvl.enemies.push({ type: enemyPool[2], x: cursor + 290, y: baseY - 236, minX: cursor + 225, maxX: cursor + 355, hp: 2 + worldId });
+        lvl.enemies.push({ type: enemyPool[0], x: cursor + 180, y: baseY - 46, minX: cursor + 25, maxX: cursor + 390, hp: foeHp });
+        lvl.enemies.push({ type: enemyPool[2], x: cursor + 290, y: baseY - 236, minX: cursor + 225, maxX: cursor + 355, hp: foeHp });
+        if (foeLvl >= 3) lvl.enemies.push({ type: enemyPool[1], x: cursor + 335, y: baseY - 46, minX: cursor + 250, maxX: cursor + 400, hp: foeHp + 1 });
         cursor += 420;
       } else if (pattern === 4) {
         // Side Barrier Alcove + Fart-Jet Jump Gap
@@ -1758,7 +2158,8 @@
         lvl.solids.push({ x: cursor + 160, y: baseY - 135, w: 170, h: 24, kind: 'platform' });
         lvl.solids.push({ x: cursor + 160, y: baseY - 111, w: 28, h: 111, kind: 'sideBarrier' });
         lvl.pickups.push({ kind: 'cabbage', x: cursor + 240, y: baseY - 38 });
-        lvl.enemies.push({ type: enemyPool[1], x: cursor + 240, y: baseY - 180, minX: cursor + 170, maxX: cursor + 315, hp: 3 + worldId });
+        lvl.enemies.push({ type: enemyPool[1], x: cursor + 240, y: baseY - 180, minX: cursor + 170, maxX: cursor + 315, hp: foeHp + 1 });
+        if (foeLvl >= 2) lvl.enemies.push({ type: enemyPool[2], x: cursor + 300, y: baseY - 240, minX: cursor + 180, maxX: cursor + 350, hp: foeHp });
         cursor += 360;
         // Gap with floating stepping platform
         lvl.oneWays.push({ x: cursor + 55, y: baseY - 60, w: 110 });
@@ -1768,7 +2169,8 @@
         lvl.solids.push({ x: cursor, y: baseY, w: 380, h: 220, kind: 'ground' });
         lvl.oneWays.push({ x: cursor + 80, y: baseY - 115, w: 200 });
         lvl.solids.push({ x: cursor + 100, y: baseY - 230, w: 160, h: 24, kind: 'overheadShield' });
-        lvl.enemies.push({ type: enemyPool[0], x: cursor + 260, y: baseY - 46, minX: cursor + 30, maxX: cursor + 350, hp: 3 + worldId });
+        lvl.enemies.push({ type: enemyPool[0], x: cursor + 260, y: baseY - 46, minX: cursor + 30, maxX: cursor + 350, hp: foeHp + 1 });
+        if (foeLvl >= 3) lvl.enemies.push({ type: enemyPool[1], x: cursor + 330, y: baseY - 46, minX: cursor + 250, maxX: cursor + 380, hp: foeHp });
         lvl.pickups.push({ kind: 'cabbage', x: cursor + 180, y: baseY - 150 });
         cursor += 380;
       }
@@ -1824,99 +2226,339 @@
    * ========================================================================= */
   const Renderer = {
     drawParallax(ctx, world, camX, vw, vh, t) {
-      // Rich sky gradient
-      const sky = ctx.createLinearGradient(0, 0, 0, vh);
-      sky.addColorStop(0, world.skyTop);
-      sky.addColorStop(1, world.skyBot);
-      ctx.fillStyle = sky;
-      ctx.fillRect(0, 0, vw, vh);
-
-      // Sun / Moon
+      // The backdrop is authored in "design pixels" — the old CSS-pixel scale.
+      // One transform drops that whole composition onto the pixel grid so the
+      // layers, parallax speeds and silhouettes all keep their framing.
+      const S = vh / 600;
       ctx.save();
-      ctx.fillStyle = world.id === 2 ? '#fde047' : (world.id === 1 ? '#fbcfe8' : '#fef08a');
-      ctx.globalAlpha = 0.88;
-      ctx.beginPath();
-      ctx.arc(vw * 0.78 - camX * 0.02, vh * 0.2, 46, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
+      ctx.scale(S, S);
+      vw = vw / S; vh = vh / S;
 
-      // Fluffy cartoon clouds
-      ctx.fillStyle = 'rgba(255,255,255,0.35)';
-      for (let i = 0; i < 7; i++) {
-        const cx = ((i * 290 - camX * 0.08 + t * 8) % (vw + 260) + (vw + 260)) % (vw + 260) - 130;
-        const cy = 65 + (i % 3) * 44;
-        ctx.beginPath();
-        ctx.arc(cx, cy, 28, 0, Math.PI * 2);
-        ctx.arc(cx + 26, cy - 8, 34, 0, Math.PI * 2);
-        ctx.arc(cx + 56, cy, 25, 0, Math.PI * 2);
-        ctx.fill();
-      }
+      const horizon = vh * 0.6;
 
-      // Far Parallax Landmarks per Country
-      ctx.fillStyle = world.hillFar;
-      const farShift = -(camX * 0.16) % 360;
-      for (let x = farShift - 360; x < vw + 360; x += 360) {
-        if (world.id === 0) {
-          // Ireland: Rolling Emerald Hills + Castle Silhouette
-          ctx.beginPath(); ctx.ellipse(x + 180, vh * 0.85, 220, 150, 0, Math.PI, 0); ctx.fill();
-          ctx.fillRect(x + 145, vh * 0.56, 70, 90);
-          ctx.fillRect(x + 135, vh * 0.52, 22, 100);
-          ctx.fillRect(x + 203, vh * 0.52, 22, 100);
-        } else if (world.id === 1) {
-          // Japan: Mount Fuji + Pagoda Tiers
-          ctx.beginPath(); ctx.moveTo(x, vh); ctx.lineTo(x + 180, vh * 0.36); ctx.lineTo(x + 360, vh); ctx.closePath(); ctx.fill();
-          ctx.fillStyle = 'rgba(255,255,255,0.55)';
-          ctx.beginPath(); ctx.moveTo(x + 145, vh * 0.48); ctx.lineTo(x + 180, vh * 0.36); ctx.lineTo(x + 215, vh * 0.48); ctx.closePath(); ctx.fill();
-          ctx.fillStyle = world.hillFar;
-        } else if (world.id === 2) {
-          // Las Vegas: Desert Pyramid + Casino Towers
-          ctx.beginPath(); ctx.moveTo(x + 20, vh); ctx.lineTo(x + 120, vh * 0.45); ctx.lineTo(x + 220, vh); ctx.closePath(); ctx.fill();
-          ctx.fillRect(x + 240, vh * 0.42, 85, vh * 0.58);
-          ctx.fillStyle = 'rgba(253, 224, 71, 0.35)';
-          for (let wy = vh * 0.46; wy < vh * 0.82; wy += 20) ctx.fillRect(x + 252, wy, 60, 8);
-          ctx.fillStyle = world.hillFar;
-        } else {
-          // Mexico: Stepped Aztec Pyramid + Cactus Silhouettes
-          ctx.fillRect(x + 60, vh * 0.68, 220, vh * 0.32);
-          ctx.fillRect(x + 95, vh * 0.57, 150, vh * 0.14);
-          ctx.fillRect(x + 130, vh * 0.48, 80, vh * 0.12);
+      // Sky: six flat colour bands stepped from zenith to horizon, each pair
+      // joined by a 50% dither seam so it reads as a cartridge background.
+      const BANDS = 6;
+      const skyEnd = vh * 0.66;
+      for (let i = 0; i < BANDS; i++) {
+        const y0 = Math.round((i / BANDS) * skyEnd);
+        const y1 = Math.round(((i + 1) / BANDS) * skyEnd);
+        ctx.fillStyle = mixHex(world.skyTop, world.skyBot, i / (BANDS - 1));
+        ctx.fillRect(0, y0, vw, y1 - y0);
+        if (i > 0) {
+          ctx.fillStyle = mixHex(world.skyTop, world.skyBot, (i - 0.5) / (BANDS - 1));
+          for (let dx = 0; dx < vw; dx += 4) ctx.fillRect(dx, y0 - 3, 2, 3);
         }
       }
+      // The ground colour carries the sky below the horizon
+      ctx.fillStyle = world.ground;
+      ctx.fillRect(0, skyEnd, vw, vh - skyEnd);
 
-      // Near Parallax Layer
-      ctx.fillStyle = world.hillNear;
-      const nearShift = -(camX * 0.34) % 280;
-      for (let x = nearShift - 280; x < vw + 280; x += 280) {
-        if (world.id === 0) {
-          ctx.beginPath(); ctx.ellipse(x + 140, vh, 175, 110, 0, Math.PI, 0); ctx.fill();
-        } else if (world.id === 1) {
-          // Pagoda roofs
-          ctx.fillRect(x + 90, vh * 0.68, 70, vh * 0.32);
-          ctx.beginPath(); ctx.moveTo(x + 65, vh * 0.72); ctx.lineTo(x + 125, vh * 0.62); ctx.lineTo(x + 185, vh * 0.72); ctx.closePath(); ctx.fill();
-        } else if (world.id === 2) {
-          // Vegas neon arches
-          ctx.fillRect(x + 40, vh * 0.74, 190, vh * 0.26);
-          ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 3;
-          ctx.strokeRect(x + 56, vh * 0.77, 158, 22);
-        } else {
-          // Fiesta Papel Picado banners
-          ctx.fillRect(x + 10, vh * 0.76, 260, vh * 0.24);
-          ctx.fillStyle = '#f59e0b';
-          ctx.fillRect(x + 50, vh * 0.8, 30, 36);
-          ctx.fillStyle = '#ec4899';
-          ctx.fillRect(x + 115, vh * 0.8, 30, 36);
-          ctx.fillStyle = '#22c55e';
-          ctx.fillRect(x + 180, vh * 0.8, 30, 36);
-          ctx.fillStyle = world.hillNear;
+      // Sun with soft halo
+      const sunX = vw * 0.76 - camX * 0.015;
+      const sunY = vh * 0.2;
+      const halo = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, 150);
+      halo.addColorStop(0, 'rgba(255, 255, 255, 0.9)');
+      halo.addColorStop(0.32, hexToRgba(world.id === 2 ? '#fde047' : '#fff8d6', 0.55));
+      halo.addColorStop(1, hexToRgba(world.accent, 0));
+      ctx.fillStyle = halo;
+      ctx.beginPath(); ctx.arc(sunX, sunY, 150, 0, Math.PI * 2); ctx.fill();
+      // Sun disc: white-hot core falling off into its world tint
+      const sunBase = world.id === 2 ? '#fde047' : (world.id === 1 ? '#fbcfe8' : '#fef9c3');
+      const sunDisc = ctx.createRadialGradient(sunX - 9, sunY - 10, 3, sunX, sunY, 40);
+      sunDisc.addColorStop(0, '#ffffff');
+      sunDisc.addColorStop(0.55, sunBase);
+      sunDisc.addColorStop(1, shade(sunBase, -0.16));
+      ctx.fillStyle = sunDisc;
+      ctx.beginPath(); ctx.arc(sunX, sunY, 38, 0, Math.PI * 2); ctx.fill();
+
+      // Starfield: only the night worlds, kept faint so it never competes
+      if (world.id !== 0) {
+        ctx.save();
+        for (let i = 0; i < 54; i++) {
+          const sx = ((((i * 197.3) - camX * 0.02) % vw) + vw) % vw;
+          const sy = ((i * 83.7) % (vh * 0.48)) + 8;
+          const tw = 0.3 + 0.7 * Math.abs(Math.sin(t * 0.7 + i * 1.9));
+          ctx.fillStyle = `rgba(255,255,255,${0.42 * tw})`;
+          ctx.beginPath(); ctx.arc(sx, sy, i % 9 === 0 ? 1.5 : 0.8, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.restore();
+      }
+
+      // Layered clouds at three depths
+      const bands = [
+        { sp: 0.05, y: 0.12, s: 1.1, a: 0.28 },
+        { sp: 0.11, y: 0.26, s: 0.8, a: 0.2 },
+        { sp: 0.19, y: 0.4, s: 0.55, a: 0.14 }
+      ];
+      bands.forEach((band, bi) => {
+        const span = 430;
+        const shift = -((camX * band.sp + t * (7 + bi * 4)) % span);
+        for (let i = -1; i < Math.ceil(vw / span) + 1; i++) {
+          const cx = i * span + shift;
+          const cy = vh * band.y + Math.sin(i * 1.7 + bi) * 12;
+          const sc = band.s;
+          // Flat cartridge cloud: solid body, one shaded underside band
+          ctx.fillStyle = `rgba(255,255,255,${Math.min(1, band.a * 2.4)})`;
+          ctx.beginPath();
+          ctx.ellipse(cx, cy, 46 * sc, 20 * sc, 0, 0, Math.PI * 2);
+          ctx.ellipse(cx + 40 * sc, cy - 10 * sc, 34 * sc, 18 * sc, 0, 0, Math.PI * 2);
+          ctx.ellipse(cx + 78 * sc, cy + 2 * sc, 28 * sc, 15 * sc, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = `rgba(196, 224, 255, ${Math.min(1, band.a * 1.7)})`;
+          ctx.beginPath(); ctx.ellipse(cx + 16 * sc, cy + 11 * sc, 42 * sc, 9 * sc, 0, 0, Math.PI * 2); ctx.fill();
+        }
+      });
+
+      // Warm light pooling along the horizon, behind the ridges
+      const hz = ctx.createLinearGradient(0, horizon - 90, 0, horizon + 70);
+      hz.addColorStop(0, hexToRgba(world.accent, 0));
+      hz.addColorStop(0.68, hexToRgba(world.accent, 0.16));
+      hz.addColorStop(1, hexToRgba(world.accent, 0));
+      ctx.fillStyle = hz;
+      ctx.fillRect(0, horizon - 90, vw, 160);
+
+      // Distant ridge, lifted at the crest and settled into shadow at its base
+      const farFill = ctx.createLinearGradient(0, vh * 0.5, 0, vh);
+      farFill.addColorStop(0, shade(world.hillFar, 0.2));
+      farFill.addColorStop(1, shade(world.hillFar, -0.3));
+      const farShift = -(camX * 0.14) % 380;
+      for (let x = farShift - 380; x < vw + 380; x += 380) {
+        ctx.save();
+        ctx.fillStyle = farFill;
+        this.drawFarLandmark(ctx, world, x, vh, t);
+        ctx.restore();
+      }
+
+      // Atmospheric haze over the distance
+      const haze = ctx.createLinearGradient(0, vh * 0.42, 0, vh * 0.86);
+      haze.addColorStop(0, hexToRgba(world.skyBot, 0));
+      haze.addColorStop(1, hexToRgba(world.skyBot, 0.42));
+      ctx.fillStyle = haze;
+      ctx.fillRect(0, vh * 0.42, vw, vh * 0.44);
+
+      // Mid-ground landmarks with the same three-tone light as everything else
+      const midFill = ctx.createLinearGradient(0, vh * 0.55, 0, vh);
+      midFill.addColorStop(0, shade(world.hillNear, 0.24));
+      midFill.addColorStop(1, shade(world.hillNear, -0.26));
+      const midShift = -(camX * 0.3) % 300;
+      for (let x = midShift - 300; x < vw + 300; x += 300) {
+        ctx.save();
+        ctx.fillStyle = midFill;
+        this.drawMidLandmark(ctx, world, x, vh, t);
+        ctx.restore();
+      }
+
+      // Near silhouettes with rim light
+      const nearShift = -(camX * 0.52) % 260;
+      for (let x = nearShift - 260; x < vw + 260; x += 260) this.drawNearLandmark(ctx, world, x, vh, t);
+
+      // Drifting motes for depth
+      ctx.fillStyle = 'rgba(255,255,255,0.3)';
+      for (let i = 0; i < 16; i++) {
+        const mx = ((i * 137 + t * 12) % (vw + 60)) - 30;
+        const my = ((i * 83 + Math.sin(t * 0.6 + i) * 22) % (vh * 0.7)) + 20;
+        ctx.beginPath(); ctx.arc(mx, my, 1 + (i % 3) * 0.7, 0, Math.PI * 2); ctx.fill();
+      }
+
+      // Cinematic grade: cool top, warm bottom, vignette
+      const grade = ctx.createLinearGradient(0, 0, 0, vh);
+      grade.addColorStop(0, 'rgba(8, 14, 30, 0.28)');
+      grade.addColorStop(0.45, 'rgba(8, 14, 30, 0)');
+      grade.addColorStop(1, 'rgba(20, 8, 2, 0.22)');
+      ctx.fillStyle = grade;
+      ctx.fillRect(0, 0, vw, vh);
+      const vig = ctx.createRadialGradient(vw * 0.5, vh * 0.5, vh * 0.32, vw * 0.5, vh * 0.5, vh * 0.95);
+      vig.addColorStop(0, 'rgba(0,0,0,0)');
+      vig.addColorStop(1, 'rgba(0,0,0,0.42)');
+      ctx.fillStyle = vig;
+      ctx.fillRect(0, 0, vw, vh);
+      ctx.restore();
+    },
+
+    // Out-of-focus foreground band: dark silhouettes along the bottom edge add
+    // a third plane of depth and stop the terrain from ending in a hard line.
+    drawForeground(ctx, world, camX, vw, vh, t) {
+      ctx.save();
+      // Same design-pixel space as the backdrop layers.
+      const S = vh / 600;
+      ctx.scale(S, S);
+      vw = vw / S; vh = vh / S;
+      const band = ctx.createLinearGradient(0, vh - 56, 0, vh);
+      band.addColorStop(0, 'rgba(3,7,16,0)');
+      band.addColorStop(0.55, 'rgba(3,7,16,0.22)');
+      band.addColorStop(1, 'rgba(3,7,16,0.42)');
+      ctx.fillStyle = band;
+      ctx.fillRect(0, vh - 56, vw, 56);
+
+      const shift = -((camX * 1.22) % 420);
+      const sway = Math.sin(t * 0.9) * 3;
+      for (let x = shift - 420; x < vw + 420; x += 420) {
+        ctx.fillStyle = 'rgba(4, 9, 20, 0.9)';
+        ctx.beginPath();
+        ctx.moveTo(x - 10, vh);
+        ctx.quadraticCurveTo(x + 90, vh - 54, x + 210, vh - 30);
+        ctx.quadraticCurveTo(x + 320, vh - 12, x + 430, vh);
+        ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = hexToRgba(world.accent, 0.2);
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(x + 6, vh - 34);
+        ctx.quadraticCurveTo(x + 90, vh - 55, x + 200, vh - 31);
+        ctx.stroke();
+        ctx.strokeStyle = 'rgba(4, 9, 20, 0.92)';
+        ctx.lineWidth = 3;
+        ctx.lineCap = 'round';
+        for (let i = 0; i < 7; i++) {
+          const gx = x + 34 + i * 54;
+          const hgt = 14 + (i % 3) * 9;
+          ctx.beginPath();
+          ctx.moveTo(gx, vh);
+          ctx.quadraticCurveTo(gx + 4 + sway, vh - hgt * 0.6, gx + 9 + sway, vh - hgt);
+          ctx.stroke();
+        }
+      }
+      ctx.restore();
+    },
+
+    drawFarLandmark(ctx, world, x, vh, t) {
+      if (world.id === 0) {
+        ctx.beginPath(); ctx.ellipse(x + 180, vh * 0.86, 230, 150, 0, Math.PI, 0); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(x + 330, vh * 0.9, 190, 120, 0, Math.PI, 0); ctx.fill();
+        // Castle keep
+        ctx.fillRect(x + 140, vh * 0.56, 76, 96);
+        ctx.fillRect(x + 128, vh * 0.5, 22, 106);
+        ctx.fillRect(x + 206, vh * 0.5, 22, 106);
+        ctx.beginPath(); ctx.moveTo(x + 139, vh * 0.5); ctx.lineTo(x + 150, vh * 0.44); ctx.lineTo(x + 161, vh * 0.5); ctx.closePath(); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(x + 217, vh * 0.5); ctx.lineTo(x + 228, vh * 0.44); ctx.lineTo(x + 239, vh * 0.5); ctx.closePath(); ctx.fill();
+        // Flag
+        ctx.fillRect(x + 172, vh * 0.4, 3, 34);
+        ctx.beginPath(); ctx.moveTo(x + 175, vh * 0.4); ctx.lineTo(x + 200, vh * 0.42 + Math.sin(t * 3) * 2); ctx.lineTo(x + 175, vh * 0.45); ctx.closePath(); ctx.fill();
+      } else if (world.id === 1) {
+        ctx.beginPath(); ctx.moveTo(x, vh); ctx.lineTo(x + 185, vh * 0.34); ctx.lineTo(x + 370, vh); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.6)';
+        ctx.beginPath(); ctx.moveTo(x + 148, vh * 0.47); ctx.lineTo(x + 185, vh * 0.34); ctx.lineTo(x + 222, vh * 0.47); ctx.lineTo(x + 200, vh * 0.44); ctx.lineTo(x + 185, vh * 0.49); ctx.lineTo(x + 168, vh * 0.44); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = 'rgba(30, 12, 48, 0.85)';
+        for (let i = 0; i < 3; i++) {
+          const py = vh * (0.66 + i * 0.075), pw = 64 + i * 18;
+          ctx.fillRect(x + 300 - pw * 0.5, py, pw, vh * 0.05);
+          ctx.beginPath();
+          ctx.moveTo(x + 300 - pw * 0.75, py + 4); ctx.quadraticCurveTo(x + 300, py - 14, x + 300 + pw * 0.75, py + 4);
+          ctx.lineTo(x + 300 + pw * 0.6, py + 8); ctx.lineTo(x + 300 - pw * 0.6, py + 8); ctx.closePath(); ctx.fill();
+        }
+      } else if (world.id === 2) {
+        ctx.beginPath(); ctx.moveTo(x + 10, vh); ctx.lineTo(x + 120, vh * 0.44); ctx.lineTo(x + 230, vh); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = 'rgba(253, 224, 71, 0.4)';
+        for (let i = 0; i < 6; i++) ctx.fillRect(x + 60 + i * 16, vh * (0.62 + i * 0.05), 9, 9);
+        ctx.fillStyle = world.hillFar;
+        ctx.fillRect(x + 250, vh * 0.4, 88, vh * 0.6);
+        ctx.fillStyle = 'rgba(253, 224, 71, 0.45)';
+        for (let wy = vh * 0.44; wy < vh * 0.84; wy += 20) ctx.fillRect(x + 262, wy, 62, 7);
+      } else {
+        ctx.fillRect(x + 50, vh * 0.7, 250, vh * 0.3);
+        ctx.fillRect(x + 86, vh * 0.6, 178, vh * 0.12);
+        ctx.fillRect(x + 122, vh * 0.5, 106, vh * 0.12);
+        ctx.fillRect(x + 158, vh * 0.42, 34, vh * 0.1);
+        ctx.fillStyle = 'rgba(0,0,0,0.25)';
+        for (let i = 0; i < 5; i++) ctx.fillRect(x + 130 + i * 20, vh * 0.78, 10, 22);
+      }
+    },
+
+    drawMidLandmark(ctx, world, x, vh, t) {
+      if (world.id === 0) {
+        // Pub rooftops with chimneys
+        ctx.fillRect(x + 20, vh * 0.72, 120, vh * 0.28);
+        ctx.beginPath();
+        ctx.moveTo(x + 8, vh * 0.72); ctx.lineTo(x + 80, vh * 0.64); ctx.lineTo(x + 152, vh * 0.72); ctx.closePath(); ctx.fill();
+        ctx.fillRect(x + 130, vh * 0.76, 110, vh * 0.24);
+        ctx.beginPath();
+        ctx.moveTo(x + 120, vh * 0.76); ctx.lineTo(x + 185, vh * 0.69); ctx.lineTo(x + 250, vh * 0.76); ctx.closePath(); ctx.fill();
+        ctx.fillRect(x + 44, vh * 0.63, 14, 34);
+        ctx.fillRect(x + 200, vh * 0.68, 14, 30);
+        ctx.fillStyle = 'rgba(253, 224, 71, 0.5)';
+        ctx.fillRect(x + 60, vh * 0.79, 16, 20);
+        ctx.fillRect(x + 96, vh * 0.79, 16, 20);
+      } else if (world.id === 1) {
+        // Torii gate + pagoda roofs
+        ctx.fillRect(x + 30, vh * 0.66, 10, vh * 0.34);
+        ctx.fillRect(x + 130, vh * 0.66, 10, vh * 0.34);
+        ctx.fillRect(x + 18, vh * 0.65, 134, 10);
+        ctx.fillRect(x + 28, vh * 0.69, 114, 7);
+        ctx.beginPath();
+        ctx.moveTo(x + 6, vh * 0.65); ctx.quadraticCurveTo(x + 85, vh * 0.6, x + 164, vh * 0.65);
+        ctx.lineTo(x + 158, vh * 0.69); ctx.lineTo(x + 12, vh * 0.69); ctx.closePath(); ctx.fill();
+        ctx.fillRect(x + 200, vh * 0.78, 70, vh * 0.22);
+        ctx.fillStyle = 'rgba(251, 113, 133, 0.75)';
+        ctx.beginPath(); ctx.arc(x + 88, vh * 0.73, 7, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(x + 235, vh * 0.81, 6, 0, Math.PI * 2); ctx.fill();
+      } else if (world.id === 2) {
+        // Neon casino fronts
+        ctx.fillRect(x + 20, vh * 0.74, 150, vh * 0.26);
+        ctx.fillRect(x + 190, vh * 0.8, 90, vh * 0.2);
+        ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 3;
+        ctx.strokeRect(x + 36, vh * 0.77, 118, 26);
+        ctx.strokeStyle = '#22d3ee';
+        ctx.strokeRect(x + 200, vh * 0.83, 70, 16);
+        ctx.fillStyle = 'rgba(253, 224, 71, 0.6)';
+        for (let i = 0; i < 5; i++) ctx.fillRect(x + 30 + i * 28, vh * 0.88, 14, 10);
+      } else {
+        // Adobe plaza + papel picado
+        ctx.fillRect(x + 10, vh * 0.78, 120, vh * 0.22);
+        ctx.fillRect(x + 150, vh * 0.83, 100, vh * 0.17);
+        ctx.fillRect(x + 110, vh * 0.72, 18, vh * 0.06);
+        ctx.strokeStyle = '#111827'; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(x, vh * 0.7); ctx.quadraticCurveTo(x + 130, vh * 0.76, x + 260, vh * 0.7); ctx.stroke();
+        const cols = ['#f59e0b', '#ec4899', '#22c55e', '#38bdf8'];
+        for (let i = 0; i < 6; i++) {
+          const fx = x + 18 + i * 40;
+          const fy = vh * 0.705 + Math.sin((i / 6) * Math.PI) * 14;
+          ctx.fillStyle = cols[i % 4];
+          ctx.beginPath(); ctx.moveTo(fx - 7, fy); ctx.lineTo(fx + 7, fy); ctx.lineTo(fx, fy + 12); ctx.closePath(); ctx.fill();
         }
       }
     },
 
-    drawLevel(ctx, lvl, t) {
+    drawNearLandmark(ctx, world, x, vh, t) {
+      ctx.fillStyle = 'rgba(6, 12, 24, 0.82)';
+      if (world.id === 0) {
+        ctx.beginPath(); ctx.ellipse(x + 130, vh, 190, 118, 0, Math.PI, 0); ctx.fill();
+        ctx.fillRect(x + 30, vh * 0.84, 26, vh * 0.16);
+        ctx.beginPath(); ctx.ellipse(x + 43, vh * 0.84, 26, 16, 0, Math.PI, 0); ctx.fill();
+      } else if (world.id === 1) {
+        ctx.fillRect(x + 80, vh * 0.8, 60, vh * 0.2);
+        ctx.beginPath();
+        ctx.moveTo(x + 56, vh * 0.82); ctx.quadraticCurveTo(x + 110, vh * 0.74, x + 164, vh * 0.82);
+        ctx.lineTo(x + 156, vh * 0.86); ctx.lineTo(x + 64, vh * 0.86); ctx.closePath(); ctx.fill();
+        ctx.fillRect(x + 108, vh * 0.74, 4, 40);
+      } else if (world.id === 2) {
+        ctx.beginPath(); ctx.moveTo(x, vh); ctx.quadraticCurveTo(x + 130, vh * 0.8, x + 260, vh); ctx.closePath(); ctx.fill();
+        ctx.fillRect(x + 190, vh * 0.86, 8, 34);
+        ctx.fillRect(x + 168, vh * 0.87, 12, 6);
+        ctx.fillRect(x + 206, vh * 0.89, 12, 6);
+      } else {
+        ctx.beginPath(); ctx.ellipse(x + 120, vh, 210, 96, 0, Math.PI, 0); ctx.fill();
+        // Agave
+        for (let i = 0; i < 5; i++) {
+          const a = -1.9 + i * 0.42;
+          ctx.beginPath();
+          ctx.moveTo(x + 60, vh * 0.9);
+          ctx.lineTo(x + 60 + Math.cos(a) * 52, vh * 0.9 + Math.sin(a) * 52);
+          ctx.lineTo(x + 66 + Math.cos(a) * 44, vh * 0.9 + Math.sin(a) * 44);
+          ctx.closePath(); ctx.fill();
+        }
+      }
+      // Warm rim light catching the near silhouettes
+      ctx.fillStyle = hexToRgba(world.accent, 0.16);
+      ctx.fillRect(x, vh * 0.9, 260, 3);
+    },
+
+    drawLevel(ctx, lvl, t, camX, viewW) {
       const w = lvl.world;
+      const inView = (x, wd) => x + wd > camX - 140 && x < camX + viewW + 140;
 
       // Upward Wind Vents (for Underwear Parachute gliding!)
       for (const v of lvl.vents) {
+        if (!inView(v.x, v.w)) continue;
         const g = ctx.createLinearGradient(v.x, v.y + v.h, v.x, v.y);
         g.addColorStop(0, 'rgba(186, 230, 253, 0.45)');
         g.addColorStop(1, 'rgba(186, 230, 253, 0.05)');
@@ -1933,99 +2575,235 @@
           ctx.lineTo(sx + Math.sin(t * 6 + i) * 5, Math.max(v.y, sy - 34));
           ctx.stroke();
         }
-        // Vent grate base
-        ctx.fillStyle = '#475569';
-        ctx.strokeStyle = '#111827'; ctx.lineWidth = 2.5;
-        ctx.fillRect(v.x - 4, v.y + v.h - 10, v.w + 8, 12);
-        ctx.strokeRect(v.x - 4, v.y + v.h - 10, v.w + 8, 12);
+        // Glowing vent grate base
+        ctx.fillStyle = 'rgba(186, 230, 253, 0.4)';
+        ctx.beginPath(); ctx.ellipse(v.x + v.w * 0.5, v.y + v.h - 8, v.w * 0.85, 14, 0, 0, Math.PI * 2); ctx.fill();
+        const grate = ctx.createLinearGradient(0, v.y + v.h - 12, 0, v.y + v.h + 2);
+        grate.addColorStop(0, '#94a3b8');
+        grate.addColorStop(1, '#334155');
+        ctx.fillStyle = grate;
+        ctx.strokeStyle = '#0b1220'; ctx.lineWidth = 2.5;
+        ctx.beginPath(); ctx.roundRect(v.x - 4, v.y + v.h - 10, v.w + 8, 12, 4); ctx.fill(); ctx.stroke();
+        ctx.strokeStyle = 'rgba(255,255,255,0.45)'; ctx.lineWidth = 1.6;
+        for (let gx = v.x + 4; gx < v.x + v.w; gx += 8) {
+          ctx.beginPath(); ctx.moveTo(gx, v.y + v.h - 8); ctx.lineTo(gx, v.y + v.h - 2); ctx.stroke();
+        }
       }
 
       // Overhead Ceiling Monkey Bars
       for (const mb of lvl.monkeyBars) {
+        if (!inView(mb.x, mb.w)) continue;
         // Support ceiling chains
         ctx.strokeStyle = '#334155'; ctx.lineWidth = 3;
         ctx.beginPath();
         ctx.moveTo(mb.x + 10, mb.y); ctx.lineTo(mb.x + 10, mb.y - 260);
         ctx.moveTo(mb.x + mb.w - 10, mb.y); ctx.lineTo(mb.x + mb.w - 10, mb.y - 260);
         ctx.stroke();
-        // Horizontal steel ladder bar
-        ctx.fillStyle = '#94a3b8';
-        ctx.strokeStyle = '#111827'; ctx.lineWidth = 2.5;
-        ctx.fillRect(mb.x, mb.y - 6, mb.w, 12);
-        ctx.strokeRect(mb.x, mb.y - 6, mb.w, 12);
-        // Grip rungs
-        ctx.fillStyle = '#fde047';
+        // Brass bar with a lit top edge
+        const bar = ctx.createLinearGradient(0, mb.y - 6, 0, mb.y + 6);
+        bar.addColorStop(0, '#e2e8f0');
+        bar.addColorStop(0.4, '#94a3b8');
+        bar.addColorStop(1, '#475569');
+        ctx.fillStyle = bar;
+        ctx.strokeStyle = '#0b1220'; ctx.lineWidth = 2.5;
+        ctx.beginPath(); ctx.roundRect(mb.x, mb.y - 6, mb.w, 12, 6); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = 'rgba(255,255,255,0.6)';
+        ctx.fillRect(mb.x + 4, mb.y - 5, mb.w - 8, 2);
+        // Grip rungs with bolts
         for (let rx = mb.x + 12; rx < mb.x + mb.w - 8; rx += 26) {
-          ctx.fillRect(rx, mb.y - 4, 8, 8);
+          ctx.fillStyle = '#fde047';
+          ctx.strokeStyle = '#0b1220'; ctx.lineWidth = 1.6;
+          ctx.beginPath(); ctx.roundRect(rx, mb.y - 4, 8, 9, 2); ctx.fill(); ctx.stroke();
+          ctx.fillStyle = 'rgba(255,255,255,0.55)';
+          ctx.fillRect(rx + 1.5, mb.y - 3, 2, 4);
         }
       }
 
       // One-Way Platforms (jump up / press down to drop through)
       for (const ow of lvl.oneWays) {
-        ctx.fillStyle = '#b45309';
-        ctx.strokeStyle = '#111827'; ctx.lineWidth = 3;
+        if (!inView(ow.x, ow.w)) continue;
+        ctx.save();
+        // Cast shadow
+        const osh = ctx.createLinearGradient(0, ow.y + 16, 0, ow.y + 40);
+        osh.addColorStop(0, 'rgba(3,7,16,0.38)');
+        osh.addColorStop(1, 'rgba(3,7,16,0)');
+        ctx.fillStyle = osh;
+        ctx.fillRect(ow.x + 6, ow.y + 16, ow.w, 24);
+        // Plank body: warm timber with a lit top face
+        const plank = ctx.createLinearGradient(0, ow.y, 0, ow.y + 16);
+        plank.addColorStop(0, '#d98f43');
+        plank.addColorStop(0.42, '#b56a22');
+        plank.addColorStop(1, '#6f3610');
+        ctx.fillStyle = plank;
+        ctx.strokeStyle = 'rgba(7,12,22,0.78)'; ctx.lineWidth = 2;
         ctx.beginPath(); ctx.roundRect(ow.x, ow.y, ow.w, 16, 5); ctx.fill(); ctx.stroke();
-        ctx.fillStyle = '#fde047';
-        ctx.fillRect(ow.x + 4, ow.y + 2, ow.w - 8, 4);
+        // Grain
+        ctx.strokeStyle = 'rgba(60,25,4,0.22)'; ctx.lineWidth = 1.4;
+        for (let gx = ow.x + 20; gx < ow.x + ow.w - 10; gx += 26) {
+          ctx.beginPath(); ctx.moveTo(gx, ow.y + 6.5); ctx.lineTo(gx + 11, ow.y + 6.5); ctx.stroke();
+        }
+        // Lit top edge + soft amber underside
+        ctx.fillStyle = 'rgba(255,244,214,0.42)';
+        ctx.fillRect(ow.x + 4, ow.y + 1.4, ow.w - 8, 1.6);
+        ctx.fillStyle = 'rgba(253,224,71,0.55)';
+        ctx.fillRect(ow.x + 7, ow.y + 13.4, ow.w - 14, 1.4);
+        // Iron brackets at both ends
+        ctx.fillStyle = '#4b5563';
+        ctx.strokeStyle = 'rgba(7,12,22,0.7)'; ctx.lineWidth = 1.4;
+        ctx.beginPath(); ctx.roundRect(ow.x + 3, ow.y + 3, 5, 11, 1.5); ctx.fill(); ctx.stroke();
+        ctx.beginPath(); ctx.roundRect(ow.x + ow.w - 8, ow.y + 3, 5, 11, 1.5); ctx.fill(); ctx.stroke();
+        ctx.restore();
       }
 
       // Solid & Destructible Blocks
       for (const s of lvl.solids) {
         if (s.broken) continue;
+        if (!inView(s.x, s.w)) continue;
         if (s.kind === 'ground' || s.kind === 'platform') {
-          // 2.5D beveled terrain block
-          ctx.fillStyle = w.ground;
+          const capH = Math.min(13, s.h * 0.5);
+          ctx.save();
+          // Contact shadow: two hard bands instead of an airbrushed blur
+          ctx.fillStyle = 'rgba(3, 7, 16, 0.30)';
+          ctx.fillRect(s.x + 8, s.y + capH, s.w, 14);
+          ctx.fillStyle = 'rgba(3, 7, 16, 0.14)';
+          ctx.fillRect(s.x + 8, s.y + capH + 14, s.w, 14);
+
+          // Terrain body in two flat tones...
+          ctx.fillStyle = shade(w.ground, -0.18);
           ctx.fillRect(s.x, s.y, s.w, s.h);
-          // Top grass/trim lip
-          ctx.fillStyle = w.groundTop;
-          ctx.fillRect(s.x, s.y, s.w, Math.min(18, s.h));
-          // Subtle brick/stone bevel pattern
-          ctx.strokeStyle = 'rgba(0,0,0,0.22)'; ctx.lineWidth = 2;
-          for (let bx = s.x + 48; bx < s.x + s.w; bx += 48) {
-            ctx.beginPath(); ctx.moveTo(bx, s.y + 18); ctx.lineTo(bx, s.y + Math.min(80, s.h)); ctx.stroke();
+          const deepTop = s.y + capH + Math.min(84, Math.max(20, s.h * 0.5));
+          ctx.fillStyle = shade(w.ground, -0.52);
+          ctx.fillRect(s.x, deepTop, s.w, s.h - (deepTop - s.y));
+          // ...joined by a 50% dither seam, the classic cartridge gradient
+          for (let dx = s.x; dx < s.x + s.w; dx += 8) ctx.fillRect(dx, deepTop - 6, 4, 6);
+
+          // Joint grid: stacked-tile seams so big ledges never read as slabs
+          ctx.fillStyle = 'rgba(6, 12, 22, 0.22)';
+          for (let by = s.y + capH + 22; by < s.y + s.h; by += 34) ctx.fillRect(s.x, by, s.w, 3);
+          for (let bx = s.x + 24; bx < s.x + s.w; bx += 46) {
+            for (let by = s.y + capH + 22; by < s.y + s.h; by += 68) ctx.fillRect(bx, by, 3, 34);
           }
-          ctx.strokeStyle = '#111827'; ctx.lineWidth = 3;
-          ctx.strokeRect(s.x, s.y, s.w, s.h);
+
+          // Lit grass cap with a darker lip underneath
+          ctx.fillStyle = w.groundTop;
+          ctx.fillRect(s.x, s.y, s.w, capH + 5);
+          ctx.fillStyle = shade(w.groundTop, 0.34);
+          ctx.fillRect(s.x, s.y, s.w, 4);
+          ctx.fillStyle = shade(w.groundTop, -0.32);
+          ctx.fillRect(s.x, s.y + capH + 1, s.w, 4);
+
+          // Sunward right edge catches the light; left edge drops into shade
+          ctx.fillStyle = hexToRgba(w.accent, 0.5);
+          ctx.fillRect(s.x + s.w - 7, s.y + 2, 7, Math.min(s.h, 240));
+          ctx.fillStyle = 'rgba(3,7,16,0.35)';
+          ctx.fillRect(s.x, s.y + 4, 6, Math.min(s.h, 240));
+
+          // Floating ledges get a hard shadowed underside
+          if (s.kind === 'platform') {
+            ctx.fillStyle = 'rgba(3,7,16,0.45)';
+            ctx.fillRect(s.x, s.y + s.h - 9, s.w, 9);
+          }
+
+          // Chunky grass tufts: square blades in the terrain's own green
+          ctx.fillStyle = shade(w.groundTop, 0.12);
+          for (let gx = s.x + 12; gx < s.x + s.w - 8; gx += 34) {
+            const sway = Math.round(Math.sin(t * 2.2 + gx * 0.05) * 2);
+            ctx.fillRect(gx, s.y - 5, 3, 5);
+            ctx.fillRect(gx + 5 + sway, s.y - 8, 3, 8);
+          }
+
+          // Ink outline around the slab
+          ctx.strokeStyle = '#0b1220';
+          ctx.lineWidth = 5;
+          ctx.strokeRect(s.x + 2.5, s.y + 2.5, s.w - 5, s.h - 5);
+          ctx.restore();
         } else if (s.kind === 'crackedFloor') {
           ctx.fillStyle = '#92400e';
           ctx.fillRect(s.x, s.y, s.w, s.h);
-          ctx.strokeStyle = '#111827'; ctx.lineWidth = 3;
-          ctx.strokeRect(s.x, s.y, s.w, s.h);
-          // Cracks + Butt-Slam down chevron cue
-          ctx.strokeStyle = '#fef08a'; ctx.lineWidth = 2;
+          const g = ctx.createLinearGradient(0, s.y, 0, s.y + s.h);
+          g.addColorStop(0, 'rgba(255,255,255,0.22)');
+          g.addColorStop(1, 'rgba(0,0,0,0.35)');
+          ctx.fillStyle = g; ctx.fillRect(s.x, s.y, s.w, s.h);
+          ctx.strokeStyle = 'rgba(0,0,0,0.28)'; ctx.lineWidth = 2;
+          for (let bx = s.x + 30; bx < s.x + s.w; bx += 30) {
+            ctx.beginPath(); ctx.moveTo(bx, s.y); ctx.lineTo(bx, s.y + s.h); ctx.stroke();
+          }
+          ctx.strokeStyle = '#fde047'; ctx.lineWidth = 2.2;
           ctx.beginPath();
-          ctx.moveTo(s.x + s.w * 0.3, s.y + 2); ctx.lineTo(s.x + s.w * 0.5, s.y + 16); ctx.lineTo(s.x + s.w * 0.7, s.y + 6);
+          ctx.moveTo(s.x + s.w * 0.22, s.y + 2);
+          ctx.lineTo(s.x + s.w * 0.38, s.y + 12);
+          ctx.lineTo(s.x + s.w * 0.52, s.y + 4);
+          ctx.lineTo(s.x + s.w * 0.68, s.y + 15);
+          ctx.lineTo(s.x + s.w * 0.8, s.y + 6);
           ctx.stroke();
+          ctx.strokeStyle = '#0b1220'; ctx.lineWidth = 3;
+          ctx.strokeRect(s.x, s.y, s.w, s.h);
         } else if (s.kind === 'sideBarrier') {
           ctx.fillStyle = '#b91c1c';
           ctx.fillRect(s.x, s.y, s.w, s.h);
-          ctx.strokeStyle = '#111827'; ctx.lineWidth = 3;
+          const g = ctx.createLinearGradient(s.x, 0, s.x + s.w, 0);
+          g.addColorStop(0, 'rgba(255,255,255,0.28)');
+          g.addColorStop(0.5, 'rgba(255,255,255,0)');
+          g.addColorStop(1, 'rgba(0,0,0,0.38)');
+          ctx.fillStyle = g; ctx.fillRect(s.x, s.y, s.w, s.h);
+          ctx.strokeStyle = 'rgba(253, 224, 71, 0.85)'; ctx.lineWidth = 3;
+          for (let sy = s.y + 12; sy < s.y + s.h - 6; sy += 26) {
+            ctx.beginPath(); ctx.moveTo(s.x + 3, sy + 12); ctx.lineTo(s.x + s.w - 3, sy); ctx.stroke();
+          }
+          ctx.strokeStyle = '#0b1220'; ctx.lineWidth = 3;
           ctx.strokeRect(s.x, s.y, s.w, s.h);
-          ctx.strokeStyle = '#fde047'; ctx.lineWidth = 2.5;
-          ctx.beginPath();
-          ctx.moveTo(s.x + 4, s.y + 16); ctx.lineTo(s.x + s.w - 4, s.y + s.h * 0.5); ctx.lineTo(s.x + 6, s.y + s.h - 16);
-          ctx.stroke();
         } else if (s.kind === 'overheadShield') {
-          ctx.fillStyle = '#6d28d9';
+          ctx.fillStyle = '#5b21b6';
           ctx.fillRect(s.x, s.y, s.w, s.h);
-          ctx.strokeStyle = '#111827'; ctx.lineWidth = 3;
+          const g = ctx.createLinearGradient(0, s.y, 0, s.y + s.h);
+          g.addColorStop(0, 'rgba(233, 213, 255, 0.55)');
+          g.addColorStop(1, 'rgba(0,0,0,0.3)');
+          ctx.fillStyle = g; ctx.fillRect(s.x, s.y, s.w, s.h);
+          // Energy rim
+          ctx.strokeStyle = 'rgba(233, 213, 255, 0.9)'; ctx.lineWidth = 2;
+          ctx.strokeRect(s.x + 3, s.y + 3, s.w - 6, s.h - 6);
+          ctx.fillStyle = '#f5f3ff';
+          ctx.font = '11px "Press Start 2P", ui-monospace, monospace'; ctx.textAlign = 'center';
+          ctx.fillText('SHIELD', s.x + s.w * 0.5, s.y + s.h * 0.5 + 4);
+          ctx.strokeStyle = '#0b1220'; ctx.lineWidth = 3;
           ctx.strokeRect(s.x, s.y, s.w, s.h);
-          ctx.fillStyle = '#e9d5ff';
-          ctx.font = '900 11px sans-serif'; ctx.textAlign = 'center';
-          ctx.fillText('▲ SHIELD ▲', s.x + s.w * 0.5, s.y + 16);
         }
       }
 
       // Pickups (Cabbage / Hearts)
       for (const pk of lvl.pickups) {
         if (pk.taken) continue;
+        if (!inView(pk.x - 20, 40)) continue;
         const py = pk.y + Math.sin(t * 4.5 + pk.x) * 4;
         if (pk.kind === 'cabbage') {
-          ctx.fillStyle = '#4ade80'; ctx.strokeStyle = '#111827'; ctx.lineWidth = 2.5;
-          ctx.beginPath(); ctx.arc(pk.x, py, 13, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-          ctx.strokeStyle = '#15803d'; ctx.beginPath(); ctx.arc(pk.x, py, 7, 0.4, 5.2); ctx.stroke();
+          ctx.save();
+          ctx.translate(pk.x, py);
+          // Collectible glow
+          const cg = ctx.createRadialGradient(0, 0, 2, 0, 0, 26);
+          cg.addColorStop(0, 'rgba(74,222,128,0.32)');
+          cg.addColorStop(1, 'rgba(74,222,128,0)');
+          ctx.fillStyle = cg;
+          ctx.beginPath(); ctx.arc(0, 0, 26, 0, Math.PI * 2); ctx.fill();
+          // Leafy head
+          const leaf = ctx.createRadialGradient(-4, -5, 1, 0, 1, 15);
+          leaf.addColorStop(0, '#d9fbe5');
+          leaf.addColorStop(0.45, '#4ade80');
+          leaf.addColorStop(1, '#15803d');
+          ctx.fillStyle = leaf;
+          ctx.strokeStyle = 'rgba(7,12,22,0.8)'; ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.arc(0, 0, 13, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+          // Inner leaf folds
+          ctx.strokeStyle = 'rgba(21,128,61,0.55)'; ctx.lineWidth = 1.5;
+          ctx.beginPath(); ctx.arc(0, 0, 8.5, 0.5, 2.4); ctx.stroke();
+          ctx.beginPath(); ctx.arc(0, 0, 8.5, 3.6, 5.6); ctx.stroke();
+          ctx.beginPath(); ctx.arc(0, 0, 5, 1.4, 4.6); ctx.stroke();
+          // Specular highlight
+          ctx.fillStyle = 'rgba(255,255,255,0.5)';
+          ctx.beginPath(); ctx.ellipse(-4.5, -5, 4.2, 2.8, -0.6, 0, Math.PI * 2); ctx.fill();
+          ctx.restore();
         } else {
-          ctx.fillStyle = '#ef4444'; ctx.strokeStyle = '#111827'; ctx.lineWidth = 2.5;
+          ctx.fillStyle = material(ctx, '#ef4444', py - 12, py + 14, 0.26, 0.3);
+          ctx.strokeStyle = '#0b1220'; ctx.lineWidth = 2.4;
           ctx.beginPath();
           ctx.arc(pk.x - 5, py - 2, 7, 0, Math.PI * 2);
           ctx.arc(pk.x + 5, py - 2, 7, 0, Math.PI * 2);
@@ -2043,12 +2821,12 @@
         ctx.fillStyle = isBeat ? 'rgba(251, 191, 36, 0.35)' : 'rgba(134, 239, 172, 0.32)';
         ctx.beginPath(); ctx.arc(0, 0, 24 + Math.sin(t * 6) * 3, 0, Math.PI * 2); ctx.fill();
         ctx.rotate(Math.sin(t * 2.5) * 0.14);
-        ctx.fillStyle = isBeat ? '#fef08a' : '#fffbeb';
-        ctx.strokeStyle = '#111827'; ctx.lineWidth = 2.5;
+        ctx.fillStyle = material(ctx, isBeat ? '#fef08a' : '#fffbeb', -15, 15, 0.12, 0.2);
+        ctx.strokeStyle = '#0b1220'; ctx.lineWidth = 2.4;
         ctx.fillRect(-13, -15, 26, 30); ctx.strokeRect(-13, -15, 26, 30);
         ctx.fillStyle = isBeat ? '#dc2626' : '#0f7a43';
-        ctx.font = '900 14px sans-serif'; ctx.textAlign = 'center';
-        ctx.fillText(isBeat ? '★' : '?', 0, 5);
+        ctx.font = '14px "Press Start 2P", ui-monospace, monospace'; ctx.textAlign = 'center';
+        ctx.fillText(isBeat ? '*' : '?', 0, 5);
         ctx.restore();
       }
 
@@ -2075,7 +2853,7 @@
         ctx.fillStyle = locked ? '#991b1b' : '#0f7a43';
         ctx.beginPath(); ctx.roundRect(gx - 62, gy - 142, 124, 32, 8); ctx.fill(); ctx.stroke();
         ctx.fillStyle = locked ? '#fecaca' : '#fef08a';
-        ctx.font = '900 12px "Trebuchet MS", sans-serif'; ctx.textAlign = 'center';
+        ctx.font = '11px "Press Start 2P", ui-monospace, monospace'; ctx.textAlign = 'center';
         ctx.fillText(locked ? `LOCKED (${foesLeft} FOE${foesLeft === 1 ? '' : 'S'})` : 'GOAL RING OPEN!', gx, gy - 121);
         if (locked) {
           // Crossed barrier rope across locked ring
@@ -2094,6 +2872,16 @@
 
     drawPlayer(ctx, p, t) {
       ctx.save();
+      // Contact shadow so the hero reads as standing on the ledge
+      if (p.onGround && !p.poundType) {
+        ctx.save();
+        const shg = ctx.createRadialGradient(p.x + p.w * 0.5, p.y + p.h, 1, p.x + p.w * 0.5, p.y + p.h, 26);
+        shg.addColorStop(0, 'rgba(3,7,16,0.55)');
+        shg.addColorStop(1, 'rgba(3,7,16,0)');
+        ctx.fillStyle = shg;
+        ctx.beginPath(); ctx.ellipse(p.x + p.w * 0.5, p.y + p.h, 24, 7, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+      }
       ctx.translate(p.x + p.w * 0.5, p.y + p.h);
 
       // Blink if invulnerable
@@ -2116,7 +2904,8 @@
         ctx.moveTo(14, 24); ctx.lineTo(34, -4);
         ctx.stroke();
         // Oversized white shamrock briefs billowing wide!
-        ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#111827'; ctx.lineWidth = 3;
+        ctx.fillStyle = material(ctx, '#ffffff', -42, 10, 0.14, 0.2);
+        ctx.strokeStyle = '#0b1220'; ctx.lineWidth = 2.8;
         ctx.beginPath();
         ctx.arc(0, -2, 38, Math.PI, 0);
         ctx.lineTo(38, 6);
@@ -2124,11 +2913,18 @@
         ctx.quadraticCurveTo(-16, -2, -38, 6);
         ctx.closePath();
         ctx.fill(); ctx.stroke();
+        // Cloth seams and a sunlit rim so the canopy reads as fabric
+        ctx.strokeStyle = 'rgba(11,18,32,0.18)'; ctx.lineWidth = 1.4;
+        for (let i = -2; i <= 2; i++) {
+          ctx.beginPath(); ctx.moveTo(i * 14, 5); ctx.quadraticCurveTo(i * 17, -18, i * 20, -36); ctx.stroke();
+        }
+        ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(0, -2, 35.5, -1.28, -0.28); ctx.stroke();
         // Green waistband & shamrocks
         ctx.fillStyle = '#16a34a';
         ctx.fillRect(-36, -6, 72, 6);
-        ctx.fillStyle = '#16a34a'; ctx.font = 'bold 16px sans-serif'; ctx.textAlign = 'center';
-        ctx.fillText('☘  ☘', 0, -14);
+        ctx.fillStyle = '#16a34a'; ctx.font = '16px "Press Start 2P", ui-monospace, monospace'; ctx.textAlign = 'center';
+        ctx.fillText('*  *', 0, -14);
         ctx.restore();
       }
 
@@ -2143,39 +2939,8 @@
         ctx.translate(0, p.h * 0.5);
       }
 
-      const runSwing = (p.onGround && Math.abs(p.vx) > 20) ? Math.sin(t * 18) * 7 : 0;
       const maskStyle = Save.isGoldenConch() ? 'gold' : (Save.data.storyCompleted ? 'true' : 'shamrock');
-
-      // Boots / Legs
-      ctx.fillStyle = '#15803d'; ctx.strokeStyle = '#111827'; ctx.lineWidth = 2.5;
-      ctx.fillRect(-13 + runSwing * 0.5, -15, 11, 15); ctx.strokeRect(-13 + runSwing * 0.5, -15, 11, 15);
-      ctx.fillRect(2 - runSwing * 0.5, -15, 11, 15); ctx.strokeRect(2 - runSwing * 0.5, -15, 11, 15);
-
-      // Oversized Shamrock Briefs (when not deployed overhead, worn proudly!)
-      ctx.fillStyle = '#ffffff';
-      ctx.beginPath(); ctx.roundRect(-16, -27, 32, 16, 5); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = '#16a34a';
-      ctx.fillRect(-16, -29, 32, 5);
-      ctx.fillStyle = '#f59e0b'; // Championship Belt Buckle
-      ctx.beginPath(); ctx.arc(0, -26, 4.5, 0, Math.PI * 2); ctx.fill();
-
-      // Stocky Luchador Torso
-      ctx.fillStyle = '#fed7aa';
-      ctx.beginPath(); ctx.roundRect(-15, -45, 30, 19, 6); ctx.fill(); ctx.stroke();
-
-      // Arms (raised when hanging on monkey bars!)
-      ctx.fillStyle = '#fed7aa';
-      if (p.hanging) {
-        const swingA = Math.sin(t * 12) * 3;
-        ctx.fillRect(-18, -66 + swingA, 7, 25); ctx.strokeRect(-18, -66 + swingA, 7, 25);
-        ctx.fillRect(11, -66 - swingA, 7, 25); ctx.strokeRect(11, -66 - swingA, 7, 25);
-      } else {
-        ctx.fillRect(-20, -43 - runSwing * 0.3, 7, 17); ctx.strokeRect(-20, -43 - runSwing * 0.3, 7, 17);
-        ctx.fillRect(13, -43 + runSwing * 0.3, 7, 17); ctx.strokeRect(13, -43 + runSwing * 0.3, 7, 17);
-      }
-
-      // Luchador Mask Head
-      drawMaskEmblem(ctx, 0, -56, 15, maskStyle);
+      this.drawLuchadorSide(ctx, p, t, maskStyle);
 
       ctx.restore();
 
@@ -2201,6 +2966,221 @@
       }
     },
 
+    // Side-view luchador painted with the game's single sun: lit crown and
+    // chest, mid-tone body, shadowed back edge. All volumes are tapered.
+    drawLuchadorSide(ctx, p, t, maskStyle) {
+      const ink = '#0b1220';
+      const skin = '#f7cda6';
+      const skinShade = '#d9a172';
+      const moving = p.onGround && Math.abs(p.vx) > 20;
+      const stride = moving ? Math.sin(t * 17) : 0;
+      const bob = moving ? Math.abs(stride) * 1.8 : Math.sin(t * 2.6) * 0.9;
+      const capeWave = Math.sin(t * 7) * 3;
+      const maskCols = maskStyle === 'gold'
+        ? { base: '#fbbf24', shade: '#b45309', trim: '#fef9c3' }
+        : maskStyle === 'true'
+          ? { base: '#0f7a43', shade: '#0a5a31', trim: '#dc2626' }
+          : { base: '#16a34a', shade: '#0f7a43', trim: '#fde047' };
+      const outfit = '#1f9d55';
+
+      ctx.save();
+      ctx.translate(0, -bob);
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      // Tapered limb: dark contour, three-tone fill, lit upper edge.
+      const limb = (x1, y1, x2, y2, w, col) => {
+        ctx.strokeStyle = ink; ctx.lineWidth = w + 4.4;
+        ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+        ctx.strokeStyle = material(ctx, col, Math.min(y1, y2) - w, Math.max(y1, y2) + w, 0.24, 0.3);
+        ctx.lineWidth = w;
+        ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+        ctx.strokeStyle = 'rgba(255,255,255,0.22)';
+        ctx.lineWidth = Math.max(1.2, w * 0.24);
+        ctx.beginPath(); ctx.moveTo(x1 - w * 0.2, y1 - w * 0.22); ctx.lineTo(x2 - w * 0.2, y2 - w * 0.22); ctx.stroke();
+      };
+      const fist = (x, y, col) => {
+        ctx.fillStyle = material(ctx, col, y - 6, y + 6, 0.22, 0.26);
+        ctx.strokeStyle = ink; ctx.lineWidth = 2.1;
+        ctx.beginPath(); ctx.arc(x, y, 4.6, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        ctx.strokeStyle = 'rgba(11,18,32,0.45)'; ctx.lineWidth = 1.1;
+        ctx.beginPath(); ctx.moveTo(x - 2.6, y - 0.8); ctx.lineTo(x + 2.4, y - 0.8); ctx.stroke();
+        ctx.fillStyle = 'rgba(255,255,255,0.28)';
+        ctx.beginPath(); ctx.ellipse(x + 1, y - 2.2, 2, 1.3, -0.4, 0, Math.PI * 2); ctx.fill();
+      };
+      const boot = (x, y, col) => {
+        ctx.fillStyle = material(ctx, col, y - 5, y + 5, 0.24, 0.3);
+        ctx.strokeStyle = ink; ctx.lineWidth = 2.4;
+        ctx.beginPath();
+        ctx.moveTo(x - 5, y - 5);
+        ctx.quadraticCurveTo(x + 1, y - 7, x + 8, y - 4);
+        ctx.quadraticCurveTo(x + 14, y - 2, x + 12, y + 2);
+        ctx.quadraticCurveTo(x + 6, y + 4, x - 5, y + 3);
+        ctx.closePath(); ctx.fill(); ctx.stroke();
+        // Sole
+        ctx.fillStyle = '#0b1220';
+        ctx.beginPath();
+        ctx.moveTo(x - 5, y + 1.5); ctx.quadraticCurveTo(x + 5, y + 4.6, x + 12, y + 2.2);
+        ctx.lineTo(x + 12, y + 3.4); ctx.quadraticCurveTo(x + 5, y + 5.8, x - 5, y + 3); ctx.closePath(); ctx.fill();
+        // Lit toe cap
+        ctx.fillStyle = 'rgba(255,255,255,0.3)';
+        ctx.beginPath(); ctx.ellipse(x + 7, y - 2.6, 3.4, 1.5, 0.2, 0, Math.PI * 2); ctx.fill();
+      };
+
+      // Cape streaming behind the shoulders, with two folds
+      const wind = Math.min(9, Math.abs(p.vx) * 0.03);
+      const cape = material(ctx, maskCols.shade, -48, -6, 0.26, 0.42);
+      ctx.fillStyle = cape; ctx.strokeStyle = ink; ctx.lineWidth = 2.8;
+      ctx.beginPath();
+      ctx.moveTo(-2, -46);
+      ctx.quadraticCurveTo(-15 - wind, -43 + capeWave, -26 - wind * 1.5, -11 + capeWave);
+      ctx.quadraticCurveTo(-19, -17, -13, -19);
+      ctx.quadraticCurveTo(-9, -30, -3, -35);
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.strokeStyle = 'rgba(11,18,32,0.28)'; ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(-7, -38); ctx.quadraticCurveTo(-14, -30 + capeWave * 0.5, -18, -16);
+      ctx.moveTo(-11, -34); ctx.quadraticCurveTo(-18, -28 + capeWave * 0.4, -22, -14);
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.moveTo(-3, -44); ctx.quadraticCurveTo(-13 - wind * 0.7, -40 + capeWave * 0.5, -20 - wind, -20 + capeWave); ctx.stroke();
+
+      // Back leg first so the front leg overlaps it
+      const backFoot = -8 + stride * 6;
+      const frontFoot = 8 - stride * 6;
+      limb(-3, -27, backFoot * 0.55 - 2, -14, 8.4, maskCols.shade);
+      limb(backFoot * 0.55 - 2, -14, backFoot, -4, 7.2, maskCols.shade);
+      boot(backFoot, -3, maskCols.shade);
+
+      // Back arm
+      const armSwing = moving ? stride * 5 : Math.sin(t * 2.4) * 1.2;
+      const armsUp = p.hanging || p.parachuting;
+      if (!armsUp) {
+        limb(-4, -43, -9 + armSwing * 0.6, -34, 6.6, skinShade);
+        limb(-9 + armSwing * 0.6, -34, -12 + armSwing, -26, 5.8, skinShade);
+        fist(-12 + armSwing, -25, skinShade);
+      }
+
+      // Front leg
+      limb(3, -27, frontFoot * 0.65 + 2, -14, 8.8, outfit);
+      limb(frontFoot * 0.65 + 2, -14, frontFoot, -4, 7.6, outfit);
+      boot(frontFoot, -3, '#177a41');
+
+      // Torso: broad chest tapering into the waist, leaning into the stride
+      ctx.fillStyle = material(ctx, skin, -50, -22, 0.2, 0.26);
+      ctx.strokeStyle = ink; ctx.lineWidth = 2.8;
+      ctx.beginPath();
+      ctx.moveTo(-8, -24);
+      ctx.quadraticCurveTo(-12, -37, -6, -46);
+      ctx.quadraticCurveTo(0, -51, 9, -47);
+      ctx.quadraticCurveTo(14, -40, 11, -24);
+      ctx.quadraticCurveTo(2, -21, -8, -24);
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+      // Back-edge shadow and chest contour
+      ctx.fillStyle = 'rgba(160,105,66,0.45)';
+      ctx.beginPath();
+      ctx.moveTo(-8, -24); ctx.quadraticCurveTo(-12, -37, -6, -46);
+      ctx.lineTo(-1, -45); ctx.quadraticCurveTo(-5, -34, -2, -23); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = 'rgba(11,18,32,0.32)'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(7, -40); ctx.quadraticCurveTo(11, -37, 9, -32); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(3, -30); ctx.quadraticCurveTo(7, -28, 8, -25); ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,255,255,0.34)'; ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.moveTo(10, -44); ctx.quadraticCurveTo(13.5, -37, 10.5, -28); ctx.stroke();
+
+      // Oversized shamrock briefs with a lit waistband
+      ctx.fillStyle = material(ctx, '#ffffff', -31, -16, 0.1, 0.18);
+      ctx.strokeStyle = ink; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.roundRect(-11, -30, 23, 14, 5.5); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = maskCols.trim; ctx.fillRect(-10.5, -31.5, 22, 4.4);
+      ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(-10.5, -31.5, 22, 1.4);
+      ctx.fillStyle = '#16a34a';
+      ctx.beginPath();
+      ctx.arc(-6, -24.2, 2.1, 0, Math.PI * 2);
+      ctx.arc(-9, -24.2, 2.1, 0, Math.PI * 2);
+      ctx.arc(-7.5, -26.7, 2.1, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#f59e0b'; ctx.strokeStyle = ink; ctx.lineWidth = 1.4;
+      ctx.beginPath(); ctx.arc(7, -25.6, 3.2, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,0.55)';
+      ctx.beginPath(); ctx.arc(6.2, -26.6, 1.1, 0, Math.PI * 2); ctx.fill();
+
+      // Front arm — raised on bars / parachute, swinging while running
+      if (armsUp) {
+        limb(-2, -44, -4, -57, 6.6, skinShade);
+        limb(7, -44, 9, -57, 6.8, skin);
+        fist(-4, -59, skinShade);
+        fist(9, -59, skin);
+      } else {
+        limb(6, -43, 12 - armSwing, -34, 6.8, skin);
+        limb(12 - armSwing, -34, 16 - armSwing, -26, 6, skin);
+        fist(16 - armSwing, -25, skin);
+      }
+
+      // Neck
+      ctx.strokeStyle = ink; ctx.lineWidth = 9;
+      ctx.beginPath(); ctx.moveTo(4, -45); ctx.lineTo(6, -48); ctx.stroke();
+      ctx.strokeStyle = material(ctx, skin, -49, -44, 0.16, 0.2);
+      ctx.lineWidth = 6.2;
+      ctx.beginPath(); ctx.moveTo(4, -45); ctx.lineTo(6, -48); ctx.stroke();
+
+      // Head: profile mask with crown, nose, jaw and mouth opening
+      ctx.fillStyle = material(ctx, maskCols.base, -68, -44, 0.3, 0.34);
+      ctx.strokeStyle = ink; ctx.lineWidth = 2.8;
+      ctx.beginPath();
+      ctx.moveTo(-2, -50);
+      ctx.quadraticCurveTo(-6, -58, 0, -64.5);
+      ctx.quadraticCurveTo(6, -69.5, 11, -63.5);
+      ctx.quadraticCurveTo(15.5, -60.5, 14, -56);
+      ctx.quadraticCurveTo(16.5, -54, 13.2, -51.8);
+      ctx.quadraticCurveTo(15, -48.5, 10, -46.2);
+      ctx.quadraticCurveTo(4, -43.8, 0, -47);
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+      // Crown shadow toward the back of the skull
+      ctx.fillStyle = hexToRgba(maskCols.shade, 0.55);
+      ctx.beginPath();
+      ctx.moveTo(-2, -50); ctx.quadraticCurveTo(-6, -58, 0, -64.5);
+      ctx.quadraticCurveTo(4, -67, 7, -66);
+      ctx.quadraticCurveTo(1, -60, 2, -50); ctx.closePath(); ctx.fill();
+      // Ear bump
+      ctx.fillStyle = material(ctx, maskCols.base, -59, -51, 0.24, 0.3);
+      ctx.strokeStyle = ink; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.ellipse(-1.5, -55, 3.4, 4.4, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      // Mouth opening + grin
+      ctx.fillStyle = material(ctx, skin, -52, -46, 0.18, 0.24);
+      ctx.strokeStyle = ink; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.ellipse(11.4, -49.4, 3.8, 3, -0.12, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.strokeStyle = '#8a3b1e'; ctx.lineWidth = 1.3;
+      ctx.beginPath(); ctx.arc(11.7, -50, 2.1, 0.25, Math.PI - 0.3); ctx.stroke();
+      // Eye hole with a glint
+      ctx.fillStyle = '#ffffff'; ctx.strokeStyle = ink; ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.ellipse(10.2, -58.4, 3.7, 4.2, -0.12, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#0b1220';
+      ctx.beginPath(); ctx.arc(11.6, -58, 1.9, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath(); ctx.arc(12.4, -58.9, 0.75, 0, Math.PI * 2); ctx.fill();
+      // Brow and mask trim
+      ctx.strokeStyle = ink; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(6, -62.6); ctx.lineTo(13.4, -60.6); ctx.stroke();
+      ctx.strokeStyle = maskCols.trim; ctx.lineWidth = 2.8;
+      ctx.beginPath(); ctx.moveTo(-1.5, -57.5); ctx.quadraticCurveTo(5.5, -66.5, 13.5, -60.5); ctx.stroke();
+      ctx.strokeStyle = hexToRgba(maskCols.trim, 0.8); ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.moveTo(0, -53.5); ctx.quadraticCurveTo(5, -55.5, 6.5, -60.5); ctx.stroke();
+      // Laces trailing back
+      ctx.strokeStyle = ink; ctx.lineWidth = 1.9;
+      ctx.beginPath(); ctx.moveTo(-2, -52); ctx.quadraticCurveTo(-9, -49 + capeWave * 0.4, -14, -51); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-2, -50); ctx.quadraticCurveTo(-8, -46 + capeWave * 0.4, -13, -46); ctx.stroke();
+      ctx.fillStyle = maskCols.trim;
+      ctx.beginPath(); ctx.arc(-14, -51, 1.7, 0, Math.PI * 2); ctx.arc(-13, -46, 1.7, 0, Math.PI * 2); ctx.fill();
+
+      // Warm rim light along the sunward edge: crown, chest, boot toe
+      ctx.strokeStyle = 'rgba(255, 248, 214, 0.7)'; ctx.lineWidth = 1.8;
+      ctx.beginPath(); ctx.moveTo(1, -64.5); ctx.quadraticCurveTo(8, -68.5, 12.5, -62.5); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(9.5, -46); ctx.quadraticCurveTo(13.6, -37, 10.8, -26); ctx.stroke();
+      ctx.strokeStyle = hexToRgba(maskCols.trim, 0.55); ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.arc(7, -55, 13.6, -1.5, 0.35); ctx.stroke();
+
+      ctx.restore();
+    },
     drawEnemy(ctx, e, t) {
       if (e.dead) return;
       ctx.save();
@@ -2215,25 +3195,229 @@
       };
       const [c1, c2] = colors[e.type] || ['#dc2626', '#fde047'];
 
-      // Body
-      ctx.fillStyle = c1; ctx.strokeStyle = '#111827'; ctx.lineWidth = 2.5;
-      ctx.beginPath(); ctx.roundRect(-e.w * 0.48, -e.h + bob, e.w * 0.96, e.h - 4, 9); ctx.fill(); ctx.stroke();
-      // Accent headband / belt
-      ctx.fillStyle = c2;
-      ctx.fillRect(-e.w * 0.46, -e.h * 0.72 + bob, e.w * 0.92, 9);
-      // Angry Eyes
-      ctx.fillStyle = '#fff';
-      const faceDir = e.vx >= 0 ? 1 : -1;
-      ctx.fillRect(faceDir * 4 - 9, -e.h * 0.84 + bob, 7, 6);
-      ctx.fillRect(faceDir * 4 + 2, -e.h * 0.84 + bob, 7, 6);
-      ctx.fillStyle = '#111827';
-      ctx.fillRect(faceDir * 6 - 7, -e.h * 0.82 + bob, 3, 4);
-      ctx.fillRect(faceDir * 6 + 4, -e.h * 0.82 + bob, 3, 4);
+      // Soft contact shadow for grounded foes
+      if (!(e.type === 'lantern' || e.type === 'drone' || e.type === 'eagle')) {
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.22)';
+        ctx.beginPath(); ctx.ellipse(0, 1, e.w * 0.5, 4, 0, 0, Math.PI * 2); ctx.fill();
+      }
+      this.drawFoeSilhouette(ctx, e, t, c1, c2, bob);
 
       // Tiny HP bar if damaged
       if (e.hp < e.maxHp) {
         ctx.fillStyle = '#111827'; ctx.fillRect(-16, -e.h - 10, 32, 5);
         ctx.fillStyle = '#ef4444'; ctx.fillRect(-15, -e.h - 9, 30 * (e.hp / e.maxHp), 3);
+      }
+      ctx.restore();
+    },
+
+    // Each foe reads instantly by silhouette: fists, hood, belly, wings, hat...
+    drawFoeSilhouette(ctx, e, t, c1, c2, bob) {
+      const ink = '#111827';
+      const faceDir = e.vx >= 0 ? 1 : -1;
+      // Same upper-right sun as the hero: every foe part gets a lit top, mid
+      // body and shadowed underside instead of a flat sticker fill.
+      const gradCache = new Map();
+      const S = (fill, lw = 2.3) => {
+        let g = gradCache.get(fill);
+        if (!g) { g = material(ctx, fill, -e.h - 8, 6, 0.3, 0.34); gradCache.set(fill, g); }
+        ctx.fillStyle = g;
+        ctx.strokeStyle = ink; ctx.lineWidth = lw; ctx.fill(); ctx.stroke();
+      };
+      const box = (x, y, w, h, r, fill) => { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); S(fill); };
+      const eye = (x, y, r) => {
+        ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); S('#ffffff', 1.8);
+        ctx.fillStyle = ink; ctx.beginPath(); ctx.arc(x + r * 0.35, y, r * 0.5, 0, Math.PI * 2); ctx.fill();
+      };
+
+      ctx.save();
+      ctx.scale(faceDir, 1);
+      ctx.translate(0, -bob * 0.4);
+
+      switch (e.type) {
+        case 'brawler': { // stocky bare-knuckle bruiser
+          box(-15, -15, 11, 16, 4, c1);
+          box(4, -15, 11, 16, 4, c1);
+          ctx.beginPath(); ctx.moveTo(-17, -12); ctx.lineTo(-13, -33);
+          ctx.quadraticCurveTo(0, -40, 13, -33); ctx.lineTo(17, -12); ctx.closePath(); S(c1);
+          ctx.fillStyle = c2; ctx.fillRect(-16, -17, 32, 5);
+          ctx.beginPath(); ctx.arc(-20, -25, 7.5, 0, Math.PI * 2); S(c2);
+          ctx.beginPath(); ctx.arc(20, -25, 7.5, 0, Math.PI * 2); S(c2);
+          ctx.beginPath(); ctx.arc(0, -38, 9, 0, Math.PI * 2); S(c1);
+          ctx.beginPath(); ctx.moveTo(-10, -43); ctx.quadraticCurveTo(0, -53, 11, -43); ctx.closePath(); S(c2, 2.2);
+          eye(-3, -38, 3.4); eye(5, -38, 3.4);
+          ctx.strokeStyle = ink; ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.moveTo(-3, -31); ctx.quadraticCurveTo(0, -28, 4, -31); ctx.stroke();
+          break;
+        }
+        case 'leaper': { // coiled spring frog
+          ctx.beginPath(); ctx.ellipse(-12, -6, 8, 5.5, -0.3, 0, Math.PI * 2); S(c1);
+          ctx.beginPath(); ctx.ellipse(12, -6, 8, 5.5, 0.3, 0, Math.PI * 2); S(c1);
+          ctx.beginPath(); ctx.ellipse(0, -17, 16, 11.5, 0, 0, Math.PI * 2); S(c1);
+          ctx.beginPath(); ctx.ellipse(2, -13, 10, 6, 0, 0, Math.PI * 2); S(c2, 1.8);
+          ctx.strokeStyle = ink; ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.arc(4, -16, 7, 0.15, Math.PI - 0.25); ctx.stroke();
+          ctx.beginPath(); ctx.arc(-6, -31, 5, 0, Math.PI * 2); S('#ffffff', 1.8);
+          ctx.beginPath(); ctx.arc(6, -32, 5, 0, Math.PI * 2); S('#ffffff', 1.8);
+          ctx.fillStyle = ink;
+          ctx.beginPath(); ctx.arc(-5, -31, 2.2, 0, Math.PI * 2); ctx.fill();
+          ctx.beginPath(); ctx.arc(7, -32, 2.2, 0, Math.PI * 2); ctx.fill();
+          break;
+        }
+        case 'ninja': { // slim hooded blade-runner
+          box(-9, -17, 7, 18, 3, c1);
+          box(2, -17, 7, 18, 3, c1);
+          box(-9, -39, 18, 23, 6, c1);
+          ctx.fillStyle = c2; ctx.fillRect(-10, -20, 20, 5);
+          ctx.beginPath(); ctx.moveTo(-8, -36);
+          ctx.quadraticCurveTo(-20, -38 + Math.sin(t * 6) * 3, -23, -27);
+          ctx.quadraticCurveTo(-15, -31, -8, -30); ctx.closePath(); S(c2, 2);
+          ctx.beginPath(); ctx.arc(0, -44, 8.5, 0, Math.PI * 2); S(c1);
+          ctx.fillStyle = '#ffffff'; ctx.fillRect(0, -46, 9, 3.4);
+          ctx.fillStyle = ink; ctx.fillRect(4, -46, 2.2, 3.4);
+          ctx.strokeStyle = '#cbd5e1'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+          ctx.beginPath(); ctx.moveTo(-7, -36); ctx.lineTo(-14, -50); ctx.stroke();
+          ctx.strokeStyle = ink; ctx.lineWidth = 1.4;
+          ctx.beginPath(); ctx.moveTo(-7, -36); ctx.lineTo(-14, -50); ctx.stroke();
+          break;
+        }
+        case 'sumo': { // massive round belly + topknot
+          ctx.beginPath(); ctx.ellipse(-14, -5, 10, 5.5, 0, 0, Math.PI * 2); S(c1);
+          ctx.beginPath(); ctx.ellipse(14, -5, 10, 5.5, 0, 0, Math.PI * 2); S(c1);
+          ctx.beginPath(); ctx.ellipse(0, -23, 26, 22, 0, 0, Math.PI * 2); S(c1);
+          ctx.fillStyle = c2;
+          ctx.beginPath(); ctx.roundRect(-25, -20, 50, 11, 4); ctx.fill();
+          ctx.strokeStyle = ink; ctx.lineWidth = 2; ctx.stroke();
+          ctx.strokeStyle = 'rgba(17,24,39,0.45)'; ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.arc(2, -26, 12, 0.3, 1.5); ctx.stroke();
+          ctx.beginPath(); ctx.arc(0, -44, 8, 0, Math.PI * 2); S('#f3c99b');
+          ctx.fillStyle = ink;
+          ctx.beginPath(); ctx.arc(0, -52, 4.2, 0, Math.PI * 2); ctx.fill();
+          ctx.fillRect(-1.5, -50, 3, 4);
+          eye(-3, -45, 2.6); eye(4, -45, 2.6);
+          break;
+        }
+        case 'lantern': { // floating paper lantern with tassel
+          ctx.fillStyle = 'rgba(253, 224, 71, 0.22)';
+          ctx.beginPath(); ctx.arc(0, -24, 22 + Math.sin(t * 4) * 2, 0, Math.PI * 2); ctx.fill();
+          ctx.strokeStyle = ink; ctx.lineWidth = 1.6;
+          ctx.beginPath(); ctx.moveTo(0, -44); ctx.lineTo(0, -38); ctx.stroke();
+          ctx.beginPath(); ctx.ellipse(0, -23, 14, 17, 0, 0, Math.PI * 2); S(c1);
+          ctx.strokeStyle = c2; ctx.lineWidth = 2;
+          for (let i = -1; i <= 1; i++) {
+            ctx.beginPath(); ctx.ellipse(0, -23 + i * 8, 12 - Math.abs(i) * 3, 3, 0, 0, Math.PI); ctx.stroke();
+          }
+          box(-8, -41, 16, 5, 2, c2);
+          box(-8, -9, 16, 5, 2, c2);
+          ctx.strokeStyle = c2; ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.moveTo(0, -4); ctx.lineTo(0, 2); ctx.stroke();
+          eye(-5, -26, 3); eye(5, -26, 3);
+          ctx.strokeStyle = ink; ctx.lineWidth = 1.8;
+          ctx.beginPath(); ctx.moveTo(-4, -18); ctx.quadraticCurveTo(0, -15, 4, -18); ctx.stroke();
+          break;
+        }
+        case 'cardshark': { // walking playing card in a top hat
+          box(-8, -12, 6, 13, 2, c1);
+          box(2, -12, 6, 13, 2, c1);
+          box(-13, -44, 26, 33, 4, c1);
+          ctx.strokeStyle = c2; ctx.lineWidth = 2;
+          ctx.strokeRect(-9, -40, 18, 25);
+          ctx.fillStyle = c2;
+          ctx.beginPath(); ctx.moveTo(0, -34); ctx.lineTo(5, -28); ctx.lineTo(0, -22); ctx.lineTo(-5, -28); ctx.closePath(); ctx.fill();
+          box(-11, -53, 22, 7, 2, c1);
+          ctx.fillStyle = c1; ctx.strokeStyle = ink; ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.roundRect(-15, -47, 30, 4, 2); ctx.fill(); ctx.stroke();
+          eye(-4, -43, 2.6); eye(4, -43, 2.6);
+          ctx.strokeStyle = c2; ctx.lineWidth = 2.4;
+          ctx.beginPath(); ctx.moveTo(13, -30); ctx.lineTo(20, -34); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(13, -26); ctx.lineTo(21, -24); ctx.stroke();
+          break;
+        }
+        case 'bouncer': { // towering door-wall with shades
+          box(-18, -14, 11, 15, 3, c1);
+          box(7, -14, 11, 15, 3, c1);
+          ctx.beginPath(); ctx.moveTo(-21, -11); ctx.lineTo(-18, -42);
+          ctx.lineTo(18, -42); ctx.lineTo(21, -11); ctx.closePath(); S(c1);
+          ctx.fillStyle = c2;
+          ctx.beginPath(); ctx.moveTo(-6, -36); ctx.lineTo(0, -31); ctx.lineTo(6, -36); ctx.closePath(); ctx.fill();
+          ctx.beginPath(); ctx.moveTo(-6, -36); ctx.lineTo(0, -40); ctx.lineTo(6, -36); ctx.closePath(); ctx.fill();
+          ctx.beginPath(); ctx.arc(0, -48, 9, 0, Math.PI * 2); S(c1);
+          ctx.fillStyle = ink; ctx.fillRect(-9, -50, 18, 4);
+          ctx.fillStyle = '#ffffff'; ctx.fillRect(-8, -49, 6, 2); ctx.fillRect(2, -49, 6, 2);
+          ctx.strokeStyle = c2; ctx.lineWidth = 3;
+          ctx.beginPath(); ctx.moveTo(-14, -30); ctx.lineTo(14, -30); ctx.stroke();
+          break;
+        }
+        case 'drone': { // hovering sentry pod with rotors
+          ctx.strokeStyle = ink; ctx.lineWidth = 2.4;
+          ctx.beginPath(); ctx.moveTo(-7, -22); ctx.lineTo(-17, -26);
+          ctx.moveTo(7, -22); ctx.lineTo(17, -26); ctx.stroke();
+          const spin = Math.sin(t * 26) * 7;
+          ctx.fillStyle = 'rgba(148, 163, 184, 0.85)';
+          ctx.beginPath(); ctx.ellipse(-17, -27, 9, 2.4, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.beginPath(); ctx.ellipse(17, -27, 9, 2.4, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.strokeStyle = ink; ctx.lineWidth = 1.6;
+          ctx.beginPath(); ctx.moveTo(-17 - spin * 0.4, -27); ctx.lineTo(-17 + spin * 0.4, -27); ctx.stroke();
+          box(-12, -26, 24, 18, 8, c1);
+          ctx.beginPath(); ctx.arc(6, -18, 5.5, 0, Math.PI * 2); S('#ffffff', 1.8);
+          ctx.fillStyle = '#ef4444'; ctx.beginPath(); ctx.arc(6, -18, 2.6, 0, Math.PI * 2); ctx.fill();
+          ctx.strokeStyle = ink; ctx.lineWidth = 1.8;
+          ctx.beginPath(); ctx.moveTo(0, -30); ctx.lineTo(2, -36); ctx.stroke();
+          ctx.fillStyle = c2; ctx.beginPath(); ctx.arc(2, -37, 2.4, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = 'rgba(253, 224, 71, 0.55)';
+          ctx.beginPath(); ctx.ellipse(0, -4, 7, 3, 0, 0, Math.PI * 2); ctx.fill();
+          break;
+        }
+        case 'trainee': { // pint-sized rookie luchador
+          ctx.fillStyle = c2;
+          ctx.beginPath(); ctx.moveTo(-9, -30); ctx.lineTo(-17, -10); ctx.lineTo(-3, -18); ctx.closePath(); S(c2, 2);
+          box(-10, -12, 8, 13, 3, c1);
+          box(2, -12, 8, 13, 3, c1);
+          ctx.beginPath(); ctx.roundRect(-10, -31, 20, 20, 7); S(c1);
+          ctx.fillStyle = '#ffffff'; ctx.fillRect(-10, -22, 20, 5);
+          ctx.beginPath(); ctx.arc(-13, -22, 5, 0, Math.PI * 2); S(c2);
+          ctx.beginPath(); ctx.arc(13, -22, 5, 0, Math.PI * 2); S(c2);
+          ctx.beginPath(); ctx.arc(0, -38, 8.5, 0, Math.PI * 2); S(c1);
+          ctx.beginPath(); ctx.ellipse(0, -38, 8.5, 8.5, 0, Math.PI * 0.15, Math.PI * 0.85); ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2.4; ctx.stroke();
+          eye(-3, -39, 2.6); eye(4, -39, 2.6);
+          break;
+        }
+        case 'pinata': { // donkey piñata with fringe
+          box(-20, -10, 7, 11, 2, c1);
+          box(-8, -10, 7, 11, 2, c1);
+          box(8, -10, 7, 11, 2, c1);
+          box(18, -10, 7, 11, 2, c1);
+          ctx.beginPath(); ctx.roundRect(-24, -27, 46, 20, 9); S(c1);
+          ctx.beginPath(); ctx.roundRect(16, -36, 13, 18, 5); S(c1);
+          ctx.beginPath(); ctx.moveTo(18, -36); ctx.lineTo(16, -46); ctx.lineTo(23, -37); ctx.closePath(); S(c1);
+          ctx.beginPath(); ctx.moveTo(26, -36); ctx.lineTo(29, -46); ctx.lineTo(31, -35); ctx.closePath(); S(c1);
+          ctx.fillStyle = c2;
+          for (let i = 0; i < 5; i++) ctx.fillRect(-22 + i * 9, -27, 4, 8);
+          ctx.strokeStyle = c2; ctx.lineWidth = 2.4;
+          ctx.beginPath(); ctx.moveTo(-24, -20); ctx.quadraticCurveTo(-32, -18, -31, -10); ctx.stroke();
+          eye(21, -30, 2.4);
+          ctx.fillStyle = ink; ctx.fillRect(26, -27, 4, 2.4);
+          break;
+        }
+        case 'eagle': { // spread-wing raptor
+          ctx.beginPath(); ctx.moveTo(-2, -18); ctx.lineTo(-25, -31); ctx.lineTo(-21, -15); ctx.lineTo(-9, -10); ctx.closePath(); S(c1);
+          ctx.beginPath(); ctx.moveTo(2, -18); ctx.lineTo(25, -31); ctx.lineTo(21, -15); ctx.lineTo(9, -10); ctx.closePath(); S(c1);
+          ctx.beginPath(); ctx.ellipse(0, -17, 9, 12, 0, 0, Math.PI * 2); S(c1);
+          ctx.beginPath(); ctx.arc(0, -29, 7.5, 0, Math.PI * 2); S(c1);
+          ctx.fillStyle = c2;
+          ctx.beginPath(); ctx.moveTo(5, -31); ctx.lineTo(14, -28); ctx.lineTo(5, -25); ctx.closePath(); S(c2, 1.8);
+          ctx.fillStyle = ink;
+          ctx.beginPath(); ctx.moveTo(-4, -5); ctx.lineTo(-1, -1); ctx.lineTo(2, -5); ctx.closePath(); ctx.fill();
+          ctx.beginPath(); ctx.moveTo(4, -5); ctx.lineTo(7, -1); ctx.lineTo(9, -5); ctx.closePath(); ctx.fill();
+          ctx.fillStyle = c2;
+          ctx.beginPath(); ctx.moveTo(-6, -6); ctx.lineTo(-2, -13); ctx.lineTo(3, -6); ctx.closePath(); ctx.fill();
+          eye(-3, -30, 2.6);
+          break;
+        }
+        default: {
+          ctx.beginPath(); ctx.roundRect(-e.w * 0.48, -e.h + 4, e.w * 0.96, e.h - 6, 9); S(c1);
+          ctx.fillStyle = c2; ctx.fillRect(-e.w * 0.46, -e.h * 0.72, e.w * 0.92, 9);
+          eye(-4, -e.h * 0.84, 3); eye(4, -e.h * 0.84, 3);
+        }
       }
       ctx.restore();
     },
@@ -2310,6 +3494,11 @@
     },
 
     drawTitleScene(ctx, w, h, t) {
+      // Title art is composed in design pixels too, then scaled onto the grid.
+      ctx.save();
+      const S = h / 600;
+      ctx.scale(S, S);
+      w = w / S; h = h / S;
       this.drawParallax(ctx, WORLDS[0], t * 32, w, h, t);
       // Festive Celtic-Mariachi bunting across top
       ctx.strokeStyle = '#111827'; ctx.lineWidth = 2;
@@ -2325,13 +3514,26 @@
       const kx = w * 0.5, ky = Math.min(h * 0.34, 240) + Math.sin(t * 2.8) * 10;
       // Fart shamrock puff trail
       for (let i = 0; i < 4; i++) {
-        ctx.fillStyle = i % 2 === 0 ? 'rgba(134, 239, 172, 0.75)' : 'rgba(253, 224, 71, 0.7)';
-        ctx.beginPath();
-        ctx.arc(kx - 44 - i * 24, ky + 34 + Math.sin(t * 6 + i) * 6, 18 - i * 3, 0, Math.PI * 2);
-        ctx.fill();
+        const px = kx - 44 - i * 24, py = ky + 34 + Math.sin(t * 6 + i) * 6, pr = 18 - i * 3;
+        const puff = ctx.createRadialGradient(px - pr * 0.3, py - pr * 0.3, 1, px, py, pr);
+        puff.addColorStop(0, i % 2 === 0 ? 'rgba(220, 252, 231, 0.9)' : 'rgba(254, 249, 195, 0.9)');
+        puff.addColorStop(1, i % 2 === 0 ? 'rgba(74, 222, 128, 0.45)' : 'rgba(250, 204, 21, 0.4)');
+        ctx.fillStyle = puff;
+        ctx.beginPath(); ctx.arc(px, py, pr, 0, Math.PI * 2); ctx.fill();
       }
       const maskStyle = Save.isGoldenConch() ? 'gold' : (Save.data.storyCompleted ? 'true' : 'shamrock');
-      drawKeisterPortrait(ctx, kx, ky, 1.55, maskStyle);
+      // Same lit side-view hero as gameplay, lifted by a soft halo
+      const halo = ctx.createRadialGradient(kx, ky, 8, kx, ky, 150);
+      halo.addColorStop(0, 'rgba(255,248,214,0.3)');
+      halo.addColorStop(1, 'rgba(255,248,214,0)');
+      ctx.fillStyle = halo;
+      ctx.beginPath(); ctx.arc(kx, ky, 150, 0, Math.PI * 2); ctx.fill();
+      ctx.save();
+      ctx.translate(kx, ky + 64);
+      ctx.scale(1.9, 1.9);
+      this.drawLuchadorSide(ctx, { onGround: true, vx: 190, hanging: false, parachuting: false }, t, maskStyle);
+      ctx.restore();
+      ctx.restore();
     }
   };
 
@@ -2386,6 +3588,10 @@
         dropThrough: 0,
         parachuting: false,
         farting: false,
+        jumped: false,
+        jumpBuffer: 0,
+        jumpCut: false,
+        fallDrop: 0,
         poundType: null, // null | 'butt' | 'corkscrew' | 'vault' | 'meteora'
         poundTimer: 0,
         poundPhase: 0,
@@ -2394,12 +3600,18 @@
         scaleY: 1
       };
 
-      // Initialize enemies
+      // Initialize enemies (per-type hitboxes match each silhouette)
+      const foeSizes = {
+        brawler: [38, 44], leaper: [34, 34], ninja: [30, 48], sumo: [54, 50], lantern: [34, 46],
+        cardshark: [32, 50], bouncer: [46, 56], drone: [40, 30], trainee: [32, 40], pinata: [52, 40], eagle: [48, 34]
+      };
+      const tier = Math.floor(idx / 4) * 3 + (idx % 4);
+      const speedMul = 1 + Math.min(0.4, tier * 0.03); // steady speed ramp, capped
       this.lvl.enemies = this.lvl.enemies.map(e => ({
         ...e,
-        w: e.type === 'sumo' || e.type === 'bouncer' || e.type === 'pinata' ? 44 : 34,
-        h: e.type === 'sumo' || e.type === 'bouncer' || e.type === 'pinata' ? 50 : 42,
-        vx: (e.type === 'ninja' || e.type === 'cardshark' ? 120 : 75),
+        w: (foeSizes[e.type] || [34, 42])[0],
+        h: (foeSizes[e.type] || [34, 42])[1],
+        vx: (e.type === 'ninja' || e.type === 'cardshark' ? 120 : 75) * speedMul,
         vy: 0,
         maxHp: e.hp,
         dead: false,
@@ -2560,25 +3772,41 @@
           p.fuel = Math.min(100, p.fuel + 150 * dt);
           p.stamina = Math.min(p.maxStamina, p.stamina + p.maxStamina * 0.9 * dt);
           p.parachuting = false;
+          p.jumped = false;
+          p.jumpCut = false;
+          p.fallDrop = 0;
         } else {
           p.coyote = Math.max(0, p.coyote - dt);
         }
 
-        // Drop through one-way platform
+        // Drop through one-way platform (intentional drop — the briefs stay shut)
         if (Input.downHeld && p.onGround) {
           p.dropThrough = 0.24;
+          p.jumped = true;
+          p.fallDrop = 0;
         }
 
-        // Jump
-        if (Input.jumpPressed && p.coyote > 0) {
+        // Jump — buffered a few frames so a press just before landing still fires
+        if (Input.jumpPressed) p.jumpBuffer = 0.14;
+        if (p.jumpBuffer > 0 && p.coyote > 0) {
           p.vy = -635;
           p.onGround = false;
           p.coyote = 0;
+          p.jumpBuffer = 0;
+          p.jumped = true;
+          p.jumpCut = false;
           p.scaleX = 0.78; p.scaleY = 1.28;
           Audio.sfxJump();
           this.spawnBurst(p.x + p.w * 0.5, p.y + p.h, '#e2e8f0', 5, 110);
         }
+        p.jumpBuffer = Math.max(0, p.jumpBuffer - dt);
         Input.jumpPressed = false;
+
+        // Releasing the jump early gives a shorter hop (variable jump height)
+        if (!Input.jumpHeld && p.vy < -180 && !p.jumpCut) {
+          p.vy *= 0.52;
+          p.jumpCut = true;
+        }
 
         // Fart-Jet (Swipe Up & Hold / Z / J)
         const canFart = Save.isGoldenConch() || p.fuel > 0;
@@ -2620,6 +3848,20 @@
 
         // Gravity & Wind Vents
         p.vy += 1650 * dt;
+
+        // Falling off a ledge (or a long drop) pops the parachute open on its
+        // own, so the briefs catch him before he ever hits the floor.
+        if (!p.onGround) {
+          p.fallDrop = p.vy > 0 ? p.fallDrop + p.vy * dt : 0;
+          const walkedOff = !p.jumped && p.fallDrop > 40 && p.vy > 200;
+          const longDrop = p.fallDrop > 170 && p.vy > 620;
+          if (!p.parachuting && !p.farting && !p.hanging && (walkedOff || longDrop)) {
+            p.parachuting = true;
+            p.jumpCut = true;
+            Audio.sfxParachute();
+            Input.showFeedback('AUTO GLIDE!');
+          }
+        }
         if (p.parachuting && p.vy > 95) p.vy = 95;
 
         // Check Upward Wind Vents!
@@ -3098,7 +4340,7 @@
       const camY = Math.min(0, vh - 585);
       ctx.translate(-this.camX + sx, camY + sy);
 
-      Renderer.drawLevel(ctx, this.lvl, this.time);
+      Renderer.drawLevel(ctx, this.lvl, this.time, this.camX, vw);
 
       // Draw Shockwaves
       for (const sw of this.shockwaves) {
@@ -3123,6 +4365,8 @@
       }
       ctx.globalAlpha = 1;
       ctx.restore();
+
+      Renderer.drawForeground(ctx, this.lvl.world, this.camX, w, h, this.time);
 
       // Dynamic Virtual Joysticks on top in screen coordinates
       Input.drawJoysticks(ctx, w, h);
@@ -3197,7 +4441,7 @@
       // Hearts
       let heartsHtml = '';
       for (let i = 0; i < p.maxHp; i++) {
-        heartsHtml += `<span style="color:${i < p.hp ? '#ef4444' : '#475569'}">♥</span>`;
+        heartsHtml += `<span class="${i < p.hp ? 'on' : 'off'}"></span>`;
       }
       document.getElementById('hud-hearts').innerHTML = heartsHtml;
 
@@ -3314,11 +4558,13 @@
       } else if (this.scrapTab === 'moves') {
         const moves = [
           { name: 'Move, Jump & Monkey Bars', gesture: 'Left Dynamic Joystick · WASD / Arrows + Space', unlocked: true,
-            desc: 'Touch anywhere on the left half of the screen to move left/right, push Up to jump, or Down to drop through platforms & release ceiling monkey bars. Hanging drains your circular stamina ring!' },
-          { name: 'Fart-Jet Flight', gesture: 'Right Joystick: Swipe Up & Hold · Z / J', unlocked: true,
-            desc: 'Blasts green & gold shamrock clouds to fly upward. Drains your Bean/Cabbage GAS meter, which refills rapidly on the ground.' },
-          { name: 'Underwear Parachute', gesture: 'Right Joystick: Swipe Down (No Hold Needed) · X / K', unlocked: true,
-            desc: 'Single Swipe Down pops open Keister\'s oversized shamrock briefs for a hands-free glide down and upward wind-vent lift — leaving your thumb free to swipe down a second time for a Butt Slam!' },
+            desc: 'Touch anywhere on the left half of the screen to move left/right, push Up to jump (hold it and Keister\'s Fart-Jet kicks in too), or Down to drop through platforms & release ceiling monkey bars. Hanging drains your circular stamina ring!' },
+          { name: 'Fart-Jet Flight', gesture: 'Right Joystick: Up & Hold · Z / J', unlocked: true,
+            desc: 'Blasts green & gold shamrock clouds to fly upward for as long as you hold up on the right joystick. Drains your Bean/Cabbage GAS meter, which refills rapidly on the ground.' },
+          { name: 'Platform Drop', gesture: 'Right Joystick: Down & Hold · S / Arrow Down', unlocked: true,
+            desc: 'Holding down while standing on a one-way platform makes Keister slip straight through it, and also releases ceiling monkey bars. In mid-air, down opens the parachute.' },
+          { name: 'Underwear Parachute', gesture: 'Automatic on any fall · X / K to deploy early', unlocked: true,
+            desc: 'Walk off any ledge or drop from a height and Keister\'s oversized shamrock briefs pop open by themselves for a hands-free glide and upward wind-vent lift — leaving your thumb free to swipe down for a Butt Slam. Tap X / K to open them early in mid-air.' },
           { name: 'Original Butt Slam', gesture: 'Right Joystick: Double-Swipe Down (or Swipe Down while Gliding) · C / L', unlocked: true,
             desc: 'Vertical ground pound attack! Swipe down again anytime while parachuting (or double-swipe down) to crash onto foes and smash cracked floor panels.' },
           { name: 'Corkscrew Ground Pound', gesture: 'Right Joystick: Swipe Left · Q / U', unlocked: Save.hasCorkscrew(),
@@ -3488,20 +4734,46 @@
    * ========================================================================= */
   const canvas = document.getElementById('gameCanvas');
   const ctx = canvas.getContext('2d');
-  let dpr = Math.min(window.devicePixelRatio || 1, 2);
+  // 16-BIT TRIBUTE PIPELINE -------------------------------------------------
+  // The whole scene is painted into a small buffer where one buffer pixel is
+  // ART_PX screen pixels, then blown up with nearest-neighbour sampling. That
+  // is what gives the chunky console-era pixel grid instead of smooth vectors.
+  const ART_PX = 3;
+  let dpr = 1;
+
+  // 5 bits per channel = the 32,768-colour depth a 16-bit console actually had.
+  const Q5 = new Uint8Array(256);
+  for (let v = 0; v < 256; v++) Q5[v] = Math.round(((v * 31 / 255) | 0) * 255 / 31);
 
   function resizeCanvas() {
-    dpr = Math.min(window.devicePixelRatio || 1, 2);
-    canvas.width = Math.floor(window.innerWidth * dpr);
-    canvas.height = Math.floor(window.innerHeight * dpr);
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const cssW = Math.max(160, window.innerWidth);
+    const cssH = Math.max(120, window.innerHeight);
+    canvas.width = Math.round(cssW / ART_PX);
+    canvas.height = Math.round(cssH / ART_PX);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.imageSmoothingEnabled = false;
   }
   window.addEventListener('resize', resizeCanvas);
   resizeCanvas();
 
+  // Palette snap + hard alpha: kills vector anti-aliasing so every edge lands
+  // on the pixel grid as a solid cluster, the way a cartridge sprite would.
+  function posterizeFrame() {
+    const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const d = img.data;
+    for (let i = 0; i < d.length; i += 4) {
+      if (d[i + 3] < 110) { d[i + 3] = 0; continue; }
+      d[i] = Q5[d[i]];
+      d[i + 1] = Q5[d[i + 1]];
+      d[i + 2] = Q5[d[i + 2]];
+      d[i + 3] = 255;
+    }
+    ctx.putImageData(img, 0, 0);
+  }
+
+  // Framing stays identical on every screen: a 585-unit tall slice of world.
   function getCameraZoom() {
-    const h = window.innerHeight;
-    return Math.max(0.75, Math.min(1.25, h / 600));
+    return canvas.height / 585;
   }
 
   // Wire UI Buttons
@@ -3558,8 +4830,8 @@
     lastTs = ts;
     Input.poll(dt);
 
-    const w = window.innerWidth, h = window.innerHeight;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const w = canvas.width, h = canvas.height;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
 
     if (Scene.current === 'title') {
       titleTime += dt;
@@ -3578,6 +4850,7 @@
       ctx.fillRect(0, 0, w, h);
     }
 
+    posterizeFrame();
     requestAnimationFrame(loop);
   }
   requestAnimationFrame(loop);
