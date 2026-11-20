@@ -1,0 +1,3526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<title>The Mask of Keister McFannigan</title>
+<meta name="description" content="A 2D side-scrolling HTML5 Canvas touchscreen adventure game starring Irish Luchador Keister McFannigan across 4 country worlds, 16 levels, dynamic dual joysticks, comic cutscenes, and 16 hidden Sea Shells." />
+<meta property="og:title" content="The Mask of Keister McFannigan" />
+<meta property="og:description" content="Help Irish Luchador Keister McFannigan recover his stolen mask across Ireland, Japan, Las Vegas, and Mexico!" />
+<meta property="og:type" content="website" />
+<style>
+  :root {
+    --emerald: #0f7a43;
+    --emerald-bright: #16a34a;
+    --gold: #f59e0b;
+    --gold-light: #fde047;
+    --crimson: #dc2626;
+    --ink: #131722;
+    --paper: #fdf6e3;
+    --paper-dark: #f0e3c0;
+    --leather: #3d2415;
+    --panel-bg: rgba(17, 23, 35, 0.92);
+    --border-ink: #111827;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0; width: 100%; height: 100%;
+    overflow: hidden; background: #0e1726;
+    font-family: "Trebuchet MS", "Segoe UI", system-ui, -apple-system, sans-serif;
+    color: #f8fafc;
+    touch-action: none; user-select: none; -webkit-user-select: none;
+    overscroll-behavior: none;
+  }
+  #game-wrap {
+    position: relative; width: 100vw; height: 100vh; overflow: hidden;
+  }
+  canvas#gameCanvas {
+    display: block; width: 100%; height: 100%; touch-action: none;
+  }
+  /* Shared Overlay Chrome */
+  .overlay {
+    position: absolute; inset: 0; display: none;
+    align-items: center; justify-content: center;
+    padding: 16px; z-index: 20;
+  }
+  .overlay.active { display: flex; }
+  .scrim { background: rgba(9, 13, 22, 0.72); backdrop-filter: blur(4px); }
+
+  /* HUD (Minimal, unobtrusive, touch-friendly) */
+  #hud {
+    position: absolute; top: 0; left: 0; right: 0;
+    padding: max(10px, env(safe-area-inset-top)) 14px 6px;
+    display: none; align-items: flex-start; justify-content: space-between;
+    pointer-events: none; z-index: 10;
+  }
+  #hud.active { display: flex; }
+  .hud-left {
+    display: flex; align-items: center; gap: 10px;
+    background: rgba(15, 23, 42, 0.78);
+    border: 2px solid rgba(255,255,255,0.16);
+    border-radius: 12px; padding: 6px 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.35);
+  }
+  .hud-mask-icon {
+    width: 34px; height: 34px; border-radius: 8px;
+    background: #0f7a43; border: 2px solid #fde047;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 900; font-size: 16px; color: #fde047; flex-shrink: 0;
+  }
+  .hud-mask-icon.gold { background: linear-gradient(135deg, #f59e0b, #fef08a); color: #451a03; border-color: #fff; }
+  .hud-mask-icon.true { background: linear-gradient(135deg, #0f7a43, #dc2626); color: #fde047; border-color: #fde047; }
+  .hud-meters { display: flex; flex-direction: column; gap: 4px; min-width: 150px; }
+  .hud-stage-line {
+    font-size: 12px; font-weight: 800; letter-spacing: 0.02em;
+    color: #f8fafc; white-space: nowrap;
+  }
+  .hud-stage-line span.muted { color: #94a3b8; font-weight: 600; }
+  .hud-bars { display: flex; align-items: center; gap: 8px; }
+  .hp-hearts { display: flex; gap: 3px; font-size: 14px; line-height: 1; }
+  .fuel-wrap {
+    display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 800; color: #bef264;
+  }
+  .fuel-track {
+    width: 78px; height: 9px; background: rgba(0,0,0,0.55);
+    border: 1.5px solid rgba(255,255,255,0.3); border-radius: 5px; overflow: hidden;
+  }
+  .fuel-fill {
+    height: 100%; width: 100%; background: linear-gradient(90deg, #4ade80, #facc15);
+    transition: width 0.06s linear;
+  }
+  .fuel-fill.infinite { background: linear-gradient(90deg, #f59e0b, #fef08a, #f59e0b); }
+  .hud-right {
+    display: flex; align-items: center; gap: 8px; pointer-events: auto;
+  }
+  .hud-collect {
+    display: flex; align-items: center; gap: 10px;
+    background: rgba(15, 23, 42, 0.78);
+    border: 2px solid rgba(255,255,255,0.16);
+    border-radius: 12px; padding: 6px 11px; font-size: 12px; font-weight: 800;
+    font-variant-numeric: tabular-nums;
+  }
+  .hud-btn {
+    min-width: 44px; height: 44px; padding: 0 12px;
+    border-radius: 10px; border: 2px solid rgba(255,255,255,0.22);
+    background: rgba(15, 23, 42, 0.86); color: #f8fafc;
+    font-weight: 800; font-size: 13px; cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    transition: transform 0.12s ease, background 0.12s ease;
+    white-space: nowrap;
+  }
+  .hud-btn:active { transform: scale(0.95); }
+  .hud-btn:hover { background: rgba(30, 41, 59, 0.96); }
+
+  /* Subtle Touch Hint Bar */
+  #touch-hint {
+    position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);
+    background: rgba(15, 23, 42, 0.72); color: #e2e8f0;
+    padding: 6px 14px; border-radius: 8px; font-size: 12px; font-weight: 600;
+    pointer-events: none; z-index: 9; white-space: nowrap;
+    max-width: 92vw; overflow: hidden; text-overflow: ellipsis;
+    opacity: 0; transition: opacity 0.35s ease;
+  }
+  #touch-hint.visible { opacity: 1; }
+
+  /* Boss Health Bar */
+  #boss-bar {
+    position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
+    width: min(460px, 84vw); display: none; flex-direction: column; gap: 4px;
+    background: rgba(15, 23, 42, 0.85); border: 2px solid #f59e0b;
+    border-radius: 10px; padding: 7px 12px; pointer-events: none; z-index: 10;
+  }
+  #boss-bar.active { display: flex; }
+  .boss-name { font-size: 13px; font-weight: 900; color: #fde047; display: flex; justify-content: space-between; }
+  .boss-track { width: 100%; height: 11px; background: #1e293b; border-radius: 6px; overflow: hidden; border: 1px solid rgba(255,255,255,0.2); }
+  .boss-fill { height: 100%; width: 100%; background: linear-gradient(90deg, #dc2626, #f59e0b); transition: width 0.12s ease; }
+
+  /* Title Screen Overlay */
+  #title-overlay {
+    flex-direction: column; justify-content: flex-end;
+    padding-bottom: clamp(24px, 7vh, 64px); pointer-events: none;
+  }
+  .title-card {
+    pointer-events: auto; width: min(560px, 94vw);
+    background: rgba(13, 21, 34, 0.88);
+    border: 3px solid #f59e0b; border-radius: 18px;
+    padding: 20px 24px; text-align: center;
+    box-shadow: 0 18px 40px rgba(0,0,0,0.55);
+  }
+  .title-kicker {
+    font-size: 12px; font-weight: 800; color: #86efac; letter-spacing: 0.08em;
+    margin-bottom: 4px;
+  }
+  .title-main {
+    margin: 0; font-size: clamp(1.65rem, 4.2vw, 2.55rem);
+    line-height: 1.08; font-weight: 900; color: #fef08a;
+    text-shadow: 0 3px 0 #7c2d12, 0 6px 14px rgba(0,0,0,0.6);
+    text-wrap: balance;
+  }
+  .title-sub {
+    margin: 8px 0 16px; font-size: 13.5px; color: #cbd5e1; line-height: 1.45;
+  }
+  .btn-row {
+    display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;
+  }
+  .btn {
+    min-height: 46px; padding: 10px 20px; border-radius: 10px;
+    font-weight: 900; font-size: 14px; cursor: pointer;
+    border: 2.5px solid #111827; letter-spacing: 0.01em;
+    transition: transform 0.12s ease, filter 0.12s ease;
+    white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .btn:active { transform: scale(0.96); }
+  .btn:hover { filter: brightness(1.07); }
+  .btn-primary {
+    background: linear-gradient(180deg, #22c55e, #15803d); color: #fff;
+    box-shadow: 0 4px 0 #052e16;
+  }
+  .btn-gold {
+    background: linear-gradient(180deg, #fbbf24, #d97706); color: #1c1917;
+    box-shadow: 0 4px 0 #78350f;
+  }
+  .btn-secondary {
+    background: #1e293b; color: #f8fafc; border-color: #475569;
+    box-shadow: 0 4px 0 #0f172a;
+  }
+  .btn-danger {
+    background: #dc2626; color: #fff; box-shadow: 0 4px 0 #7f1d1d;
+  }
+  .title-meta {
+    margin-top: 12px; font-size: 12px; color: #94a3b8;
+    display: flex; justify-content: center; gap: 12px; flex-wrap: wrap;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Cutscene Controls */
+  #cutscene-ui {
+    position: absolute; inset: 0; pointer-events: none; display: none; z-index: 25;
+  }
+  #cutscene-ui.active { display: block; }
+  .cutscene-top {
+    position: absolute; top: 14px; right: 16px; display: flex; gap: 8px; pointer-events: auto;
+  }
+  .cutscene-bottom {
+    position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
+    display: flex; align-items: center; gap: 12px; pointer-events: auto;
+  }
+
+  /* Scrapbook & Stage Select Modals */
+  .modal-box {
+    width: min(820px, 95vw); max-height: 90vh;
+    background: var(--paper); color: var(--ink);
+    border: 4px solid var(--leather); border-radius: 16px;
+    box-shadow: 0 22px 50px rgba(0,0,0,0.65);
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  .modal-header {
+    background: var(--leather); color: #fef3c7;
+    padding: 14px 18px; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  }
+  .modal-title { margin: 0; font-size: 19px; font-weight: 900; letter-spacing: 0.01em; }
+  .modal-tabs {
+    display: flex; gap: 6px; padding: 10px 16px; background: var(--paper-dark);
+    border-bottom: 2px solid #d6c396; flex-wrap: wrap;
+  }
+  .tab-btn {
+    min-height: 40px; padding: 6px 14px; border-radius: 8px;
+    border: 2px solid transparent; background: transparent;
+    color: #57412b; font-weight: 800; font-size: 13px; cursor: pointer;
+    white-space: nowrap;
+  }
+  .tab-btn.active {
+    background: var(--paper); color: var(--ink); border-color: var(--leather);
+  }
+  .modal-body {
+    padding: 16px 18px; overflow-y: auto; flex: 1; -webkit-overflow-scrolling: touch;
+  }
+  .modal-footer {
+    padding: 12px 18px; background: var(--paper-dark);
+    border-top: 2px solid #d6c396; display: flex; justify-content: space-between;
+    align-items: center; gap: 10px; flex-wrap: wrap;
+  }
+
+  /* Scrapbook Content Styles */
+  .beat-box {
+    background: #fffbeb; border: 2px solid #d97706; border-radius: 10px;
+    padding: 12px 14px; margin-bottom: 10px;
+  }
+  .beat-box.locked { background: #ede4cc; border-color: #c2b086; color: #786951; }
+  .beat-title { font-weight: 900; font-size: 14px; margin-bottom: 4px; color: #7c2d12; }
+  .beat-box.locked .beat-title { color: #786951; }
+  .beat-text { font-size: 13.5px; line-height: 1.48; margin: 0; }
+  .clue-grid, .shell-grid, .move-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px;
+  }
+  .scrap-item {
+    background: #fffdf5; border: 1.5px solid #d6c396; border-radius: 10px;
+    padding: 10px 12px; font-size: 13px;
+  }
+  .scrap-item.found { border-color: #16a34a; background: #f0fdf4; }
+  .scrap-item.golden { border-color: #d97706; background: #fefce8; }
+  .scrap-item h4 { margin: 0 0 4px; font-size: 13.5px; color: #1e293b; }
+  .scrap-item p { margin: 0; font-size: 12.5px; color: #475569; line-height: 1.4; }
+  .move-gesture {
+    display: inline-block; font-weight: 900; color: #0f7a43; font-size: 12px; margin-bottom: 3px;
+  }
+
+  /* Stage Select Grid */
+  .world-tabs { display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
+  .level-list {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(175px, 1fr)); gap: 10px;
+  }
+  .level-card {
+    background: #fffdf5; border: 2px solid #c9b589; border-radius: 12px;
+    padding: 12px; text-align: left; cursor: pointer; display: flex; flex-direction: column; gap: 6px;
+    transition: transform 0.12s ease, border-color 0.12s ease; color: var(--ink);
+  }
+  .level-card:hover { border-color: #0f7a43; transform: translateY(-2px); }
+  .level-card.locked { opacity: 0.52; cursor: not-allowed; }
+  .level-card.boss { border-color: #dc2626; background: #fef2f2; }
+  .level-num { font-size: 11.5px; font-weight: 800; color: #64748b; }
+  .level-name { font-size: 14px; font-weight: 900; color: #0f172a; }
+  .level-meta { font-size: 12px; color: #475569; font-variant-numeric: tabular-nums; }
+
+  /* Stage-End & Clue Popups */
+  .popup-box {
+    width: min(500px, 94vw); background: var(--paper); color: var(--ink);
+    border: 4px solid var(--leather); border-radius: 16px;
+    padding: 20px 22px; text-align: center;
+    box-shadow: 0 22px 48px rgba(0,0,0,0.65);
+  }
+  .popup-box h2 { margin: 0 0 6px; font-size: 22px; font-weight: 900; color: #0f5132; }
+  .popup-note {
+    background: #fffbeb; border: 1.5px solid #d97706; border-radius: 10px;
+    padding: 11px 13px; margin: 12px 0; text-align: left; font-size: 13.5px; line-height: 1.48;
+  }
+  .popup-stats {
+    display: flex; justify-content: center; gap: 18px; margin: 10px 0 16px;
+    font-size: 13px; font-weight: 800; color: #334155; font-variant-numeric: tabular-nums;
+  }
+  .toggle-label {
+    display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 800;
+    cursor: pointer; color: #1e293b;
+  }
+  .toggle-label input { width: 18px; height: 18px; accent-color: #0f7a43; }
+</style>
+</head>
+<body>
+<div id="game-wrap">
+  <canvas id="gameCanvas"></canvas>
+
+  <!-- Active Gameplay HUD -->
+  <div id="hud">
+    <div class="hud-left">
+      <div id="hud-mask" class="hud-mask-icon" title="Keister's Mask">☘</div>
+      <div class="hud-meters">
+        <div id="hud-stage" class="hud-stage-line">1-1 · Dublin Rooftops</div>
+        <div class="hud-bars">
+          <div id="hud-hearts" class="hp-hearts"></div>
+          <div class="fuel-wrap">
+            <span>GAS</span>
+            <div class="fuel-track"><div id="hud-fuel" class="fuel-fill"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="hud-right">
+      <div class="hud-collect">
+        <span id="hud-shell-stat" title="Stage Sea Shell">Shell: --</span>
+        <span>·</span>
+        <span id="hud-clue-stat" title="Stage Clue">Clue: --</span>
+      </div>
+      <button id="btn-mute" class="hud-btn" aria-label="Toggle Sound">Sound: On</button>
+      <button id="btn-pause" class="hud-btn" aria-label="Open Scrapbook">Scrapbook</button>
+    </div>
+  </div>
+
+  <div id="boss-bar">
+    <div class="boss-name"><span id="boss-title">Boss</span><span id="boss-hp-text">100%</span></div>
+    <div class="boss-track"><div id="boss-fill" class="boss-fill"></div></div>
+  </div>
+
+  <div id="touch-hint">Left side: Touch & drag to Move/Jump · Right side: Swipe Up=Fart-Jet, Down=Parachute, 2x Down=Butt Slam</div>
+
+  <!-- Title Screen Overlay -->
+  <div id="title-overlay" class="overlay active">
+    <div class="title-card">
+      <div class="title-kicker">IRISH LUCHADOR WORLD TOUR ADVENTURE</div>
+      <h1 class="title-main">The Mask of Keister McFannigan</h1>
+      <p class="title-sub">
+        The legendary OG Luchadores stole Keister's prized mask! Fart-fly, parachute in shamrock briefs, swing ceiling monkey bars, and ground-pound across 4 countries and 16 stages.
+      </p>
+      <div class="btn-row">
+        <button id="btn-play-story" class="btn btn-primary">Play Story</button>
+        <button id="btn-stage-select" class="btn btn-gold">Stage Select / Sandbox</button>
+        <button id="btn-title-scrapbook" class="btn btn-secondary">Scrapbook</button>
+      </div>
+      <div id="title-meta" class="title-meta"></div>
+    </div>
+  </div>
+
+  <!-- Cutscene Controls -->
+  <div id="cutscene-ui">
+    <div class="cutscene-top">
+      <button id="btn-cutscene-mute" class="hud-btn">Sound: On</button>
+      <button id="btn-cutscene-skip" class="hud-btn">Skip</button>
+    </div>
+    <div class="cutscene-bottom">
+      <button id="btn-cutscene-next" class="btn btn-gold">Next Panel ▶</button>
+    </div>
+  </div>
+
+  <!-- Clue Discovery Popup -->
+  <div id="clue-overlay" class="overlay scrim">
+    <div class="popup-box">
+      <h2 id="clue-popup-title">Clue Discovered!</h2>
+      <div id="clue-popup-body" class="popup-note"></div>
+      <div class="btn-row">
+        <button id="btn-clue-close" class="btn btn-primary">Keep Moving!</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stage-End Popup -->
+  <div id="stage-end-overlay" class="overlay scrim">
+    <div class="popup-box">
+      <h2 id="end-title">Stage Cleared!</h2>
+      <div id="end-subtitle" style="font-size:13px;font-weight:800;color:#64748b;"></div>
+      <div id="end-note" class="popup-note"></div>
+      <div id="end-stats" class="popup-stats"></div>
+      <div class="btn-row">
+        <button id="btn-end-next" class="btn btn-primary">Next Stage</button>
+        <button id="btn-end-replay" class="btn btn-secondary">Replay</button>
+        <button id="btn-end-scrapbook" class="btn btn-gold">Scrapbook</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scrapbook / Pause Modal -->
+  <div id="scrapbook-overlay" class="overlay scrim">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h2 class="modal-title">Keister's Lucha Scrapbook</h2>
+        <button id="btn-scrap-close" class="hud-btn">Close</button>
+      </div>
+      <div class="modal-tabs">
+        <button class="tab-btn active" data-tab="story">Story & Clues</button>
+        <button class="tab-btn" data-tab="moves">Moves & Controls</button>
+        <button class="tab-btn" data-tab="shells">Sea Shells (0/16)</button>
+      </div>
+      <div id="scrapbook-body" class="modal-body"></div>
+      <div class="modal-footer">
+        <div id="scrap-footer-left" class="btn-row"></div>
+        <div id="scrap-footer-right" class="btn-row"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stage Select / Sandbox Modal -->
+  <div id="select-overlay" class="overlay scrim">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h2 class="modal-title">World Tour Stage Select</h2>
+        <button id="btn-select-close" class="hud-btn">Back</button>
+      </div>
+      <div class="modal-body">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:12px;">
+          <div id="world-tabs" class="world-tabs" style="margin-bottom:0;"></div>
+          <label class="toggle-label">
+            <input type="checkbox" id="chk-sandbox" />
+            Sandbox Mode (Unlock all stages & moves)
+          </label>
+        </div>
+        <div id="level-grid" class="level-list"></div>
+      </div>
+      <div class="modal-footer">
+        <div id="select-summary" style="font-size:13px;font-weight:800;color:#334155;"></div>
+        <div id="select-actions" class="btn-row"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D.prototype.roundRect) {
+    CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) {
+      const rr = Math.min(r || 0, Math.abs(w) / 2, Math.abs(h) / 2);
+      this.moveTo(x + rr, y);
+      this.arcTo(x + w, y, x + w, y + h, rr);
+      this.arcTo(x + w, y + h, x, y + h, rr);
+      this.arcTo(x, y + h, x, y, rr);
+      this.arcTo(x, y, x + w, y, rr);
+      this.closePath();
+      return this;
+    };
+  }
+
+  /* =========================================================================
+   * 1. SAVE SYSTEM & GAME PROGRESSION
+   * ========================================================================= */
+  const SAVE_KEY = 'keister_mcfannigan_save_v1';
+  const defaultSave = () => ({
+    prologueSeen: false,
+    maxUnlockedLevel: 0, // 0..15
+    completedLevels: Array(16).fill(false),
+    bossesDefeated: [false, false, false, false], // W1, W2, W3, W4
+    cluesCollected: Array(16).fill(false),
+    shellsCollected: Array(16).fill(false),
+    storyCompleted: false,
+    goldenConchUnlocked: false,
+    goldenConchEquipped: false,
+    sandboxMode: false
+  });
+
+  const Save = {
+    data: defaultSave(),
+    load() {
+      try {
+        const raw = localStorage.getItem(SAVE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          this.data = Object.assign(defaultSave(), parsed);
+          if (!Array.isArray(this.data.completedLevels) || this.data.completedLevels.length !== 16) this.data.completedLevels = Array(16).fill(false);
+          if (!Array.isArray(this.data.cluesCollected) || this.data.cluesCollected.length !== 16) this.data.cluesCollected = Array(16).fill(false);
+          if (!Array.isArray(this.data.shellsCollected) || this.data.shellsCollected.length !== 16) this.data.shellsCollected = Array(16).fill(false);
+          if (!Array.isArray(this.data.bossesDefeated) || this.data.bossesDefeated.length !== 4) this.data.bossesDefeated = [false, false, false, false];
+        }
+      } catch (_) { this.data = defaultSave(); }
+    },
+    save() {
+      try { localStorage.setItem(SAVE_KEY, JSON.stringify(this.data)); } catch (_) {}
+    },
+    reset() {
+      this.data = defaultSave();
+      this.save();
+    },
+    shellCount() { return this.data.shellsCollected.filter(Boolean).length; },
+    clueCount() { return this.data.cluesCollected.filter(Boolean).length; },
+    hasCorkscrew() { return this.data.sandboxMode || this.data.bossesDefeated[0]; },
+    hasLuchaVault() { return this.data.sandboxMode || this.data.bossesDefeated[1]; },
+    hasMeteoraFlip() { return this.data.sandboxMode || this.data.bossesDefeated[2]; },
+    isGoldenConch() { return this.data.goldenConchUnlocked && this.data.goldenConchEquipped; },
+    maxStamina() {
+      const upgrades = this.data.sandboxMode ? 3 : this.data.bossesDefeated.slice(0, 3).filter(Boolean).length;
+      return 4.8 + upgrades * 1.6;
+    },
+    strengthBonus() {
+      const upgrades = this.data.sandboxMode ? 3 : this.data.bossesDefeated.slice(0, 3).filter(Boolean).length;
+      return 1 + upgrades * 0.4;
+    }
+  };
+  Save.load();
+
+  /* =========================================================================
+   * 2. PROCEDURAL WEB AUDIO ENGINE (CELTIC-MARIACHI CHIPTUNE + SFX)
+   * ========================================================================= */
+  const Audio = {
+    ctx: null,
+    muted: false,
+    musicTimer: null,
+    currentTrack: null,
+    step: 0,
+    fartNoiseNode: null,
+    fartGain: null,
+    fartOsc: null,
+
+    init() {
+      if (!this.ctx) {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (AC) this.ctx = new AC();
+      }
+      if (this.ctx && this.ctx.state === 'suspended') {
+        this.ctx.resume().catch(() => {});
+      }
+    },
+
+    toggleMute() {
+      this.muted = !this.muted;
+      if (this.muted) this.stopFartLoop();
+      document.getElementById('btn-mute').textContent = this.muted ? 'Sound: Off' : 'Sound: On';
+      document.getElementById('btn-cutscene-mute').textContent = this.muted ? 'Sound: Off' : 'Sound: On';
+    },
+
+    tone(freq, dur, type = 'square', vol = 0.09, slideTo = null, delay = 0) {
+      if (this.muted || !this.ctx) return;
+      const t = this.ctx.currentTime + delay;
+      const osc = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, t);
+      if (slideTo) osc.frequency.exponentialRampToValueAtTime(Math.max(25, slideTo), t + dur);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.linearRampToValueAtTime(vol, t + 0.012);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      osc.connect(g);
+      g.connect(this.ctx.destination);
+      osc.start(t);
+      osc.stop(t + dur + 0.02);
+    },
+
+    noise(dur, filterFreq = 800, vol = 0.12, filterType = 'bandpass', delay = 0) {
+      if (this.muted || !this.ctx) return;
+      const t = this.ctx.currentTime + delay;
+      const bufferSize = Math.max(1, Math.floor(this.ctx.sampleRate * dur));
+      const buf = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+      const src = this.ctx.createBufferSource();
+      src.buffer = buf;
+      const filt = this.ctx.createBiquadFilter();
+      filt.type = filterType;
+      filt.frequency.setValueAtTime(filterFreq, t);
+      const g = this.ctx.createGain();
+      g.gain.setValueAtTime(vol, t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      src.connect(filt);
+      filt.connect(g);
+      g.connect(this.ctx.destination);
+      src.start(t);
+      src.stop(t + dur + 0.02);
+    },
+
+    // SFX Library
+    sfxJump() { this.tone(240, 0.14, 'square', 0.08, 580); },
+    sfxParachute() {
+      this.noise(0.16, 650, 0.16, 'bandpass');
+      this.tone(180, 0.12, 'triangle', 0.1, 340);
+    },
+    sfxButtSlam(golden) {
+      this.tone(150, 0.24, 'sawtooth', 0.16, 42);
+      this.noise(0.22, 240, 0.18, 'lowpass');
+      if (golden) {
+        this.tone(523, 0.25, 'triangle', 0.1, 784, 0.04);
+        this.tone(1046, 0.3, 'sine', 0.08, 1568, 0.08);
+      }
+    },
+    sfxCorkscrew() {
+      this.tone(420, 0.22, 'sawtooth', 0.11, 880);
+      this.tone(300, 0.22, 'square', 0.09, 140, 0.06);
+    },
+    sfxLuchaVault() {
+      this.tone(320, 0.12, 'triangle', 0.12, 640);
+      this.tone(640, 0.18, 'square', 0.1, 220, 0.1);
+    },
+    sfxMeteoraFlip() {
+      this.tone(330, 0.12, 'square', 0.1, 660);
+      this.tone(660, 0.14, 'square', 0.1, 1046, 0.08);
+      this.tone(220, 0.26, 'sawtooth', 0.14, 55, 0.18);
+    },
+    sfxShatter() {
+      this.noise(0.25, 1400, 0.2, 'highpass');
+      this.tone(280, 0.15, 'square', 0.12, 90);
+    },
+    sfxGrabBar() { this.tone(520, 0.06, 'triangle', 0.08, 690); },
+    sfxStaminaTick() { this.tone(880, 0.04, 'sine', 0.05, 620); },
+    sfxHitEnemy() {
+      this.tone(220, 0.1, 'square', 0.12, 95);
+      this.noise(0.08, 900, 0.1, 'bandpass');
+    },
+    sfxHurt() {
+      this.tone(260, 0.2, 'sawtooth', 0.13, 95);
+      this.tone(190, 0.22, 'square', 0.1, 70, 0.08);
+    },
+    sfxClue() {
+      const notes = [392, 494, 587, 784];
+      notes.forEach((n, i) => this.tone(n, 0.15, 'triangle', 0.1, null, i * 0.07));
+    },
+    sfxShell() {
+      const notes = [587, 740, 880, 1175, 1480];
+      notes.forEach((n, i) => this.tone(n, 0.22, 'sine', 0.11, null, i * 0.065));
+    },
+    sfxVictory() {
+      const fanfare = [523, 659, 784, 1046, 784, 1046];
+      const times = [0, 0.1, 0.2, 0.3, 0.48, 0.58];
+      fanfare.forEach((n, i) => this.tone(n, i === 5 ? 0.42 : 0.12, 'square', 0.09, null, times[i]));
+    },
+
+    // Rising-pitch continuous fart-jet sputter
+    updateFartLoop(active, pitchRatio) {
+      if (!active || this.muted || !this.ctx) {
+        this.stopFartLoop();
+        return;
+      }
+      const now = this.ctx.currentTime;
+      if (!this.fartOsc) {
+        const osc = this.ctx.createOscillator();
+        const lfo = this.ctx.createOscillator();
+        const lfoGain = this.ctx.createGain();
+        const g = this.ctx.createGain();
+        const filt = this.ctx.createBiquadFilter();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(95, now);
+        lfo.type = 'square';
+        lfo.frequency.setValueAtTime(24, now);
+        lfoGain.gain.setValueAtTime(34, now);
+        lfo.connect(lfoGain);
+        lfoGain.connect(osc.frequency);
+        filt.type = 'bandpass';
+        filt.frequency.setValueAtTime(340, now);
+        g.gain.setValueAtTime(0.085, now);
+        osc.connect(filt);
+        filt.connect(g);
+        g.connect(this.ctx.destination);
+        osc.start(now);
+        lfo.start(now);
+        this.fartOsc = osc;
+        this.fartNoiseNode = lfo;
+        this.fartGain = g;
+      }
+      const baseFreq = 88 + Math.min(1, Math.max(0, pitchRatio)) * 125;
+      this.fartOsc.frequency.setTargetAtTime(baseFreq, now, 0.04);
+    },
+
+    stopFartLoop() {
+      if (this.fartOsc) {
+        try { this.fartOsc.stop(); this.fartNoiseNode.stop(); } catch (_) {}
+        this.fartOsc = null; this.fartNoiseNode = null; this.fartGain = null;
+      }
+    },
+
+    // Celtic-Mariachi Chiptune Sequencer
+    playMusic(track) {
+      if (this.currentTrack === track) return;
+      this.currentTrack = track;
+      if (this.musicTimer) { clearInterval(this.musicTimer); this.musicTimer = null; }
+      this.step = 0;
+      if (!track) return;
+
+      const tracks = {
+        // World 1 & Title: Irish Jig meets Mariachi Brass
+        title: { tempo: 170, lead: [587,659,740,880,740,659, 587,494,440,494,587,659, 740,880,988,880,740,659, 587,0,440,587,0,0], bass: [147,0,220,147,0,220, 196,0,147,196,0,220, 147,0,220,147,0,220, 165,0,220,147,0,0], wave: 'square' },
+        w1: { tempo: 155, lead: [587,740,880,740,659,587, 494,587,659,494,440,0, 587,740,880,988,880,740, 659,740,587,0,440,0], bass: [147,220,147,220,196,147, 196,247,165,220,147,220, 147,220,147,220,196,147, 165,220,147,147,110,0], wave: 'square' },
+        // World 2: Pentatonic Kyoto Shamisen Chiptune
+        w2: { tempo: 165, lead: [523,0,587,659,784,0,659,587, 523,440,392,0,440,523,587,0, 784,880,784,659,587,523,440,0], bass: [131,0,196,0,131,0,196,147, 110,0,165,0,131,0,196,0, 131,0,196,0,147,0,110,0], wave: 'triangle' },
+        // World 3: Vegas Swingin' Brass
+        w3: { tempo: 160, lead: [440,523,587,622,659,0,587,523, 440,0,392,440,523,0,440,0, 659,784,880,784,659,587,523,440], bass: [110,131,147,156,165,147,131,110, 147,165,175,196,165,147,131,110, 165,196,220,196,165,147,131,110], wave: 'sawtooth' },
+        // World 4: Upbeat Mariachi Trumpet Fiesta
+        w4: { tempo: 148, lead: [523,659,784,0,784,880,784,659, 587,740,880,0,784,659,587,0, 523,659,784,1046,988,880,784,659], bass: [131,0,196,131,131,0,196,131, 147,0,220,147,196,0,147,196, 131,0,196,131,175,0,196,131], wave: 'square' },
+        // Boss: Lucha Libre Showdown
+        boss: { tempo: 125, lead: [330,330,392,330,440,330,494,440, 392,370,330,294,330,0,494,0], bass: [82,82,110,82,123,82,110,98, 82,82,110,82,147,123,110,98], wave: 'sawtooth' },
+        // Cutscene: Warm Guitar/Harp Arpeggio
+        story: { tempo: 240, lead: [392,494,587,740,587,494, 330,440,523,659,523,440, 392,494,587,784,740,587], bass: [196,0,0,147,0,0, 165,0,0,131,0,0, 196,0,0,147,0,0], wave: 'triangle' }
+      };
+
+      const t = tracks[track] || tracks.title;
+      this.musicTimer = setInterval(() => {
+        if (this.muted || !this.ctx || this.ctx.state !== 'running') return;
+        const idx = this.step % t.lead.length;
+        const ln = t.lead[idx];
+        const bn = t.bass[idx % t.bass.length];
+        if (ln > 0) this.tone(ln, (t.tempo / 1000) * 0.85, t.wave, track === 'story' ? 0.045 : 0.04);
+        if (bn > 0) this.tone(bn, (t.tempo / 1000) * 0.9, 'triangle', 0.055);
+        if (track !== 'story' && idx % 2 === 1) this.noise(0.03, 2400, 0.018, 'highpass');
+        this.step++;
+      }, t.tempo);
+    }
+  };
+
+  /* =========================================================================
+   * 3. DUAL DYNAMIC TOUCHSCREEN JOYSTICKS + DESKTOP INPUT MANAGER
+   * ========================================================================= */
+  const Input = {
+    keys: {},
+    justPressed: {},
+    // Left dynamic joystick
+    leftTouch: null, // { id, ox, oy, x, y, dx, dy, jumpSent }
+    // Right dynamic joystick (swipes, holds, double-swipes)
+    rightTouch: null, // { id, ox, oy, x, y, dx, dy, dir, swipeFired }
+    lastRightSwipe: { dir: null, time: 0 },
+    gestureFeedback: null, // { text, timer }
+
+    // Synthesized frame actions
+    moveX: 0,
+    jumpPressed: false,
+    downHeld: false,
+    fartHeld: false,
+    parachuteHeld: false,
+    poundQueue: null, // 'butt' | 'corkscrew' | 'vault' | 'meteora'
+
+    init(canvas) {
+      window.addEventListener('keydown', (e) => {
+        if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code)) e.preventDefault();
+        Audio.init();
+        if (!this.keys[e.code]) this.justPressed[e.code] = true;
+        this.keys[e.code] = true;
+      });
+      window.addEventListener('keyup', (e) => { this.keys[e.code] = false; });
+
+      // Touch events for Dual Dynamic Virtual Joysticks
+      const onStart = (id, clientX, clientY) => {
+        Audio.init();
+        if (Scene.current !== 'play' || UI.isModalOpen()) return;
+        const rect = canvas.getBoundingClientRect();
+        const x = clientX - rect.left;
+        const y = clientY - rect.top;
+        // Ignore top HUD strip
+        if (y < 64) return;
+        if (x < rect.width * 0.5) {
+          if (!this.leftTouch) {
+            this.leftTouch = { id, ox: x, oy: y, x, y, dx: 0, dy: 0, jumpSent: false };
+          }
+        } else {
+          if (!this.rightTouch) {
+            this.rightTouch = { id, ox: x, oy: y, x, y, dx: 0, dy: 0, dir: null, swipeFired: false };
+          }
+        }
+      };
+
+      const onMove = (id, clientX, clientY) => {
+        const rect = canvas.getBoundingClientRect();
+        const x = clientX - rect.left;
+        const y = clientY - rect.top;
+
+        if (this.leftTouch && this.leftTouch.id === id) {
+          const lt = this.leftTouch;
+          lt.x = x; lt.y = y;
+          const dx = x - lt.ox;
+          const dy = y - lt.oy;
+          const maxR = 54;
+          const dist = Math.hypot(dx, dy) || 1;
+          lt.dx = dist > maxR ? (dx / dist) * maxR : dx;
+          lt.dy = dist > maxR ? (dy / dist) * maxR : dy;
+          if (lt.dy < -24 && !lt.jumpSent) {
+            this.jumpPressed = true;
+            lt.jumpSent = true;
+          } else if (lt.dy > -12) {
+            lt.jumpSent = false;
+          }
+        }
+
+        if (this.rightTouch && this.rightTouch.id === id) {
+          const rt = this.rightTouch;
+          rt.x = x; rt.y = y;
+          const dx = x - rt.ox;
+          const dy = y - rt.oy;
+          const maxR = 58;
+          const dist = Math.hypot(dx, dy) || 1;
+          rt.dx = dist > maxR ? (dx / dist) * maxR : dx;
+          rt.dy = dist > maxR ? (dy / dist) * maxR : dy;
+
+          if (dist > 26) {
+            const absX = Math.abs(dx), absY = Math.abs(dy);
+            const newDir = absY > absX ? (dy < 0 ? 'up' : 'down') : (dx < 0 ? 'left' : 'right');
+            if (!rt.swipeFired) {
+              rt.swipeFired = true;
+              rt.dir = newDir;
+              this.handleRightSwipe(newDir);
+            } else {
+              rt.dir = newDir;
+            }
+          } else {
+            rt.dir = null;
+          }
+        }
+      };
+
+      const onEnd = (id) => {
+        if (this.leftTouch && this.leftTouch.id === id) this.leftTouch = null;
+        if (this.rightTouch && this.rightTouch.id === id) this.rightTouch = null;
+      };
+
+      canvas.addEventListener('touchstart', (e) => {
+        if (Scene.current === 'cutscene') { e.preventDefault(); Cutscene.advance(); return; }
+        if (Scene.current === 'play' && !UI.isModalOpen()) e.preventDefault();
+        for (const t of e.changedTouches) onStart(t.identifier, t.clientX, t.clientY);
+      }, { passive: false });
+      canvas.addEventListener('touchmove', (e) => {
+        if (Scene.current === 'play' && !UI.isModalOpen()) e.preventDefault();
+        for (const t of e.changedTouches) onMove(t.identifier, t.clientX, t.clientY);
+      }, { passive: false });
+      canvas.addEventListener('touchend', (e) => {
+        for (const t of e.changedTouches) onEnd(t.identifier);
+      });
+      canvas.addEventListener('touchcancel', (e) => {
+        for (const t of e.changedTouches) onEnd(t.identifier);
+      });
+
+      // Mouse drag fallback so desktop users can also test the dynamic joysticks
+      let mouseDown = false;
+      canvas.addEventListener('mousedown', (e) => {
+        if (Scene.current === 'cutscene') { Cutscene.advance(); return; }
+        mouseDown = true;
+        onStart('mouse', e.clientX, e.clientY);
+      });
+      window.addEventListener('mousemove', (e) => {
+        if (mouseDown) onMove('mouse', e.clientX, e.clientY);
+      });
+      window.addEventListener('mouseup', () => {
+        if (mouseDown) { mouseDown = false; onEnd('mouse'); }
+      });
+    },
+
+    handleRightSwipe(dir) {
+      const now = performance.now();
+      const isDouble = this.lastRightSwipe.dir === dir && (now - this.lastRightSwipe.time) < 380;
+      this.lastRightSwipe = { dir, time: isDouble ? 0 : now };
+
+      if (dir === 'down' && isDouble) {
+        this.poundQueue = 'butt';
+        this.showFeedback('BUTT SLAM!');
+      } else if (dir === 'up' && isDouble) {
+        if (Save.hasMeteoraFlip()) {
+          this.poundQueue = 'meteora';
+          this.showFeedback('METEORA FLIP!');
+        } else {
+          this.showFeedback('Meteora Flip (Beat World 3 Boss)');
+        }
+      } else if (dir === 'left') {
+        if (Save.hasCorkscrew()) {
+          this.poundQueue = 'corkscrew';
+          this.showFeedback('CORKSCREW SLAM!');
+        } else {
+          this.showFeedback('Corkscrew Slam (Beat World 1 Boss)');
+        }
+      } else if (dir === 'right') {
+        if (Save.hasLuchaVault()) {
+          this.poundQueue = 'vault';
+          this.showFeedback('LUCHA VAULT!');
+        } else {
+          this.showFeedback('Lucha Vault (Beat World 2 Boss)');
+        }
+      }
+    },
+
+    showFeedback(text) {
+      this.gestureFeedback = { text, timer: 1.0 };
+    },
+
+    poll(dt) {
+      // Combine Left Joystick + Keyboard
+      let mx = 0;
+      if (this.keys['ArrowLeft'] || this.keys['KeyA']) mx -= 1;
+      if (this.keys['ArrowRight'] || this.keys['KeyD']) mx += 1;
+      if (this.leftTouch && Math.abs(this.leftTouch.dx) > 10) {
+        mx = Math.max(-1, Math.min(1, this.leftTouch.dx / 42));
+      }
+      this.moveX = mx;
+
+      if (this.justPressed['ArrowUp'] || this.justPressed['KeyW'] || this.justPressed['Space']) {
+        this.jumpPressed = true;
+      }
+      this.downHeld = !!(this.keys['ArrowDown'] || this.keys['KeyS'] || (this.leftTouch && this.leftTouch.dy > 24));
+
+      // Right Joystick Holds + Keyboard Aerials
+      this.fartHeld = !!(this.keys['KeyZ'] || this.keys['KeyJ'] || (this.rightTouch && this.rightTouch.dir === 'up'));
+      this.parachuteHeld = !!(this.keys['KeyX'] || this.keys['KeyK'] || (this.rightTouch && this.rightTouch.dir === 'down'));
+
+      // Desktop Ground Pound hotkeys
+      if (this.justPressed['KeyC'] || this.justPressed['KeyL']) {
+        this.poundQueue = 'butt'; this.showFeedback('BUTT SLAM!');
+      } else if (this.justPressed['KeyQ'] || this.justPressed['KeyU']) {
+        if (Save.hasCorkscrew()) { this.poundQueue = 'corkscrew'; this.showFeedback('CORKSCREW SLAM!'); }
+        else this.showFeedback('Beat World 1 Boss to unlock!');
+      } else if (this.justPressed['KeyE'] || this.justPressed['KeyI']) {
+        if (Save.hasLuchaVault()) { this.poundQueue = 'vault'; this.showFeedback('LUCHA VAULT!'); }
+        else this.showFeedback('Beat World 2 Boss to unlock!');
+      } else if (this.justPressed['KeyV'] || this.justPressed['KeyO']) {
+        if (Save.hasMeteoraFlip()) { this.poundQueue = 'meteora'; this.showFeedback('METEORA FLIP!'); }
+        else this.showFeedback('Beat World 3 Boss to unlock!');
+      }
+
+      if (this.justPressed['Escape'] || this.justPressed['KeyP']) {
+        if (Scene.current === 'play') {
+          if (UI.isModalOpen()) UI.closeAllModals();
+          else UI.openScrapbook('story', true);
+        }
+      }
+      if (Scene.current === 'cutscene' && (this.justPressed['Space'] || this.justPressed['Enter'] || this.justPressed['ArrowRight'])) {
+        Cutscene.advance();
+      }
+
+      if (this.gestureFeedback) {
+        this.gestureFeedback.timer -= dt;
+        if (this.gestureFeedback.timer <= 0) this.gestureFeedback = null;
+      }
+      this.justPressed = {};
+    },
+
+    drawJoysticks(ctx, w, h) {
+      // Left dynamic joystick (emerald shamrock ring)
+      if (this.leftTouch) {
+        const lt = this.leftTouch;
+        ctx.save();
+        ctx.globalAlpha = 0.72;
+        ctx.beginPath();
+        ctx.arc(lt.ox, lt.oy, 54, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(15, 122, 67, 0.22)';
+        ctx.fill();
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = '#4ade80';
+        ctx.stroke();
+
+        // Directional ticks
+        ctx.fillStyle = '#bbf7d0';
+        ctx.font = 'bold 12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('▲', lt.ox, lt.oy - 36);
+        ctx.fillText('▼', lt.ox, lt.oy + 45);
+        ctx.fillText('◀', lt.ox - 40, lt.oy + 4);
+        ctx.fillText('▶', lt.ox + 40, lt.oy + 4);
+
+        // Thumb nub
+        ctx.beginPath();
+        ctx.arc(lt.ox + lt.dx, lt.oy + lt.dy, 22, 0, Math.PI * 2);
+        ctx.fillStyle = '#22c55e';
+        ctx.fill();
+        ctx.lineWidth = 2.5;
+        ctx.strokeStyle = '#fef08a';
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // Right dynamic joystick (gold/amber lucha swipe ring)
+      if (this.rightTouch) {
+        const rt = this.rightTouch;
+        ctx.save();
+        ctx.globalAlpha = 0.78;
+        ctx.beginPath();
+        ctx.arc(rt.ox, rt.oy, 58, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(245, 158, 11, 0.20)';
+        ctx.fill();
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = '#fbbf24';
+        ctx.stroke();
+
+        ctx.font = 'bold 10px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = rt.dir === 'up' ? '#fef08a' : '#fed7aa';
+        ctx.fillText('FART / 2xFLIP', rt.ox, rt.oy - 40);
+        ctx.fillStyle = rt.dir === 'down' ? '#fef08a' : '#fed7aa';
+        ctx.fillText('GLIDE / 2xSLAM', rt.ox, rt.oy + 48);
+        ctx.fillStyle = rt.dir === 'left' ? '#fef08a' : (Save.hasCorkscrew() ? '#fed7aa' : '#94a3b8');
+        ctx.fillText('◀', rt.ox - 44, rt.oy + 4);
+        ctx.fillStyle = rt.dir === 'right' ? '#fef08a' : (Save.hasLuchaVault() ? '#fed7aa' : '#94a3b8');
+        ctx.fillText('▶', rt.ox + 44, rt.oy + 4);
+
+        ctx.beginPath();
+        ctx.arc(rt.ox + rt.dx, rt.oy + rt.dy, 22, 0, Math.PI * 2);
+        ctx.fillStyle = '#f59e0b';
+        ctx.fill();
+        ctx.lineWidth = 2.5;
+        ctx.strokeStyle = '#fff';
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // Floating Gesture Toast
+      if (this.gestureFeedback) {
+        ctx.save();
+        ctx.globalAlpha = Math.min(1, this.gestureFeedback.timer * 2);
+        ctx.font = '900 18px "Trebuchet MS", sans-serif';
+        ctx.textAlign = 'center';
+        const tx = w * 0.5, ty = 92;
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = '#111827';
+        ctx.strokeText(this.gestureFeedback.text, tx, ty);
+        ctx.fillStyle = '#fde047';
+        ctx.fillText(this.gestureFeedback.text, tx, ty);
+        ctx.restore();
+      }
+    }
+  };
+
+  /* =========================================================================
+   * 4. COMPLETE STORY SCRIPT, CLUES, SEA SHELLS & COMIC CUTSCENE ENGINE
+   * ========================================================================= */
+  const WORLDS = [
+    { id: 0, name: 'Ireland', subtitle: 'Emerald Cliffs & Dublin Pubs', bossName: 'Paddy "The Barrel" O\'Brawler', music: 'w1',
+      skyTop: '#1d4ed8', skyBot: '#93c5fd', hillFar: '#15803d', hillNear: '#166534', ground: '#3f6212', groundTop: '#22c55e', accent: '#4ade80' },
+    { id: 1, name: 'Japan', subtitle: 'Kyoto Pagodas & Neon Tokyo', bossName: 'Yokozuna Tatsumaki', music: 'w2',
+      skyTop: '#311042', skyBot: '#f472b6', hillFar: '#4c1d95', hillNear: '#3b0764', ground: '#334155', groundTop: '#f43f5e', accent: '#fb7185' },
+    { id: 2, name: 'USA (Las Vegas)', subtitle: 'Neon Strip & Desert Casinos', bossName: '"Elvis" El Relampago', music: 'w3',
+      skyTop: '#0f172a', skyBot: '#7c2d12', hillFar: '#451a03', hillNear: '#292524', ground: '#1e1b4b', groundTop: '#f59e0b', accent: '#fde047' },
+    { id: 3, name: 'Mexico', subtitle: 'Oaxaca Plazas & Grand Lucha Arena', bossName: 'El Abuelo Chingon', music: 'w4',
+      skyTop: '#b45309', skyBot: '#fde047', hillFar: '#9a3412', hillNear: '#7c2d12', ground: '#78350f', groundTop: '#ea580c', accent: '#fb923c' }
+  ];
+
+  const SHELL_NAMES = [
+    'Emerald Scallop', 'Cliffs of Moher Periwinkle', 'Dublin Bay Whelk', 'Shamrock Cowrie',
+    'Kyoto Pearl Conch', 'Shibuya Sakura Shell', 'Dojo Tide Nautilus', 'Typhoon Spiral Shell',
+    'Mojave Desert Fossil Shell', 'Fountain Opal Clam', 'High-Roller Star Conch', 'Neon Velvet Auger',
+    'Oaxaca Sun Shell', 'Aztec Jade Conch', 'Fiesta Coral Volute', 'Abuelo\'s Prized Sea Shell'
+  ];
+
+  // 16 Clues (one per level) including fake OG Luchador clues and the 3 Hidden Story Beats
+  const CLUES = [
+    { title: 'OG Tour Flyer #1', isBeat: false, text: 'A crumpled note pinned to a Dublin chimney: "Too slow, Shamrock Kid! Try chasing our shadow down the cliffs!"' },
+    { title: 'Hidden Story Beat 1: The Estranged Flyers', isBeat: true, beatNum: 1,
+      text: 'A torn sepia photo tucked behind the cliffs: two fearless high-flying Luchadores standing beside a stern older patriarch. On the back in faded ink: "They left my house to join a rival Luchador wrestling gang... I was too proud to stop them." Keister squints: "Whoa, heavy Lucha drama! Wonder who these folks are?"' },
+    { title: 'Fake Brewery Ticket', isBeat: false, text: 'An OG Luchador mask decal stuck to a keg: "We already sailed east! Catch us in the pub ring if your knees hold out!"' },
+    { title: 'Paddy\'s Confessional Slip', isBeat: false, text: 'Dropped by Paddy O\'Brawler: "The old boss paid me extra to test yer grip and footwork! Next stop on their tour is Japan!"' },
+
+    { title: 'OG Lantern Riddle', isBeat: false, text: 'Dangling from a pagoda beam: "Nice Corkscrew spin, rookie! Let\'s see if you can smash our barriers in Tokyo!"' },
+    { title: 'Hidden Story Beat 2: The Tragic Accident', isBeat: true, beatNum: 2,
+      text: 'A weathered bilingual newspaper clipping folded inside a neon sign: "TRAGEDY IN THE SKY RING — Beloved high-flying Luchador couple lost in mid-air stunt accident. Their orphaned baby boy was secretly placed with a loving Irish wrestling family across the ocean." Keister rubs his chin: "Man, what a sad legend... glad that kid found a good family!"' },
+    { title: 'Dojo Trap Memo', isBeat: false, text: 'A scribbled dojo invoice: "Extra bouncy drums and narrow monkey bars installed per the Old Master\'s request. Do not go easy on the green kid."' },
+    { title: 'Yokozuna\'s Boarding Pass', isBeat: false, text: 'Stamped for Las Vegas, Nevada! Scrawled in red marker: "He learned the Lucha Vault! Prepare the Strip!"' },
+
+    { title: 'Vegas Poker Chip Clue', isBeat: false, text: 'A gold-plated OG Luchador chip: "All-in, McFannigan! Bet your lucky shamrock briefs you can\'t cross the chandeliers!"' },
+    { title: 'Hidden Story Beat 3: The Secret Gauntlet', isBeat: true, beatNum: 3,
+      text: 'A folded training blueprint covered in bold red ink: "Phase 1: Endurance & Grip. Phase 2: Corkscrew Power. Phase 3: Vault & Aerial Mastery. Every fake clue, hired wrestler, and monkey-bar course was designed by an aging grandfather to train his heir to lead the Luchadores!" Keister laughs: "Yeesh, some mystery grandpa is running one intense boot camp!"' },
+    { title: 'Penthouse Trap Ledger', isBeat: false, text: 'A security log: "Boss says to leave overhead shields for the final test. Also, did anyone see where the boss dropped his sea shells?"' },
+    { title: 'Elvis\'s Blimp Ticket', isBeat: false, text: 'Torn ticket stub to Mexico City: "The OG Luchadores are waiting in the Grand Arena, baby! Thank ya very much!"' },
+
+    { title: 'Oaxaca Plaza Poster', isBeat: false, text: 'A vibrant street poster: "ONE NIGHT ONLY! The Mystery Leader of the OG Luchadores awaits the Green Challenger!"' },
+    { title: 'Aztec Rafter Blueprint', isBeat: false, text: 'A note taped to an ancient pillar: "Your stamina has grown mighty, muchacho. Use every slam you learned!"' },
+    { title: 'Arena Locker Note', isBeat: false, text: 'Written in familiar bold handwriting: "I kept your true mask safe and polished. Step into the Grand Arena and claim your destiny."' },
+    { title: 'El Abuelo\'s Final Seal', isBeat: false, text: 'A golden seal stamped with a shamrock and a Mexican eagle: "Blood and chosen family make the strongest Luchador of all — El Abuelo Chingon."' }
+  ];
+
+  const CUTSCENES = {
+    prologue: [
+      { art: 'baby', title: 'PROLOGUE · DUBLIN, IRELAND', speaker: 'Narrator',
+        text: 'Years ago, a baby boy was adopted by the loving McFannigan Irish wrestling clan. Growing up on cabbage, jigs, and suplexes, Keister McFannigan had no idea about his true origins...' },
+      { art: 'training', title: 'THE IRISH LUCHADOR', speaker: 'Narrator',
+        text: 'Keister always wore his prized heirloom wrestling mask! He fought with high-flying acrobatics, farted shamrock clouds to fly, glided with his oversized underwear parachute, slammed foes with his butt, and swung across ceiling monkey bars.' },
+      { art: 'theft', title: 'A MORNING HEIST!', speaker: 'OG Luchadores',
+        text: 'One morning, Keister woke up to find his prized mask STOLEN! Silhouettes of the legendary "OG Luchadores" leaped across the Dublin rooftops holding it high — "YOINK! Catch us if you can, kid!"' },
+      { art: 'shamrock_mask', title: 'THE BACKUP MASK', speaker: 'Keister McFannigan',
+        text: 'Forced to pull on a temporary green Shamrock Mask, Keister spotted a tour flyer dropped by the thieves: IRELAND -> JAPAN -> LAS VEGAS -> MEXICO!' },
+      { art: 'depart', title: 'WORLD TOUR CHASE!', speaker: 'Keister McFannigan',
+        text: '"Nobody steals a McFannigan\'s mask and gets away with it! Time to fire up the cabbage jets and chase those OG Luchadores around the globe!"' }
+    ],
+    world1_clear: [
+      { art: 'escape_japan', title: 'IRELAND CLEARED!', speaker: 'OG Luchadores',
+        text: 'Paddy O\'Brawler falls! On the horizon, the OG Luchadores escape aboard a steamer shouting: "Not bad, greenhorn — try catching us in JAPAN!" Keister unlocks the CORKSCREW GROUND POUND (Swipe Left) & Permanent Stamina Upgrade!' },
+      { art: 'beat1', title: 'TORN MEMENTO RECALLED', speaker: 'Keister McFannigan',
+        text: 'Keister peeks at the old photo from Ireland — two high-flying Luchadores who split from their grandfather over joining a rival gang. "Wild family feud... anyway, next stop: Kyoto!" (He still has no clue it\'s about him!)' }
+    ],
+    world2_clear: [
+      { art: 'escape_vegas', title: 'JAPAN CLEARED!', speaker: 'OG Luchadores',
+        text: 'Yokozuna Tatsumaki tips his hat as the OG Luchadores zip away leaving a glittering LAS VEGAS poker chip! Keister unlocks the LUCHA VAULT GROUND POUND (Swipe Right) & Permanent Stamina Upgrade!' },
+      { art: 'beat2', title: 'WEATHERED CLIPPING', speaker: 'Keister McFannigan',
+        text: 'On the flight to Vegas, Keister rereads the tragic news clipping about the fallen Luchador parents whose baby was adopted in Ireland. "Poor little guy... wait, why does that sound oddly cozy?"' }
+    ],
+    world3_clear: [
+      { art: 'escape_mexico', title: 'LAS VEGAS CLEARED!', speaker: 'OG Luchadores',
+        text: '"Elvis" El Relampago bows out as the OG Luchador blimp cruises south toward MEXICO! Keister unlocks the METEORA FLIP GROUND POUND (Double-Swipe Up) & Permanent Stamina Upgrade!' },
+      { art: 'beat3', title: 'THE MYSTERY BLUEPRINT', speaker: 'Keister McFannigan',
+        text: 'Keister studies the red-ink blueprint explaining how every trap and boss was built by a grandpa to train his heir! "Man, whoever that kid is must be ripped by now! Onward to Mexico!"' }
+    ],
+    ending: [
+      { art: 'abuelo_reveal', title: 'GRAND ARENA · MEXICO', speaker: 'El Abuelo Chingon',
+        text: 'The leader of the OG Luchadores drops his cape and reveals a glorious silver mustache — holding Keister\'s true mask! "Mijo... I am EL ABUELO CHINGON — your biological grandfather!"' },
+      { art: 'truth', title: 'THE TWIST REVEALED', speaker: 'El Abuelo Chingon',
+        text: '"Those torn mementos were your parents\' story. After they passed, I sent you to the kind McFannigans to keep you safe. Every trap, boss, and monkey-bar trial on this tour was my secret training so you\'d be strong enough to lead!"' },
+      { art: 'crowning', title: 'TRASERO DE HIERRO!', speaker: 'El Abuelo Chingon',
+        text: 'Abuelo returns Keister\'s true prized mask and raises his hand before the roaring crowd: "I officially crown you TRASERO DE HIERRO — IRON BUTT McFANNIGAN, new Leader of the Luchadores!"' },
+      { art: 'family_reunion', title: 'TWO FAMILIES UNITED', speaker: 'Ma & Pa McFannigan',
+        text: 'Keister\'s adoptive Irish wrestling family leaps into the ring with giant bear hugs! "We\'re so proud of ya, lad! And nice to finally meet ya, Grandpa Chingon!"' },
+      { art: 'shell_twist', title: 'THE SEA SHELL TWIST!', speaker: 'El Abuelo Chingon',
+        text: 'Donning a straw beach hat, Abuelo sighs: "Now I retire to my true passion: collecting SEA SHELLS! Ay... I accidentally dropped my 16 prized shells in hard-to-reach spots along the tour while setting up your trials!" STAGE SELECT REPLAY MODE UNLOCKED — find all 16 shells for Abuelo!' }
+    ],
+    golden_conch: [
+      { art: 'shells_returned', title: 'ALL 16 SEA SHELLS RETURNED!', speaker: 'El Abuelo Chingon',
+        text: 'Keister pours all 16 shimmering Sea Shells into Abuelo\'s beach bucket on the sunny Mexican coast! El Abuelo Chingon wipes a single badass tear: "My collection... complete! You truly are the greatest Luchador alive!"' },
+      { art: 'golden_mask', title: 'THE GOLDEN CONCH MASK!', speaker: 'System Reward',
+        text: 'Abuelo gifts Keister the legendary GOLDEN CONCH MASK! Grants INFINITE Fart-Jet flight fuel and GOLDEN SHOCKWAVE Butt Slams in every level! (Toggle anytime in the Scrapbook.)' }
+    ]
+  };
+
+  /* Illustrated Canvas Comic-Panel Cutscene Engine */
+  const Cutscene = {
+    activeKey: null,
+    panels: [],
+    index: 0,
+    onDone: null,
+    t: 0,
+
+    start(key, onDone) {
+      this.activeKey = key;
+      this.panels = CUTSCENES[key] || [];
+      this.index = 0;
+      this.onDone = onDone;
+      this.t = 0;
+      Scene.set('cutscene');
+      Audio.playMusic('story');
+      this.updateButtons();
+    },
+
+    updateButtons() {
+      const btn = document.getElementById('btn-cutscene-next');
+      btn.textContent = (this.index >= this.panels.length - 1) ? 'Continue ▶' : `Next Panel (${this.index + 1}/${this.panels.length}) ▶`;
+    },
+
+    advance() {
+      Audio.init();
+      Audio.tone(440, 0.06, 'triangle', 0.07, 560);
+      this.index++;
+      this.t = 0;
+      if (this.index >= this.panels.length) {
+        this.finish();
+      } else {
+        this.updateButtons();
+      }
+    },
+
+    finish() {
+      const cb = this.onDone;
+      this.onDone = null;
+      if (cb) cb();
+    },
+
+    draw(ctx, w, h, dt) {
+      this.t += dt;
+      const p = this.panels[this.index];
+      if (!p) return;
+
+      // Comic Book Background Desk
+      ctx.fillStyle = '#1b1410';
+      ctx.fillRect(0, 0, w, h);
+
+      // Halftone subtle dots
+      ctx.fillStyle = 'rgba(255,235,190,0.04)';
+      for (let gx = 16; gx < w; gx += 32) {
+        for (let gy = 16; gy < h; gy += 32) {
+          ctx.beginPath(); ctx.arc(gx, gy, 3, 0, Math.PI * 2); ctx.fill();
+        }
+      }
+
+      // Comic Page Frame
+      const pw = Math.min(820, w - 32);
+      const ph = Math.min(520, h - 120);
+      const px = (w - pw) * 0.5;
+      const py = Math.max(58, (h - ph) * 0.45);
+
+      // Paper drop shadow & border
+      ctx.fillStyle = '#09090b';
+      ctx.fillRect(px + 8, py + 8, pw, ph);
+      ctx.fillStyle = '#fdf6e3';
+      ctx.fillRect(px, py, pw, ph);
+      ctx.strokeStyle = '#111827';
+      ctx.lineWidth = 5;
+      ctx.strokeRect(px, py, pw, ph);
+
+      // Header Banner inside comic panel
+      ctx.fillStyle = '#f59e0b';
+      ctx.fillRect(px + 14, py + 12, pw - 28, 34);
+      ctx.strokeStyle = '#111827';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(px + 14, py + 12, pw - 28, 34);
+      ctx.fillStyle = '#111827';
+      ctx.font = '900 15px "Trebuchet MS", sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText(p.title, px + 26, py + 34);
+      ctx.textAlign = 'right';
+      ctx.fillText(`PANEL ${this.index + 1} / ${this.panels.length}`, px + pw - 26, py + 34);
+
+      // Illustration Viewport
+      const ix = px + 14, iy = py + 56, iw = pw - 28, ih = Math.max(150, ph - 190);
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(ix, iy, iw, ih);
+      ctx.clip();
+      this.drawPanelArt(ctx, p.art, ix, iy, iw, ih, this.t);
+      ctx.restore();
+      ctx.strokeStyle = '#111827';
+      ctx.lineWidth = 4;
+      ctx.strokeRect(ix, iy, iw, ih);
+
+      // Speech / Narration Caption Box at bottom
+      const bx = px + 14, by = iy + ih + 12, bw = pw - 28, bh = ph - (ih + 80);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(bx, by, bw, bh);
+      ctx.strokeStyle = '#111827';
+      ctx.lineWidth = 3.5;
+      ctx.strokeRect(bx, by, bw, bh);
+
+      // Speaker tag
+      ctx.fillStyle = '#0f7a43';
+      ctx.fillRect(bx + 12, by - 12, Math.min(230, ctx.measureText(p.speaker).width + 36), 24);
+      ctx.strokeStyle = '#111827';
+      ctx.lineWidth = 2.5;
+      ctx.strokeRect(bx + 12, by - 12, Math.min(230, ctx.measureText(p.speaker).width + 36), 24);
+      ctx.fillStyle = '#fef08a';
+      ctx.font = '900 13px "Trebuchet MS", sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText(p.speaker, bx + 22, by + 5);
+
+      // Wrapped dialogue text
+      ctx.fillStyle = '#111827';
+      ctx.font = `700 ${pw < 480 ? 13 : 15}px "Trebuchet MS", sans-serif`;
+      drawWrappedText(ctx, p.text, bx + 16, by + 32, bw - 32, pw < 480 ? 18 : 21);
+    },
+
+    drawPanelArt(ctx, art, x, y, w, h, t) {
+      const cx = x + w * 0.5, cy = y + h * 0.55;
+      const bob = Math.sin(t * 3.2) * 5;
+
+      // Sky / Backdrop per panel art
+      const grad = ctx.createLinearGradient(x, y, x, y + h);
+      if (art === 'theft' || art === 'beat2') {
+        grad.addColorStop(0, '#1e1b4b'); grad.addColorStop(1, '#4c1d95');
+      } else if (art === 'beat1' || art === 'beat3') {
+        grad.addColorStop(0, '#78350f'); grad.addColorStop(1, '#d97706');
+      } else if (art === 'abuelo_reveal' || art === 'crowning' || art === 'truth') {
+        grad.addColorStop(0, '#991b1b'); grad.addColorStop(1, '#f59e0b');
+      } else if (art === 'shell_twist' || art === 'shells_returned' || art === 'golden_mask') {
+        grad.addColorStop(0, '#0284c7'); grad.addColorStop(1, '#fde68a');
+      } else {
+        grad.addColorStop(0, '#16a34a'); grad.addColorStop(1, '#bbf7d0');
+      }
+      ctx.fillStyle = grad;
+      ctx.fillRect(x, y, w, h);
+
+      // Radial comic speed lines
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.strokeStyle = 'rgba(255,255,255,0.14)';
+      ctx.lineWidth = 2;
+      for (let i = 0; i < 18; i++) {
+        const a = (i / 18) * Math.PI * 2 + t * 0.15;
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(a) * 45, Math.sin(a) * 45);
+        ctx.lineTo(Math.cos(a) * w, Math.sin(a) * w);
+        ctx.stroke();
+      }
+      ctx.restore();
+
+      // Ground floor
+      ctx.fillStyle = (art === 'shell_twist' || art === 'shells_returned') ? '#fcd34d' : '#14532d';
+      ctx.fillRect(x, y + h * 0.78, w, h * 0.22);
+
+      // Specific illustrated scenes
+      if (art === 'baby') {
+        // Irish Cottage door & woven basket with baby Keister
+        ctx.fillStyle = '#92400e';
+        ctx.fillRect(cx - 110, y + h * 0.2, 220, h * 0.58);
+        ctx.fillStyle = '#15803d';
+        ctx.fillRect(cx - 42, y + h * 0.34, 84, h * 0.44);
+        // Loving Irish Wrestling Parents silhouettes
+        drawMiniCharacter(ctx, cx - 72, y + h * 0.65, '#f97316', '#16a34a', 1.1, 'Ma');
+        drawMiniCharacter(ctx, cx + 72, y + h * 0.65, '#ea580c', '#15803d', 1.15, 'Pa');
+        // Basket & Baby
+        ctx.fillStyle = '#b45309';
+        ctx.beginPath(); ctx.ellipse(cx, y + h * 0.76, 36, 20, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#111827'; ctx.lineWidth = 3; ctx.stroke();
+        drawMaskEmblem(ctx, cx, y + h * 0.68 + bob * 0.3, 18, 'true');
+      } else if (art === 'training') {
+        // Fart cloud + Keister flying with parachute & ceiling bar
+        ctx.strokeStyle = '#64748b'; ctx.lineWidth = 6;
+        ctx.beginPath(); ctx.moveTo(x + 40, y + 36); ctx.lineTo(x + w - 40, y + 36); ctx.stroke();
+        // Fart cloud
+        ctx.fillStyle = '#86efac';
+        ctx.beginPath(); ctx.arc(cx - 60, cy + 28, 22, 0, Math.PI * 2); ctx.arc(cx - 88, cy + 36, 16, 0, Math.PI * 2); ctx.fill();
+        // Parachute briefs
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath(); ctx.arc(cx + 60, cy - 34 + bob, 36, Math.PI, 0); ctx.fill();
+        ctx.strokeStyle = '#111827'; ctx.lineWidth = 3; ctx.stroke();
+        ctx.fillStyle = '#16a34a'; ctx.font = 'bold 18px sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText('☘', cx + 60, cy - 42 + bob);
+        drawKeisterPortrait(ctx, cx, cy + 8 + bob, 1.1, 'true');
+        drawComicBurst(ctx, cx - 105, cy - 28, 'PFFFT!');
+      } else if (art === 'theft') {
+        // Moonlight rooftops + OG Luchadores escaping with prized mask
+        ctx.fillStyle = '#fef08a';
+        ctx.beginPath(); ctx.arc(x + w * 0.82, y + 48, 30, 0, Math.PI * 2); ctx.fill();
+        // Empty mask pedestal on left
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillRect(x + 70, y + h * 0.56, 38, h * 0.25);
+        drawComicBurst(ctx, x + 95, y + h * 0.42, 'GONE?!');
+        // OG Luchador jumping right holding mask
+        drawMiniCharacter(ctx, cx + 80, cy - 10 + bob, '#111827', '#dc2626', 1.2, 'OG');
+        drawMaskEmblem(ctx, cx + 115, cy - 44 + bob, 16, 'true');
+        drawComicBurst(ctx, cx + 10, cy - 36, 'YOINK!');
+      } else if (art === 'shamrock_mask' || art === 'depart') {
+        drawKeisterPortrait(ctx, cx - 50, cy + 12 + bob * 0.5, 1.25, 'shamrock');
+        // World Tour Poster
+        ctx.fillStyle = '#fef3c7';
+        ctx.fillRect(cx + 40, cy - 55, 130, 108);
+        ctx.strokeStyle = '#111827'; ctx.lineWidth = 3;
+        ctx.strokeRect(cx + 40, cy - 55, 130, 108);
+        ctx.fillStyle = '#dc2626'; ctx.font = '900 12px sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText('OG TOUR MAP', cx + 105, cy - 35);
+        ctx.fillStyle = '#111827'; ctx.font = '700 11px sans-serif';
+        ctx.fillText('1. IRELAND', cx + 105, cy - 14);
+        ctx.fillText('2. JAPAN', cx + 105, cy + 4);
+        ctx.fillText('3. LAS VEGAS', cx + 105, cy + 22);
+        ctx.fillText('4. MEXICO', cx + 105, cy + 40);
+      } else if (art === 'escape_japan' || art === 'escape_vegas' || art === 'escape_mexico') {
+        drawKeisterPortrait(ctx, cx - 80, cy + 12, 1.15, 'shamrock');
+        const label = art === 'escape_japan' ? 'NEXT: JAPAN!' : art === 'escape_vegas' ? 'NEXT: VEGAS!' : 'NEXT: MEXICO!';
+        drawComicBurst(ctx, cx + 75, cy - 14 + bob, label);
+      } else if (art === 'beat1' || art === 'beat2' || art === 'beat3') {
+        // Sepia / Scrapbook Memento Card
+        ctx.fillStyle = '#fef3c7';
+        ctx.fillRect(cx - 125, cy - 64, 250, 128);
+        ctx.strokeStyle = '#78350f'; ctx.lineWidth = 4;
+        ctx.strokeRect(cx - 125, cy - 64, 250, 128);
+        ctx.fillStyle = '#78350f'; ctx.font = '900 14px sans-serif'; ctx.textAlign = 'center';
+        if (art === 'beat1') {
+          ctx.fillText('TORN FAMILY PHOTO', cx, cy - 38);
+          drawMaskEmblem(ctx, cx - 44, cy + 10, 20, 'true');
+          drawMaskEmblem(ctx, cx + 44, cy + 10, 20, 'gold');
+        } else if (art === 'beat2') {
+          ctx.fillText('LUCHA GAZETTE ARCHIVE', cx, cy - 38);
+          ctx.fillStyle = '#451a03'; ctx.font = '700 12px sans-serif';
+          ctx.fillText('HIGH-FLYING DUO FALLS', cx, cy - 8);
+          ctx.fillText('ORPHAN SENT TO IRELAND', cx, cy + 16);
+        } else {
+          ctx.fillText('SECRET TRAINING BLUEPRINT', cx, cy - 38);
+          ctx.strokeStyle = '#dc2626'; ctx.lineWidth = 2;
+          ctx.strokeRect(cx - 95, cy - 22, 190, 66);
+          ctx.fillStyle = '#dc2626'; ctx.font = '800 12px sans-serif';
+          ctx.fillText('1. GRIP  2. SPIN  3. VAULT  4. FLIP', cx, cy + 15);
+        }
+      } else if (art === 'abuelo_reveal' || art === 'truth') {
+        drawAbueloPortrait(ctx, cx + 65, cy + 8 + bob * 0.4, 1.25, false);
+        drawKeisterPortrait(ctx, cx - 80, cy + 14, 1.1, 'shamrock');
+        drawMaskEmblem(ctx, cx + 5, cy - 22 + bob, 20, 'true');
+        drawComicBurst(ctx, cx, cy - 60, 'EL ABUELO!');
+      } else if (art === 'crowning') {
+        drawKeisterPortrait(ctx, cx, cy + 8 + bob * 0.4, 1.35, 'true');
+        drawComicBurst(ctx, cx - 125, cy - 30, 'TRASERO DE HIERRO!');
+        drawComicBurst(ctx, cx + 125, cy - 20, 'IRON BUTT!');
+      } else if (art === 'family_reunion') {
+        drawMiniCharacter(ctx, cx - 115, cy + 20, '#f97316', '#16a34a', 1.05, 'Ma');
+        drawMiniCharacter(ctx, cx - 55, cy + 18, '#ea580c', '#15803d', 1.1, 'Pa');
+        drawKeisterPortrait(ctx, cx + 10, cy + 14 + bob * 0.3, 1.1, 'true');
+        drawAbueloPortrait(ctx, cx + 95, cy + 12, 1.05, false);
+      } else if (art === 'shell_twist') {
+        drawAbueloPortrait(ctx, cx - 55, cy + 10, 1.2, true);
+        // Scattered sparkling shells
+        for (let i = 0; i < 6; i++) {
+          drawShellIcon(ctx, cx + 45 + (i % 3) * 42, cy - 16 + Math.floor(i / 3) * 42 + Math.sin(t * 4 + i) * 4, 14);
+        }
+        drawComicBurst(ctx, cx + 85, cy - 55, '16 SHELLS!');
+      } else if (art === 'shells_returned') {
+        drawAbueloPortrait(ctx, cx + 70, cy + 10, 1.2, true);
+        drawKeisterPortrait(ctx, cx - 80, cy + 12, 1.1, 'true');
+        // Bucket full of shells
+        ctx.fillStyle = '#0284c7';
+        ctx.fillRect(cx - 22, cy + 20, 44, 38);
+        ctx.strokeStyle = '#111827'; ctx.lineWidth = 3; ctx.strokeRect(cx - 22, cy + 20, 44, 38);
+        drawShellIcon(ctx, cx - 8, cy + 14, 12);
+        drawShellIcon(ctx, cx + 10, cy + 12, 12);
+        drawShellIcon(ctx, cx, cy + 4, 13);
+      } else if (art === 'golden_mask') {
+        // Gleaming Golden Conch Mask
+        ctx.save();
+        ctx.translate(cx, cy - 4 + bob);
+        ctx.fillStyle = 'rgba(253, 224, 71, 0.35)';
+        ctx.beginPath(); ctx.arc(0, 0, 74 + Math.sin(t * 5) * 6, 0, Math.PI * 2); ctx.fill();
+        drawMaskEmblem(ctx, 0, 0, 44, 'gold');
+        ctx.restore();
+        drawComicBurst(ctx, cx - 130, cy - 28, 'INFINITE GAS!');
+        drawComicBurst(ctx, cx + 130, cy - 18, 'GOLD SHOCKWAVE!');
+      }
+    }
+  };
+
+  function drawWrappedText(ctx, text, x, y, maxW, lineH) {
+    const words = text.split(' ');
+    let line = '';
+    let curY = y;
+    for (let i = 0; i < words.length; i++) {
+      const test = line ? line + ' ' + words[i] : words[i];
+      if (ctx.measureText(test).width > maxW && line) {
+        ctx.fillText(line, x, curY);
+        line = words[i];
+        curY += lineH;
+      } else {
+        line = test;
+      }
+    }
+    if (line) ctx.fillText(line, x, curY);
+  }
+
+  function drawComicBurst(ctx, x, y, label) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.fillStyle = '#fef08a';
+    ctx.strokeStyle = '#111827';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    const spikes = 10;
+    for (let i = 0; i < spikes * 2; i++) {
+      const r = i % 2 === 0 ? 48 : 34;
+      const a = (i / (spikes * 2)) * Math.PI * 2;
+      const px = Math.cos(a) * r * 1.25;
+      const py = Math.sin(a) * r * 0.62;
+      if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#dc2626';
+    ctx.font = '900 12px "Trebuchet MS", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(label, 0, 4);
+    ctx.restore();
+  }
+
+  function drawMaskEmblem(ctx, x, y, r, style) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.fillStyle = style === 'gold' ? '#f59e0b' : (style === 'true' ? '#0f7a43' : '#16a34a');
+    ctx.strokeStyle = '#111827';
+    ctx.lineWidth = Math.max(2, r * 0.12);
+    ctx.beginPath(); ctx.ellipse(0, 0, r, r * 1.12, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    // Forehead crest
+    ctx.fillStyle = style === 'gold' ? '#fef08a' : (style === 'true' ? '#dc2626' : '#fde047');
+    ctx.beginPath();
+    ctx.moveTo(0, -r * 0.9); ctx.lineTo(r * 0.42, -r * 0.2); ctx.lineTo(-r * 0.42, -r * 0.2); ctx.closePath();
+    ctx.fill();
+    // Eyes
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.ellipse(-r * 0.36, -r * 0.05, r * 0.26, r * 0.16, -0.2, 0, Math.PI * 2);
+    ctx.ellipse(r * 0.36, -r * 0.05, r * 0.26, r * 0.16, 0.2, 0, Math.PI * 2);
+    ctx.fill(); ctx.stroke();
+    // Mouth cutout
+    ctx.fillStyle = '#fed7aa';
+    ctx.beginPath(); ctx.ellipse(0, r * 0.48, r * 0.34, r * 0.22, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+
+  function drawMiniCharacter(ctx, x, y, hairColor, outfitColor, s, tag) {
+    ctx.save();
+    ctx.translate(x, y); ctx.scale(s, s);
+    ctx.fillStyle = outfitColor; ctx.strokeStyle = '#111827'; ctx.lineWidth = 2.5;
+    ctx.fillRect(-16, -24, 32, 34); ctx.strokeRect(-16, -24, 32, 34);
+    ctx.fillStyle = '#fed7aa';
+    ctx.beginPath(); ctx.arc(0, -38, 16, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = hairColor;
+    ctx.beginPath(); ctx.arc(0, -44, 15, Math.PI, 0); ctx.fill();
+    ctx.fillStyle = '#111827'; ctx.font = '800 10px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText(tag, 0, 22);
+    ctx.restore();
+  }
+
+  function drawKeisterPortrait(ctx, x, y, s, maskStyle) {
+    ctx.save();
+    ctx.translate(x, y); ctx.scale(s, s);
+    // Torso
+    ctx.fillStyle = '#fed7aa'; ctx.strokeStyle = '#111827'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.roundRect(-22, -22, 44, 36, 10); ctx.fill(); ctx.stroke();
+    // Oversized shamrock briefs
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath(); ctx.roundRect(-24, 10, 48, 22, 6); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#16a34a'; ctx.fillRect(-24, 8, 48, 6);
+    ctx.fillStyle = '#f59e0b'; ctx.beginPath(); ctx.arc(0, 11, 6, 0, Math.PI * 2); ctx.fill();
+    // Mask head
+    drawMaskEmblem(ctx, 0, -42, 22, maskStyle);
+    ctx.restore();
+  }
+
+  function drawAbueloPortrait(ctx, x, y, s, strawHat) {
+    ctx.save();
+    ctx.translate(x, y); ctx.scale(s, s);
+    // Lucha cape
+    ctx.fillStyle = '#dc2626'; ctx.strokeStyle = '#111827'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(-26, -18); ctx.lineTo(-42, 32); ctx.lineTo(42, 32); ctx.lineTo(26, -18); ctx.closePath(); ctx.fill(); ctx.stroke();
+    // Chest
+    ctx.fillStyle = '#d97706';
+    ctx.beginPath(); ctx.roundRect(-22, -20, 44, 42, 10); ctx.fill(); ctx.stroke();
+    // Head & glorious silver mustache
+    ctx.fillStyle = '#e7b589';
+    ctx.beginPath(); ctx.arc(0, -40, 21, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    // Silver mustache
+    ctx.fillStyle = '#f8fafc';
+    ctx.beginPath();
+    ctx.moveTo(0, -34); ctx.quadraticCurveTo(-18, -42, -26, -28); ctx.quadraticCurveTo(-12, -24, 0, -29);
+    ctx.quadraticCurveTo(12, -24, 26, -28); ctx.quadraticCurveTo(18, -42, 0, -34);
+    ctx.fill(); ctx.stroke();
+    // Eyes
+    ctx.fillStyle = '#111827';
+    ctx.fillRect(-9, -46, 5, 5); ctx.fillRect(4, -46, 5, 5);
+    if (strawHat) {
+      ctx.fillStyle = '#fde047';
+      ctx.beginPath(); ctx.ellipse(0, -56, 36, 9, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.arc(0, -58, 18, Math.PI, 0); ctx.fill(); ctx.stroke();
+    } else {
+      // Half gold lucha headband
+      ctx.fillStyle = '#f59e0b';
+      ctx.fillRect(-20, -56, 40, 8); ctx.strokeRect(-20, -56, 40, 8);
+    }
+    ctx.restore();
+  }
+
+  function drawShellIcon(ctx, x, y, r) {
+    ctx.save();
+    ctx.translate(x, y);
+    const g = ctx.createRadialGradient(-r * 0.25, -r * 0.25, 2, 0, 0, r);
+    g.addColorStop(0, '#fff7ed');
+    g.addColorStop(0.55, '#fda4af');
+    g.addColorStop(1, '#f59e0b');
+    ctx.fillStyle = g;
+    ctx.strokeStyle = '#111827';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(-r, r * 0.3);
+    ctx.quadraticCurveTo(-r * 0.6, -r, r * 0.2, -r * 0.9);
+    ctx.quadraticCurveTo(r * 1.1, -r * 0.5, r * 0.85, r * 0.55);
+    ctx.quadraticCurveTo(0, r * 1.0, -r, r * 0.3);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    // Spiral ribs
+    ctx.beginPath();
+    ctx.arc(r * 0.1, 0, r * 0.45, 0, Math.PI * 1.4);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  /* =========================================================================
+   * 5. 16 HAND-CRAFTED LEVELS ACROSS 4 COUNTRY WORLDS
+   * ========================================================================= */
+  const LEVEL_NAMES = [
+    // World 1: Ireland
+    'Dublin Rooftops', 'Cliffs of Moher Winds', 'Shamrock Brewery Gauntlet', 'Boss: Paddy O\'Brawler',
+    // World 2: Japan
+    'Bamboo Pagoda Climb', 'Shibuya Neon Skyway', 'Sumo Dojo Obstacle Run', 'Boss: Yokozuna Tatsumaki',
+    // World 3: USA (Las Vegas)
+    'Casino Chandelier Swing', 'Bellagio Fountain Updrafts', 'High-Roller Penthouse Traps', 'Boss: "Elvis" El Relampago',
+    // World 4: Mexico
+    'Papel Picado Rooftops', 'Temple of the Golden Mask', 'Road to the Grand Arena', 'Final Boss: El Abuelo Chingon'
+  ];
+
+  const STAGE_END_TAUNTS = [
+    'The OG Luchadores vaulted off the pub roof leaving a mocking shamrock sticker!',
+    'High over the Cliffs of Moher, a shadowy Luchador tossed a torn photo into the wind...',
+    'Barrels smashed! Paddy O\'Brawler awaits inside the Shamrock Ring ahead!',
+    'Paddy tips his cap! You mastered the CORKSCREW GROUND POUND (Swipe Left) & gained Permanent Stamina!',
+    'Up the bamboo lanterns! The OG Luchadores vanished toward Shibuya!',
+    'Neon lights flicker over Tokyo — a weathered newspaper clipping drifted down!',
+    'Dojo drums echo! Yokozuna Tatsumaki stomps into the ring ahead!',
+    'Yokozuna bows in respect! You mastered the LUCHA VAULT GROUND POUND (Swipe Right) & gained Permanent Stamina!',
+    'Chips scatter across the Vegas floor as the OG Luchadores zip toward the fountains!',
+    'Above the Bellagio jets, a red-ink training blueprint fluttered into your hands!',
+    'Penthouse alarms buzz! "Elvis" El Relampago struts onto the main stage!',
+    'Elvis leaves the building! You mastered the METEORA FLIP GROUND POUND (Double-Swipe Up) & gained Permanent Stamina!',
+    'Fiesta banners wave across Oaxaca — the OG Luchadores are right ahead!',
+    'Ancient temple echoes confirm it: every single move you learned was leading here!',
+    'The Grand Arena gates swing wide! The Leader of the OG Luchadores awaits inside!',
+    'TRASERO DE HIERRO! You defeated El Abuelo Chingon and reclaimed your true mask!'
+  ];
+
+  function buildLevel(idx) {
+    const worldId = Math.floor(idx / 4);
+    const stageInWorld = idx % 4; // 0,1,2 normal, 3 boss
+    const isBoss = stageInWorld === 3;
+    const baseY = 480;
+
+    const lvl = {
+      idx, worldId, stageInWorld, isBoss,
+      name: LEVEL_NAMES[idx],
+      world: WORLDS[worldId],
+      width: isBoss ? 1120 : (2700 + stageInWorld * 380 + worldId * 180),
+      height: 680,
+      spawn: { x: 90, y: baseY - 60 },
+      solids: [],      // { x, y, w, h, kind: 'ground'|'platform'|'crackedFloor'|'sideBarrier'|'overheadShield' }
+      oneWays: [],     // { x, y, w }
+      monkeyBars: [],  // { x, y, w }
+      vents: [],       // { x, y, w, h }
+      enemies: [],     // { type, x, y, minX, maxX, hp }
+      pickups: [],     // { kind: 'cabbage'|'heart', x, y }
+      clue: null,      // { x, y }
+      shell: null,     // { x, y }
+      goal: null,      // { x, y }
+      boss: null
+    };
+
+    const enemyPool = [
+      ['brawler', 'leaper', 'brawler'],
+      ['ninja', 'sumo', 'lantern'],
+      ['cardshark', 'bouncer', 'drone'],
+      ['trainee', 'pinata', 'eagle']
+    ][worldId];
+
+    if (isBoss) {
+      // Boss Arena: Wide wrestling ring with side turnbuckle platforms, overhead monkey bars, & wind vents
+      lvl.solids.push({ x: 0, y: baseY, w: lvl.width, h: 220, kind: 'ground' });
+      lvl.solids.push({ x: -40, y: 0, w: 40, h: 700, kind: 'ground' });
+      lvl.solids.push({ x: lvl.width, y: 0, w: 40, h: 700, kind: 'ground' });
+
+      // Turnbuckle elevated platforms
+      lvl.oneWays.push({ x: 70, y: baseY - 125, w: 170 });
+      lvl.oneWays.push({ x: lvl.width - 240, y: baseY - 125, w: 170 });
+      lvl.oneWays.push({ x: lvl.width * 0.5 - 105, y: baseY - 220, w: 210 });
+
+      // Overhead monkey bars across arena rafters
+      lvl.monkeyBars.push({ x: 260, y: baseY - 310, w: 600 });
+
+      // Side wind vents to parachute high
+      lvl.vents.push({ x: 18, y: baseY - 330, w: 54, h: 330 });
+      lvl.vents.push({ x: lvl.width - 72, y: baseY - 330, w: 54, h: 330 });
+
+      // Boss Arena Clue & Hidden High-Rafter Sea Shell
+      lvl.clue = { x: 145, y: baseY - 165 };
+      if (worldId === 0) {
+        // Behind a cracked floor/rafter alcove high up
+        lvl.shell = { x: lvl.width * 0.5, y: baseY - 365 };
+      } else if (worldId === 1) {
+        lvl.solids.push({ x: lvl.width - 140, y: baseY - 380, w: 28, h: 120, kind: 'sideBarrier' });
+        lvl.oneWays.push({ x: lvl.width - 140, y: baseY - 260, w: 130 });
+        lvl.shell = { x: lvl.width - 65, y: baseY - 310 };
+      } else if (worldId === 2) {
+        lvl.solids.push({ x: 480, y: baseY - 340, w: 160, h: 24, kind: 'overheadShield' });
+        lvl.shell = { x: 560, y: baseY - 390 };
+      } else {
+        // Final Boss Arena: Sea Shell #16 perched high in the Golden Arena rafters!
+        lvl.solids.push({ x: 470, y: baseY - 340, w: 180, h: 24, kind: 'overheadShield' });
+        lvl.shell = { x: 560, y: baseY - 395 };
+      }
+
+      lvl.pickups.push({ kind: 'cabbage', x: 150, y: baseY - 36 });
+      lvl.pickups.push({ kind: 'cabbage', x: lvl.width - 150, y: baseY - 36 });
+
+      lvl.boss = {
+        worldId,
+        name: WORLDS[worldId].bossName,
+        x: lvl.width - 230,
+        y: baseY - 90,
+        w: 68,
+        h: 88,
+        vx: 0, vy: 0,
+        dir: -1,
+        hp: 14 + worldId * 6,
+        maxHp: 14 + worldId * 6,
+        state: 'idle',
+        timer: 1.4,
+        invuln: 0,
+        projectiles: []
+      };
+      return lvl;
+    }
+
+    // Standard Adventure Level Construction (4 distinct handcrafted sections per stage!)
+    // Starting safe zone
+    lvl.solids.push({ x: 0, y: baseY, w: 420, h: 220, kind: 'ground' });
+    lvl.solids.push({ x: -40, y: -100, w: 40, h: 800, kind: 'ground' });
+    lvl.oneWays.push({ x: 210, y: baseY - 105, w: 150 });
+    lvl.pickups.push({ kind: 'cabbage', x: 280, y: baseY - 140 });
+
+    let cursor = 420;
+    const sections = 5 + stageInWorld; // 5..7 varied platforming set-pieces
+
+    for (let s = 0; s < sections; s++) {
+      const pattern = (idx * 3 + s) % 6;
+
+      if (pattern === 0) {
+        // Monkey-bar chasm over pit with enemy on far ledge
+        const gap = 250 + worldId * 30;
+        lvl.monkeyBars.push({ x: cursor - 10, y: baseY - 175, w: gap + 20 });
+        cursor += gap;
+        lvl.solids.push({ x: cursor, y: baseY, w: 340, h: 220, kind: 'ground' });
+        lvl.enemies.push({ type: enemyPool[0], x: cursor + 150, y: baseY - 46, minX: cursor + 24, maxX: cursor + 300, hp: 2 + worldId });
+        if (s === 1) lvl.pickups.push({ kind: 'cabbage', x: cursor + 60, y: baseY - 36 });
+        cursor += 340;
+      } else if (pattern === 1) {
+        // Upward Wind Vent + Underwear Parachute high glide over spikes/chasm
+        lvl.solids.push({ x: cursor, y: baseY, w: 150, h: 220, kind: 'ground' });
+        lvl.vents.push({ x: cursor + 45, y: baseY - 320, w: 72, h: 320 });
+        lvl.oneWays.push({ x: cursor + 190, y: baseY - 220, w: 190 });
+        lvl.enemies.push({ type: enemyPool[2], x: cursor + 275, y: baseY - 266, minX: cursor + 200, maxX: cursor + 360, hp: 2 + worldId });
+        cursor += 370;
+        lvl.solids.push({ x: cursor, y: baseY - 40, w: 280, h: 260, kind: 'ground' });
+        lvl.pickups.push({ kind: 'cabbage', x: cursor + 110, y: baseY - 80 });
+        cursor += 280;
+      } else if (pattern === 2) {
+        // Cracked Floor Secret Cellar (smash with Butt Slam!)
+        lvl.solids.push({ x: cursor, y: baseY, w: 120, h: 220, kind: 'ground' });
+        lvl.solids.push({ x: cursor + 120, y: baseY, w: 110, h: 26, kind: 'crackedFloor' });
+        // Lower cellar floor
+        lvl.solids.push({ x: cursor + 100, y: baseY + 115, w: 160, h: 110, kind: 'ground' });
+        lvl.pickups.push({ kind: 'heart', x: cursor + 175, y: baseY + 80 });
+        lvl.vents.push({ x: cursor + 210, y: baseY - 40, w: 46, h: 155 });
+        lvl.solids.push({ x: cursor + 230, y: baseY, w: 230, h: 220, kind: 'ground' });
+        lvl.enemies.push({ type: enemyPool[1], x: cursor + 330, y: baseY - 46, minX: cursor + 245, maxX: cursor + 440, hp: 3 + worldId });
+        cursor += 460;
+      } else if (pattern === 3) {
+        // Multi-tier Luchador scaffolding + Overhead Monkey Bars
+        lvl.solids.push({ x: cursor, y: baseY, w: 420, h: 220, kind: 'ground' });
+        lvl.oneWays.push({ x: cursor + 40, y: baseY - 110, w: 140 });
+        lvl.oneWays.push({ x: cursor + 220, y: baseY - 190, w: 150 });
+        lvl.monkeyBars.push({ x: cursor + 110, y: baseY - 280, w: 230 });
+        lvl.enemies.push({ type: enemyPool[0], x: cursor + 180, y: baseY - 46, minX: cursor + 25, maxX: cursor + 390, hp: 2 + worldId });
+        lvl.enemies.push({ type: enemyPool[2], x: cursor + 290, y: baseY - 236, minX: cursor + 225, maxX: cursor + 355, hp: 2 + worldId });
+        cursor += 420;
+      } else if (pattern === 4) {
+        // Side Barrier Alcove + Fart-Jet Jump Gap
+        lvl.solids.push({ x: cursor, y: baseY, w: 360, h: 220, kind: 'ground' });
+        lvl.solids.push({ x: cursor + 160, y: baseY - 135, w: 170, h: 24, kind: 'platform' });
+        lvl.solids.push({ x: cursor + 160, y: baseY - 111, w: 28, h: 111, kind: 'sideBarrier' });
+        lvl.pickups.push({ kind: 'cabbage', x: cursor + 240, y: baseY - 38 });
+        lvl.enemies.push({ type: enemyPool[1], x: cursor + 240, y: baseY - 180, minX: cursor + 170, maxX: cursor + 315, hp: 3 + worldId });
+        cursor += 360;
+        // Gap with floating stepping platform
+        lvl.oneWays.push({ x: cursor + 55, y: baseY - 60, w: 110 });
+        cursor += 220;
+      } else {
+        // Overhead Shield Sky Loft + High Wind Gust
+        lvl.solids.push({ x: cursor, y: baseY, w: 380, h: 220, kind: 'ground' });
+        lvl.oneWays.push({ x: cursor + 80, y: baseY - 115, w: 200 });
+        lvl.solids.push({ x: cursor + 100, y: baseY - 230, w: 160, h: 24, kind: 'overheadShield' });
+        lvl.enemies.push({ type: enemyPool[0], x: cursor + 260, y: baseY - 46, minX: cursor + 30, maxX: cursor + 350, hp: 3 + worldId });
+        lvl.pickups.push({ kind: 'cabbage', x: cursor + 180, y: baseY - 150 });
+        cursor += 380;
+      }
+
+      // Place Stage Clue around mid-level
+      if (s === 2) {
+        lvl.clue = { x: cursor - 120, y: baseY - 155 };
+        lvl.oneWays.push({ x: cursor - 170, y: baseY - 115, w: 105 });
+      }
+    }
+
+    // Place Hidden Sea Shell in a clever hard-to-reach location!
+    // Mix of high monkey-bar secret, wind-vent cloud loft, behind sideBarrier (Corkscrew), and above overheadShield (Meteora Flip)
+    const shellStyle = idx % 4;
+    if (shellStyle === 0) {
+      // High Wind Vent Sky Perch near start/mid
+      const sx = 680;
+      lvl.vents.push({ x: sx - 32, y: baseY - 360, w: 64, h: 350 });
+      lvl.oneWays.push({ x: sx + 45, y: baseY - 320, w: 110 });
+      lvl.shell = { x: sx + 100, y: baseY - 360 };
+    } else if (shellStyle === 1) {
+      // Behind a Cracked Side Barrier Vault near mid-late level (rewards Corkscrew Slam!)
+      const sx = cursor - 320;
+      lvl.solids.push({ x: sx, y: baseY - 120, w: 150, h: 22, kind: 'platform' });
+      lvl.solids.push({ x: sx, y: baseY - 98, w: 28, h: 98, kind: 'sideBarrier' });
+      lvl.solids.push({ x: sx + 122, y: baseY - 98, w: 28, h: 98, kind: 'platform' });
+      lvl.shell = { x: sx + 75, y: baseY - 42 };
+    } else if (shellStyle === 2) {
+      // Above an Overhead Shield Loft (rewards Meteora Flip or high flight!)
+      const sx = cursor - 480;
+      lvl.oneWays.push({ x: sx - 20, y: baseY - 160, w: 180 });
+      lvl.solids.push({ x: sx, y: baseY - 260, w: 140, h: 24, kind: 'overheadShield' });
+      lvl.shell = { x: sx + 70, y: baseY - 315 };
+    } else {
+      // High Monkey-Bar Stamina Challenge right before Goal!
+      const sx = cursor - 220;
+      lvl.monkeyBars.push({ x: sx - 160, y: baseY - 290, w: 260 });
+      lvl.shell = { x: sx + 115, y: baseY - 315 };
+    }
+
+    // Final Goal Platform & Lucha Championship Arch
+    lvl.solids.push({ x: cursor, y: baseY, w: 420, h: 220, kind: 'ground' });
+    lvl.goal = { x: cursor + 220, y: baseY };
+    lvl.width = cursor + 420;
+    lvl.solids.push({ x: lvl.width, y: -100, w: 40, h: 800, kind: 'ground' });
+
+    if (!lvl.clue) lvl.clue = { x: cursor + 90, y: baseY - 60 };
+    return lvl;
+  }
+
+  /* =========================================================================
+   * 6. VIBRANT 2.5D CARTOON VECTOR RENDERING ENGINE
+   * ========================================================================= */
+  const Renderer = {
+    drawParallax(ctx, world, camX, vw, vh, t) {
+      // Rich sky gradient
+      const sky = ctx.createLinearGradient(0, 0, 0, vh);
+      sky.addColorStop(0, world.skyTop);
+      sky.addColorStop(1, world.skyBot);
+      ctx.fillStyle = sky;
+      ctx.fillRect(0, 0, vw, vh);
+
+      // Sun / Moon
+      ctx.save();
+      ctx.fillStyle = world.id === 2 ? '#fde047' : (world.id === 1 ? '#fbcfe8' : '#fef08a');
+      ctx.globalAlpha = 0.88;
+      ctx.beginPath();
+      ctx.arc(vw * 0.78 - camX * 0.02, vh * 0.2, 46, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+
+      // Fluffy cartoon clouds
+      ctx.fillStyle = 'rgba(255,255,255,0.35)';
+      for (let i = 0; i < 7; i++) {
+        const cx = ((i * 290 - camX * 0.08 + t * 8) % (vw + 260) + (vw + 260)) % (vw + 260) - 130;
+        const cy = 65 + (i % 3) * 44;
+        ctx.beginPath();
+        ctx.arc(cx, cy, 28, 0, Math.PI * 2);
+        ctx.arc(cx + 26, cy - 8, 34, 0, Math.PI * 2);
+        ctx.arc(cx + 56, cy, 25, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Far Parallax Landmarks per Country
+      ctx.fillStyle = world.hillFar;
+      const farShift = -(camX * 0.16) % 360;
+      for (let x = farShift - 360; x < vw + 360; x += 360) {
+        if (world.id === 0) {
+          // Ireland: Rolling Emerald Hills + Castle Silhouette
+          ctx.beginPath(); ctx.ellipse(x + 180, vh * 0.85, 220, 150, 0, Math.PI, 0); ctx.fill();
+          ctx.fillRect(x + 145, vh * 0.56, 70, 90);
+          ctx.fillRect(x + 135, vh * 0.52, 22, 100);
+          ctx.fillRect(x + 203, vh * 0.52, 22, 100);
+        } else if (world.id === 1) {
+          // Japan: Mount Fuji + Pagoda Tiers
+          ctx.beginPath(); ctx.moveTo(x, vh); ctx.lineTo(x + 180, vh * 0.36); ctx.lineTo(x + 360, vh); ctx.closePath(); ctx.fill();
+          ctx.fillStyle = 'rgba(255,255,255,0.55)';
+          ctx.beginPath(); ctx.moveTo(x + 145, vh * 0.48); ctx.lineTo(x + 180, vh * 0.36); ctx.lineTo(x + 215, vh * 0.48); ctx.closePath(); ctx.fill();
+          ctx.fillStyle = world.hillFar;
+        } else if (world.id === 2) {
+          // Las Vegas: Desert Pyramid + Casino Towers
+          ctx.beginPath(); ctx.moveTo(x + 20, vh); ctx.lineTo(x + 120, vh * 0.45); ctx.lineTo(x + 220, vh); ctx.closePath(); ctx.fill();
+          ctx.fillRect(x + 240, vh * 0.42, 85, vh * 0.58);
+          ctx.fillStyle = 'rgba(253, 224, 71, 0.35)';
+          for (let wy = vh * 0.46; wy < vh * 0.82; wy += 20) ctx.fillRect(x + 252, wy, 60, 8);
+          ctx.fillStyle = world.hillFar;
+        } else {
+          // Mexico: Stepped Aztec Pyramid + Cactus Silhouettes
+          ctx.fillRect(x + 60, vh * 0.68, 220, vh * 0.32);
+          ctx.fillRect(x + 95, vh * 0.57, 150, vh * 0.14);
+          ctx.fillRect(x + 130, vh * 0.48, 80, vh * 0.12);
+        }
+      }
+
+      // Near Parallax Layer
+      ctx.fillStyle = world.hillNear;
+      const nearShift = -(camX * 0.34) % 280;
+      for (let x = nearShift - 280; x < vw + 280; x += 280) {
+        if (world.id === 0) {
+          ctx.beginPath(); ctx.ellipse(x + 140, vh, 175, 110, 0, Math.PI, 0); ctx.fill();
+        } else if (world.id === 1) {
+          // Pagoda roofs
+          ctx.fillRect(x + 90, vh * 0.68, 70, vh * 0.32);
+          ctx.beginPath(); ctx.moveTo(x + 65, vh * 0.72); ctx.lineTo(x + 125, vh * 0.62); ctx.lineTo(x + 185, vh * 0.72); ctx.closePath(); ctx.fill();
+        } else if (world.id === 2) {
+          // Vegas neon arches
+          ctx.fillRect(x + 40, vh * 0.74, 190, vh * 0.26);
+          ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 3;
+          ctx.strokeRect(x + 56, vh * 0.77, 158, 22);
+        } else {
+          // Fiesta Papel Picado banners
+          ctx.fillRect(x + 10, vh * 0.76, 260, vh * 0.24);
+          ctx.fillStyle = '#f59e0b';
+          ctx.fillRect(x + 50, vh * 0.8, 30, 36);
+          ctx.fillStyle = '#ec4899';
+          ctx.fillRect(x + 115, vh * 0.8, 30, 36);
+          ctx.fillStyle = '#22c55e';
+          ctx.fillRect(x + 180, vh * 0.8, 30, 36);
+          ctx.fillStyle = world.hillNear;
+        }
+      }
+    },
+
+    drawLevel(ctx, lvl, t) {
+      const w = lvl.world;
+
+      // Upward Wind Vents (for Underwear Parachute gliding!)
+      for (const v of lvl.vents) {
+        const g = ctx.createLinearGradient(v.x, v.y + v.h, v.x, v.y);
+        g.addColorStop(0, 'rgba(186, 230, 253, 0.45)');
+        g.addColorStop(1, 'rgba(186, 230, 253, 0.05)');
+        ctx.fillStyle = g;
+        ctx.fillRect(v.x, v.y, v.w, v.h);
+        // Animated rising wind streaks
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.68)';
+        ctx.lineWidth = 2.5;
+        for (let i = 0; i < 4; i++) {
+          const sx = v.x + (i + 0.5) * (v.w / 4);
+          const sy = v.y + v.h - ((t * 210 + i * 75) % v.h);
+          ctx.beginPath();
+          ctx.moveTo(sx, sy);
+          ctx.lineTo(sx + Math.sin(t * 6 + i) * 5, Math.max(v.y, sy - 34));
+          ctx.stroke();
+        }
+        // Vent grate base
+        ctx.fillStyle = '#475569';
+        ctx.strokeStyle = '#111827'; ctx.lineWidth = 2.5;
+        ctx.fillRect(v.x - 4, v.y + v.h - 10, v.w + 8, 12);
+        ctx.strokeRect(v.x - 4, v.y + v.h - 10, v.w + 8, 12);
+      }
+
+      // Overhead Ceiling Monkey Bars
+      for (const mb of lvl.monkeyBars) {
+        // Support ceiling chains
+        ctx.strokeStyle = '#334155'; ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(mb.x + 10, mb.y); ctx.lineTo(mb.x + 10, mb.y - 260);
+        ctx.moveTo(mb.x + mb.w - 10, mb.y); ctx.lineTo(mb.x + mb.w - 10, mb.y - 260);
+        ctx.stroke();
+        // Horizontal steel ladder bar
+        ctx.fillStyle = '#94a3b8';
+        ctx.strokeStyle = '#111827'; ctx.lineWidth = 2.5;
+        ctx.fillRect(mb.x, mb.y - 6, mb.w, 12);
+        ctx.strokeRect(mb.x, mb.y - 6, mb.w, 12);
+        // Grip rungs
+        ctx.fillStyle = '#fde047';
+        for (let rx = mb.x + 12; rx < mb.x + mb.w - 8; rx += 26) {
+          ctx.fillRect(rx, mb.y - 4, 8, 8);
+        }
+      }
+
+      // One-Way Platforms (jump up / press down to drop through)
+      for (const ow of lvl.oneWays) {
+        ctx.fillStyle = '#b45309';
+        ctx.strokeStyle = '#111827'; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.roundRect(ow.x, ow.y, ow.w, 16, 5); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#fde047';
+        ctx.fillRect(ow.x + 4, ow.y + 2, ow.w - 8, 4);
+      }
+
+      // Solid & Destructible Blocks
+      for (const s of lvl.solids) {
+        if (s.broken) continue;
+        if (s.kind === 'ground' || s.kind === 'platform') {
+          // 2.5D beveled terrain block
+          ctx.fillStyle = w.ground;
+          ctx.fillRect(s.x, s.y, s.w, s.h);
+          // Top grass/trim lip
+          ctx.fillStyle = w.groundTop;
+          ctx.fillRect(s.x, s.y, s.w, Math.min(18, s.h));
+          // Subtle brick/stone bevel pattern
+          ctx.strokeStyle = 'rgba(0,0,0,0.22)'; ctx.lineWidth = 2;
+          for (let bx = s.x + 48; bx < s.x + s.w; bx += 48) {
+            ctx.beginPath(); ctx.moveTo(bx, s.y + 18); ctx.lineTo(bx, s.y + Math.min(80, s.h)); ctx.stroke();
+          }
+          ctx.strokeStyle = '#111827'; ctx.lineWidth = 3;
+          ctx.strokeRect(s.x, s.y, s.w, s.h);
+        } else if (s.kind === 'crackedFloor') {
+          ctx.fillStyle = '#92400e';
+          ctx.fillRect(s.x, s.y, s.w, s.h);
+          ctx.strokeStyle = '#111827'; ctx.lineWidth = 3;
+          ctx.strokeRect(s.x, s.y, s.w, s.h);
+          // Cracks + Butt-Slam down chevron cue
+          ctx.strokeStyle = '#fef08a'; ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(s.x + s.w * 0.3, s.y + 2); ctx.lineTo(s.x + s.w * 0.5, s.y + 16); ctx.lineTo(s.x + s.w * 0.7, s.y + 6);
+          ctx.stroke();
+        } else if (s.kind === 'sideBarrier') {
+          ctx.fillStyle = '#b91c1c';
+          ctx.fillRect(s.x, s.y, s.w, s.h);
+          ctx.strokeStyle = '#111827'; ctx.lineWidth = 3;
+          ctx.strokeRect(s.x, s.y, s.w, s.h);
+          ctx.strokeStyle = '#fde047'; ctx.lineWidth = 2.5;
+          ctx.beginPath();
+          ctx.moveTo(s.x + 4, s.y + 16); ctx.lineTo(s.x + s.w - 4, s.y + s.h * 0.5); ctx.lineTo(s.x + 6, s.y + s.h - 16);
+          ctx.stroke();
+        } else if (s.kind === 'overheadShield') {
+          ctx.fillStyle = '#6d28d9';
+          ctx.fillRect(s.x, s.y, s.w, s.h);
+          ctx.strokeStyle = '#111827'; ctx.lineWidth = 3;
+          ctx.strokeRect(s.x, s.y, s.w, s.h);
+          ctx.fillStyle = '#e9d5ff';
+          ctx.font = '900 11px sans-serif'; ctx.textAlign = 'center';
+          ctx.fillText('▲ SHIELD ▲', s.x + s.w * 0.5, s.y + 16);
+        }
+      }
+
+      // Pickups (Cabbage / Hearts)
+      for (const pk of lvl.pickups) {
+        if (pk.taken) continue;
+        const py = pk.y + Math.sin(t * 4.5 + pk.x) * 4;
+        if (pk.kind === 'cabbage') {
+          ctx.fillStyle = '#4ade80'; ctx.strokeStyle = '#111827'; ctx.lineWidth = 2.5;
+          ctx.beginPath(); ctx.arc(pk.x, py, 13, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+          ctx.strokeStyle = '#15803d'; ctx.beginPath(); ctx.arc(pk.x, py, 7, 0.4, 5.2); ctx.stroke();
+        } else {
+          ctx.fillStyle = '#ef4444'; ctx.strokeStyle = '#111827'; ctx.lineWidth = 2.5;
+          ctx.beginPath();
+          ctx.arc(pk.x - 5, py - 2, 7, 0, Math.PI * 2);
+          ctx.arc(pk.x + 5, py - 2, 7, 0, Math.PI * 2);
+          ctx.moveTo(pk.x - 11, py + 1); ctx.lineTo(pk.x, py + 14); ctx.lineTo(pk.x + 11, py + 1);
+          ctx.fill(); ctx.stroke();
+        }
+      }
+
+      // Collectible Clue / Memento
+      if (lvl.clue && !lvl.clue.taken) {
+        const cy = lvl.clue.y + Math.sin(t * 4) * 6;
+        const isBeat = CLUES[lvl.idx].isBeat;
+        ctx.save();
+        ctx.translate(lvl.clue.x, cy);
+        ctx.fillStyle = isBeat ? 'rgba(251, 191, 36, 0.35)' : 'rgba(134, 239, 172, 0.32)';
+        ctx.beginPath(); ctx.arc(0, 0, 24 + Math.sin(t * 6) * 3, 0, Math.PI * 2); ctx.fill();
+        ctx.rotate(Math.sin(t * 2.5) * 0.14);
+        ctx.fillStyle = isBeat ? '#fef08a' : '#fffbeb';
+        ctx.strokeStyle = '#111827'; ctx.lineWidth = 2.5;
+        ctx.fillRect(-13, -15, 26, 30); ctx.strokeRect(-13, -15, 26, 30);
+        ctx.fillStyle = isBeat ? '#dc2626' : '#0f7a43';
+        ctx.font = '900 14px sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText(isBeat ? '★' : '?', 0, 5);
+        ctx.restore();
+      }
+
+      // Hidden Sea Shell
+      if (lvl.shell && !lvl.shell.taken) {
+        const sy = lvl.shell.y + Math.sin(t * 3.8 + 1) * 6;
+        ctx.save();
+        ctx.fillStyle = 'rgba(253, 224, 71, 0.32)';
+        ctx.beginPath(); ctx.arc(lvl.shell.x, sy, 23 + Math.sin(t * 5) * 4, 0, Math.PI * 2); ctx.fill();
+        drawShellIcon(ctx, lvl.shell.x, sy, 15);
+        ctx.restore();
+      }
+
+      // Stage Goal Lucha Ring Arch
+      if (lvl.goal) {
+        const gx = lvl.goal.x, gy = lvl.goal.y;
+        ctx.fillStyle = '#f59e0b'; ctx.strokeStyle = '#111827'; ctx.lineWidth = 3;
+        ctx.fillRect(gx - 42, gy - 118, 14, 118); ctx.strokeRect(gx - 42, gy - 118, 14, 118);
+        ctx.fillRect(gx + 28, gy - 118, 14, 118); ctx.strokeRect(gx + 28, gy - 118, 14, 118);
+        // Arch banner
+        ctx.fillStyle = '#0f7a43';
+        ctx.beginPath(); ctx.roundRect(gx - 52, gy - 142, 104, 32, 8); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#fef08a';
+        ctx.font = '900 13px "Trebuchet MS", sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText('GOAL RING', gx, gy - 121);
+        // Fluttering bell
+        ctx.fillStyle = '#fde047';
+        ctx.beginPath(); ctx.arc(gx, gy - 95 + Math.sin(t * 5) * 4, 12, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      }
+    },
+
+    drawPlayer(ctx, p, t) {
+      ctx.save();
+      ctx.translate(p.x + p.w * 0.5, p.y + p.h);
+
+      // Blink if invulnerable
+      if (p.invuln > 0 && Math.floor(p.invuln * 18) % 2 === 0) ctx.globalAlpha = 0.45;
+
+      // Golden Conch Aura
+      if (Save.isGoldenConch()) {
+        ctx.fillStyle = 'rgba(253, 224, 71, 0.25)';
+        ctx.beginPath(); ctx.arc(0, -p.h * 0.5, 34 + Math.sin(t * 10) * 4, 0, Math.PI * 2); ctx.fill();
+      }
+
+      // Underwear Parachute Canopy!
+      if (p.parachuting) {
+        ctx.save();
+        ctx.translate(0, -p.h - 22);
+        // Parachute cords
+        ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(-14, 24); ctx.lineTo(-34, -4);
+        ctx.moveTo(14, 24); ctx.lineTo(34, -4);
+        ctx.stroke();
+        // Oversized white shamrock briefs billowing wide!
+        ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#111827'; ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(0, -2, 38, Math.PI, 0);
+        ctx.lineTo(38, 6);
+        ctx.quadraticCurveTo(16, -2, 0, 8);
+        ctx.quadraticCurveTo(-16, -2, -38, 6);
+        ctx.closePath();
+        ctx.fill(); ctx.stroke();
+        // Green waistband & shamrocks
+        ctx.fillStyle = '#16a34a';
+        ctx.fillRect(-36, -6, 72, 6);
+        ctx.fillStyle = '#16a34a'; ctx.font = 'bold 16px sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText('☘  ☘', 0, -14);
+        ctx.restore();
+      }
+
+      // Squash & stretch + Ground Pound rotation
+      ctx.scale(p.scaleX * p.dir, p.scaleY);
+      if (p.poundType) {
+        ctx.translate(0, -p.h * 0.5);
+        if (p.poundType === 'corkscrew') ctx.rotate(t * 24);
+        else if (p.poundType === 'vault') ctx.rotate(t * 18);
+        else if (p.poundType === 'meteora') ctx.rotate(-t * 20);
+        else if (p.poundType === 'butt') ctx.rotate(0.18);
+        ctx.translate(0, p.h * 0.5);
+      }
+
+      const runSwing = (p.onGround && Math.abs(p.vx) > 20) ? Math.sin(t * 18) * 7 : 0;
+      const maskStyle = Save.isGoldenConch() ? 'gold' : (Save.data.storyCompleted ? 'true' : 'shamrock');
+
+      // Boots / Legs
+      ctx.fillStyle = '#15803d'; ctx.strokeStyle = '#111827'; ctx.lineWidth = 2.5;
+      ctx.fillRect(-13 + runSwing * 0.5, -15, 11, 15); ctx.strokeRect(-13 + runSwing * 0.5, -15, 11, 15);
+      ctx.fillRect(2 - runSwing * 0.5, -15, 11, 15); ctx.strokeRect(2 - runSwing * 0.5, -15, 11, 15);
+
+      // Oversized Shamrock Briefs (when not deployed overhead, worn proudly!)
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath(); ctx.roundRect(-16, -27, 32, 16, 5); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#16a34a';
+      ctx.fillRect(-16, -29, 32, 5);
+      ctx.fillStyle = '#f59e0b'; // Championship Belt Buckle
+      ctx.beginPath(); ctx.arc(0, -26, 4.5, 0, Math.PI * 2); ctx.fill();
+
+      // Stocky Luchador Torso
+      ctx.fillStyle = '#fed7aa';
+      ctx.beginPath(); ctx.roundRect(-15, -45, 30, 19, 6); ctx.fill(); ctx.stroke();
+
+      // Arms (raised when hanging on monkey bars!)
+      ctx.fillStyle = '#fed7aa';
+      if (p.hanging) {
+        const swingA = Math.sin(t * 12) * 3;
+        ctx.fillRect(-18, -66 + swingA, 7, 25); ctx.strokeRect(-18, -66 + swingA, 7, 25);
+        ctx.fillRect(11, -66 - swingA, 7, 25); ctx.strokeRect(11, -66 - swingA, 7, 25);
+      } else {
+        ctx.fillRect(-20, -43 - runSwing * 0.3, 7, 17); ctx.strokeRect(-20, -43 - runSwing * 0.3, 7, 17);
+        ctx.fillRect(13, -43 + runSwing * 0.3, 7, 17); ctx.strokeRect(13, -43 + runSwing * 0.3, 7, 17);
+      }
+
+      // Luchador Mask Head
+      drawMaskEmblem(ctx, 0, -56, 15, maskStyle);
+
+      ctx.restore();
+
+      // Circular Ceiling Monkey-Bar Stamina Ring around Keister!
+      if (p.hanging || p.stamina < p.maxStamina) {
+        const ratio = Math.max(0, p.stamina / p.maxStamina);
+        const cx = p.x + p.w * 0.5;
+        const cy = p.y + p.h * 0.45;
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(cx, cy, 34, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(15, 23, 42, 0.55)';
+        ctx.lineWidth = 6;
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(cx, cy, 34, -Math.PI * 0.5, -Math.PI * 0.5 + Math.PI * 2 * ratio);
+        ctx.strokeStyle = ratio > 0.45 ? '#4ade80' : (ratio > 0.22 ? '#facc15' : '#ef4444');
+        ctx.lineWidth = 5;
+        ctx.lineCap = 'round';
+        ctx.stroke();
+        ctx.restore();
+      }
+    },
+
+    drawEnemy(ctx, e, t) {
+      if (e.dead) return;
+      ctx.save();
+      ctx.translate(e.x + e.w * 0.5, e.y + e.h);
+      if (e.hitFlash > 0) ctx.filter = 'brightness(1.9)';
+      const bob = Math.sin(t * 10 + e.x) * 3;
+      const colors = {
+        brawler: ['#15803d', '#f97316'], leaper: ['#16a34a', '#fde047'],
+        ninja: ['#1e293b', '#f43f5e'], sumo: ['#b91c1c', '#fcd34d'], lantern: ['#db2777', '#fef08a'],
+        cardshark: ['#1e1b4b', '#ef4444'], bouncer: ['#0f172a', '#fbbf24'], drone: ['#3b82f6', '#fde047'],
+        trainee: ['#ea580c', '#22c55e'], pinata: ['#ec4899', '#facc15'], eagle: ['#92400e', '#f59e0b']
+      };
+      const [c1, c2] = colors[e.type] || ['#dc2626', '#fde047'];
+
+      // Body
+      ctx.fillStyle = c1; ctx.strokeStyle = '#111827'; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.roundRect(-e.w * 0.48, -e.h + bob, e.w * 0.96, e.h - 4, 9); ctx.fill(); ctx.stroke();
+      // Accent headband / belt
+      ctx.fillStyle = c2;
+      ctx.fillRect(-e.w * 0.46, -e.h * 0.72 + bob, e.w * 0.92, 9);
+      // Angry Eyes
+      ctx.fillStyle = '#fff';
+      const faceDir = e.vx >= 0 ? 1 : -1;
+      ctx.fillRect(faceDir * 4 - 9, -e.h * 0.84 + bob, 7, 6);
+      ctx.fillRect(faceDir * 4 + 2, -e.h * 0.84 + bob, 7, 6);
+      ctx.fillStyle = '#111827';
+      ctx.fillRect(faceDir * 6 - 7, -e.h * 0.82 + bob, 3, 4);
+      ctx.fillRect(faceDir * 6 + 4, -e.h * 0.82 + bob, 3, 4);
+
+      // Tiny HP bar if damaged
+      if (e.hp < e.maxHp) {
+        ctx.fillStyle = '#111827'; ctx.fillRect(-16, -e.h - 10, 32, 5);
+        ctx.fillStyle = '#ef4444'; ctx.fillRect(-15, -e.h - 9, 30 * (e.hp / e.maxHp), 3);
+      }
+      ctx.restore();
+    },
+
+    drawBoss(ctx, b, t) {
+      if (!b || b.hp <= 0) return;
+      ctx.save();
+      ctx.translate(b.x + b.w * 0.5, b.y + b.h);
+      if (b.invuln > 0 && Math.floor(b.invuln * 20) % 2 === 0) ctx.globalAlpha = 0.55;
+      const bounce = Math.sin(t * 7) * 3;
+      const themes = [
+        { body: '#15803d', trim: '#f59e0b', badge: '☘' }, // Paddy
+        { body: '#be123c', trim: '#fde047', badge: '風' }, // Yokozuna
+        { body: '#f8fafc', trim: '#eab308', badge: '⚡' }, // Elvis
+        { body: '#991b1b', trim: '#fbbf24', badge: '★' }  // El Abuelo Chingon
+      ];
+      const th = themes[b.worldId] || themes[0];
+
+      // Cape for Boss 3 & 4
+      if (b.worldId >= 2) {
+        ctx.fillStyle = b.worldId === 3 ? '#dc2626' : '#3b82f6';
+        ctx.strokeStyle = '#111827'; ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(-26, -68); ctx.lineTo(-48 * b.dir, -4); ctx.lineTo(20 * b.dir, -4); ctx.lineTo(26, -68);
+        ctx.closePath(); ctx.fill(); ctx.stroke();
+      }
+
+      // Massive Wrestler Body
+      ctx.fillStyle = th.body; ctx.strokeStyle = '#111827'; ctx.lineWidth = 3.5;
+      ctx.beginPath(); ctx.roundRect(-34, -74 + bounce, 68, 70, 14); ctx.fill(); ctx.stroke();
+      // Championship Sash / Belt
+      ctx.fillStyle = th.trim;
+      ctx.fillRect(-34, -36 + bounce, 68, 12); ctx.strokeRect(-34, -36 + bounce, 68, 12);
+
+      // Head / Mask
+      if (b.worldId === 3) {
+        drawAbueloPortrait(ctx, 0, -40 + bounce, 0.9, false);
+      } else {
+        ctx.fillStyle = th.trim;
+        ctx.beginPath(); ctx.arc(0, -82 + bounce, 24, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#111827';
+        ctx.fillRect(-12, -88 + bounce, 8, 6); ctx.fillRect(4, -88 + bounce, 8, 6);
+        ctx.fillStyle = th.body; ctx.font = '900 16px sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText(th.badge, 0, -48 + bounce);
+      }
+
+      // Dizzy stars when stunned after attack!
+      if (b.state === 'dizzy') {
+        ctx.fillStyle = '#fde047'; ctx.font = '900 16px sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText('★ ★ ★', Math.sin(t * 10) * 8, -110);
+      }
+      ctx.restore();
+
+      // Boss Projectiles (Barrels, Typhoons, Dice, Golden Shockwaves)
+      for (const pr of b.projectiles) {
+        ctx.save();
+        ctx.translate(pr.x, pr.y);
+        ctx.rotate(t * 10 * (pr.vx >= 0 ? 1 : -1));
+        ctx.strokeStyle = '#111827'; ctx.lineWidth = 2.5;
+        if (pr.kind === 'barrel') {
+          ctx.fillStyle = '#78350f';
+          ctx.beginPath(); ctx.arc(0, 0, pr.r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+          ctx.fillStyle = '#f59e0b'; ctx.fillRect(-pr.r, -4, pr.r * 2, 8);
+        } else if (pr.kind === 'dice') {
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(-pr.r, -pr.r, pr.r * 2, pr.r * 2); ctx.strokeRect(-pr.r, -pr.r, pr.r * 2, pr.r * 2);
+          ctx.fillStyle = '#dc2626'; ctx.beginPath(); ctx.arc(0, 0, 4, 0, Math.PI * 2); ctx.fill();
+        } else {
+          ctx.fillStyle = pr.kind === 'typhoon' ? '#38bdf8' : '#fbbf24';
+          ctx.beginPath(); ctx.arc(0, 0, pr.r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        }
+        ctx.restore();
+      }
+    },
+
+    drawTitleScene(ctx, w, h, t) {
+      this.drawParallax(ctx, WORLDS[0], t * 32, w, h, t);
+      // Festive Celtic-Mariachi bunting across top
+      ctx.strokeStyle = '#111827'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(0, 26); ctx.quadraticCurveTo(w * 0.5, 68, w, 26); ctx.stroke();
+      const flagCols = ['#16a34a', '#ffffff', '#f59e0b', '#dc2626'];
+      for (let i = 1; i < 16; i++) {
+        const fx = (w / 16) * i;
+        const fy = 26 + Math.sin((i / 16) * Math.PI) * 22;
+        ctx.fillStyle = flagCols[i % 4];
+        ctx.beginPath(); ctx.moveTo(fx - 12, fy); ctx.lineTo(fx + 12, fy); ctx.lineTo(fx, fy + 24); ctx.closePath(); ctx.fill();
+      }
+      // Heroic Keister soaring in upper center
+      const kx = w * 0.5, ky = Math.min(h * 0.34, 240) + Math.sin(t * 2.8) * 10;
+      // Fart shamrock puff trail
+      for (let i = 0; i < 4; i++) {
+        ctx.fillStyle = i % 2 === 0 ? 'rgba(134, 239, 172, 0.75)' : 'rgba(253, 224, 71, 0.7)';
+        ctx.beginPath();
+        ctx.arc(kx - 44 - i * 24, ky + 34 + Math.sin(t * 6 + i) * 6, 18 - i * 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      const maskStyle = Save.isGoldenConch() ? 'gold' : (Save.data.storyCompleted ? 'true' : 'shamrock');
+      drawKeisterPortrait(ctx, kx, ky, 1.55, maskStyle);
+    }
+  };
+
+  /* =========================================================================
+   * 7. CORE GAMEPLAY PHYSICS, COMBAT, BOSS AI & PARTICLES
+   * ========================================================================= */
+  const Game = {
+    levelIdx: 0,
+    lvl: null,
+    player: null,
+    particles: [],
+    shockwaves: [], // { x, y, vx, life, golden, r }
+    camX: 0,
+    shake: 0,
+    hitstop: 0,
+    time: 0,
+    hintTimer: 7,
+    staminaTickTimer: 0,
+    stageCleared: false,
+
+    startLevel(idx) {
+      Audio.init();
+      this.levelIdx = idx;
+      this.lvl = buildLevel(idx);
+      // Mark already collected clues/shells as dim or collected? Keep collectible in level for fun replay, mark HUD if already owned!
+      this.particles = [];
+      this.shockwaves = [];
+      this.camX = 0;
+      this.shake = 0;
+      this.hitstop = 0;
+      this.stageCleared = false;
+      this.hintTimer = idx === 0 ? 8.5 : 3.5;
+
+      const maxStam = Save.maxStamina();
+      this.player = {
+        x: this.lvl.spawn.x,
+        y: this.lvl.spawn.y,
+        w: 34,
+        h: 58,
+        vx: 0,
+        vy: 0,
+        dir: 1,
+        hp: 5,
+        maxHp: 5,
+        fuel: 100,
+        stamina: maxStam,
+        maxStamina: maxStam,
+        onGround: false,
+        coyote: 0,
+        hanging: false,
+        barCooldown: 0,
+        dropThrough: 0,
+        parachuting: false,
+        farting: false,
+        poundType: null, // null | 'butt' | 'corkscrew' | 'vault' | 'meteora'
+        poundTimer: 0,
+        poundPhase: 0,
+        invuln: 0,
+        scaleX: 1,
+        scaleY: 1
+      };
+
+      // Initialize enemies
+      this.lvl.enemies = this.lvl.enemies.map(e => ({
+        ...e,
+        w: e.type === 'sumo' || e.type === 'bouncer' || e.type === 'pinata' ? 44 : 34,
+        h: e.type === 'sumo' || e.type === 'bouncer' || e.type === 'pinata' ? 50 : 42,
+        vx: (e.type === 'ninja' || e.type === 'cardshark' ? 120 : 75),
+        vy: 0,
+        maxHp: e.hp,
+        dead: false,
+        hitFlash: 0,
+        hopTimer: 1.1,
+        baseY: e.y
+      }));
+
+      Scene.set('play');
+      Audio.playMusic(this.lvl.isBoss ? 'boss' : this.lvl.world.music);
+      UI.refreshHUD();
+    },
+
+    spawnBurst(x, y, color, count = 10, speed = 220) {
+      for (let i = 0; i < count; i++) {
+        const a = Math.random() * Math.PI * 2;
+        const sp = speed * (0.35 + Math.random() * 0.75);
+        this.particles.push({
+          x, y,
+          vx: Math.cos(a) * sp,
+          vy: Math.sin(a) * sp - 45,
+          r: 3 + Math.random() * 6,
+          color,
+          life: 0.35 + Math.random() * 0.35,
+          maxLife: 0.7
+        });
+      }
+    },
+
+    spawnShockwave(x, y, dir, golden, dmg) {
+      this.shockwaves.push({
+        x, y, vx: dir * (golden ? 440 : 310),
+        r: golden ? 26 : 18,
+        life: golden ? 0.65 : 0.34,
+        golden, dmg
+      });
+    },
+
+    update(dt) {
+      if (UI.isModalOpen() || this.stageCleared) {
+        Audio.stopFartLoop();
+        return;
+      }
+      this.time += dt;
+      if (this.hitstop > 0) { this.hitstop -= dt; return; }
+      if (this.shake > 0) this.shake = Math.max(0, this.shake - dt * 28);
+
+      const hintEl = document.getElementById('touch-hint');
+      if (this.hintTimer > 0) {
+        this.hintTimer -= dt;
+        hintEl.classList.add('visible');
+      } else {
+        hintEl.classList.remove('visible');
+      }
+
+      const p = this.player;
+      const lvl = this.lvl;
+
+      // Recover squash-and-stretch smoothly
+      p.scaleX += (1 - p.scaleX) * Math.min(1, dt * 14);
+      p.scaleY += (1 - p.scaleY) * Math.min(1, dt * 14);
+      if (p.invuln > 0) p.invuln -= dt;
+      if (p.barCooldown > 0) p.barCooldown -= dt;
+      if (p.dropThrough > 0) p.dropThrough -= dt;
+
+      // 1. Check Ground Pound Trigger from Right Joystick / Hotkeys
+      if (Input.poundQueue && !p.poundType) {
+        const req = Input.poundQueue;
+        Input.poundQueue = null;
+        p.hanging = false;
+        p.parachuting = false;
+        p.farting = false;
+        p.poundType = req;
+        p.poundTimer = 0;
+        p.poundPhase = 0;
+        if (req === 'butt') {
+          p.vy = -180; p.vx *= 0.25;
+          p.scaleX = 1.25; p.scaleY = 0.8;
+        } else if (req === 'corkscrew') {
+          p.vx = p.dir * 560; p.vy = 110;
+          Audio.sfxCorkscrew();
+        } else if (req === 'vault') {
+          p.vx = p.dir * 320; p.vy = -420;
+          Audio.sfxLuchaVault();
+        } else if (req === 'meteora') {
+          p.vy = -660; p.vx = Input.moveX * 160;
+          Audio.sfxMeteoraFlip();
+        }
+      } else {
+        Input.poundQueue = null;
+      }
+
+      // 2. Active Ground Pound State Machine
+      if (p.poundType) {
+        p.poundTimer += dt;
+        Audio.stopFartLoop();
+        if (p.poundType === 'butt') {
+          if (p.poundTimer > 0.1) p.vy = 920;
+          p.vx *= 0.85;
+        } else if (p.poundType === 'corkscrew') {
+          p.vx = p.dir * 540;
+          p.vy = Math.min(620, p.vy + 1100 * dt);
+          if (Math.random() < 0.7) this.spawnBurst(p.x + p.w * 0.5, p.y + p.h * 0.5, '#fde047', 1, 80);
+          if (p.poundTimer > 0.55) p.poundType = null;
+        } else if (p.poundType === 'vault') {
+          p.vy += 2100 * dt;
+          if (p.poundTimer > 0.22) p.vy = Math.max(p.vy, 760);
+        } else if (p.poundType === 'meteora') {
+          if (p.poundTimer < 0.28) {
+            p.vy = -620; // soaring upward smash breaks overheadShield!
+            this.spawnBurst(p.x + p.w * 0.5, p.y, '#c084fc', 1, 90);
+          } else {
+            p.vy = 980; // meteoric slam down!
+          }
+        }
+      } else if (p.hanging) {
+        // 3. Overhead Ceiling Monkey Bars State!
+        Audio.stopFartLoop();
+        p.parachuting = false;
+        p.farting = false;
+        p.vy = 0;
+        p.vx = Input.moveX * 235;
+        if (Math.abs(Input.moveX) > 0.1) p.dir = Input.moveX > 0 ? 1 : -1;
+
+        // Drain circular stamina ring
+        p.stamina -= dt;
+        if (p.stamina < p.maxStamina * 0.3) {
+          this.staminaTickTimer -= dt;
+          if (this.staminaTickTimer <= 0) {
+            Audio.sfxStaminaTick();
+            this.staminaTickTimer = 0.28;
+          }
+        }
+
+        // Release on Down, Jump, Exhaustion, or leaving bar edges
+        const onAnyBar = lvl.monkeyBars.some(mb =>
+          p.x + p.w * 0.5 >= mb.x - 10 && p.x + p.w * 0.5 <= mb.x + mb.w + 10 && Math.abs(p.y - mb.y) < 26
+        );
+        if (Input.jumpPressed) {
+          p.hanging = false; p.barCooldown = 0.28; p.vy = -560;
+          Audio.sfxJump();
+          Input.jumpPressed = false;
+        } else if (Input.downHeld || p.stamina <= 0 || !onAnyBar) {
+          p.hanging = false;
+          p.barCooldown = p.stamina <= 0 ? 0.85 : 0.35;
+          if (p.stamina <= 0) Input.showFeedback('Grip tired!');
+        }
+      } else {
+        // 4. Standard Run, Jump, Fart-Jet & Underwear Parachute Physics
+        const targetVx = Input.moveX * (p.parachuting ? 260 : 325);
+        const accel = p.onGround ? 2400 : 1450;
+        if (p.vx < targetVx) p.vx = Math.min(targetVx, p.vx + accel * dt);
+        else if (p.vx > targetVx) p.vx = Math.max(targetVx, p.vx - accel * dt);
+        if (Math.abs(Input.moveX) > 0.12) p.dir = Input.moveX > 0 ? 1 : -1;
+
+        if (p.onGround) {
+          p.coyote = 0.11;
+          p.fuel = Math.min(100, p.fuel + 150 * dt);
+          p.stamina = Math.min(p.maxStamina, p.stamina + p.maxStamina * 0.9 * dt);
+          p.parachuting = false;
+        } else {
+          p.coyote = Math.max(0, p.coyote - dt);
+        }
+
+        // Drop through one-way platform
+        if (Input.downHeld && p.onGround) {
+          p.dropThrough = 0.24;
+        }
+
+        // Jump
+        if (Input.jumpPressed && p.coyote > 0) {
+          p.vy = -635;
+          p.onGround = false;
+          p.coyote = 0;
+          p.scaleX = 0.78; p.scaleY = 1.28;
+          Audio.sfxJump();
+          this.spawnBurst(p.x + p.w * 0.5, p.y + p.h, '#e2e8f0', 5, 110);
+        }
+        Input.jumpPressed = false;
+
+        // Fart-Jet (Swipe Up & Hold / Z / J)
+        const canFart = Save.isGoldenConch() || p.fuel > 0;
+        if (Input.fartHeld && canFart) {
+          p.farting = true;
+          p.parachuting = false;
+          p.onGround = false;
+          p.vy = Math.max(-365, p.vy - 2350 * dt);
+          if (!Save.isGoldenConch()) p.fuel = Math.max(0, p.fuel - 48 * dt);
+          Audio.updateFartLoop(true, 1 - p.fuel / 100);
+          if (Math.random() < 0.8) {
+            this.particles.push({
+              x: p.x + p.w * 0.5 - p.dir * 8 + (Math.random() - 0.5) * 10,
+              y: p.y + p.h - 14,
+              vx: -p.dir * (30 + Math.random() * 50) + (Math.random() - 0.5) * 40,
+              vy: 90 + Math.random() * 90,
+              r: 6 + Math.random() * 7,
+              color: Save.isGoldenConch() ? '#fde047' : (Math.random() < 0.65 ? '#4ade80' : '#facc15'),
+              life: 0.42, maxLife: 0.42
+            });
+          }
+        } else {
+          p.farting = false;
+          Audio.stopFartLoop();
+        }
+
+        // Underwear Parachute (Swipe Down & Hold / X / K)
+        if (Input.parachuteHeld && !p.onGround && !p.farting && p.vy > -120) {
+          if (!p.parachuting) Audio.sfxParachute();
+          p.parachuting = true;
+        } else {
+          p.parachuting = false;
+        }
+
+        // Gravity & Wind Vents
+        p.vy += 1650 * dt;
+        if (p.parachuting && p.vy > 95) p.vy = 95;
+
+        // Check Upward Wind Vents!
+        for (const v of lvl.vents) {
+          if (rectsOverlap(p.x, p.y, p.w, p.h, v.x, v.y, v.w, v.h)) {
+            if (p.parachuting) {
+              p.vy = Math.max(-375, p.vy - 2450 * dt);
+            } else {
+              p.vy = Math.max(-160, p.vy - 950 * dt);
+            }
+          }
+        }
+      }
+
+      // 5. Horizontal Movement & Solid Collisions (including Corkscrew sideBarrier smashing!)
+      p.x += p.vx * dt;
+      for (const s of lvl.solids) {
+        if (s.broken) continue;
+        if (rectsOverlap(p.x, p.y, p.w, p.h, s.x, s.y, s.w, s.h)) {
+          if (s.kind === 'sideBarrier' && p.poundType === 'corkscrew') {
+            s.broken = true;
+            Audio.sfxShatter();
+            this.shake = 10; this.hitstop = 0.05;
+            this.spawnBurst(s.x + s.w * 0.5, s.y + s.h * 0.5, '#ef4444', 18, 280);
+            continue;
+          }
+          if (p.vx > 0) p.x = s.x - p.w;
+          else if (p.vx < 0) p.x = s.x + s.w;
+          p.vx = 0;
+        }
+      }
+
+      // 6. Vertical Movement & Solid / One-Way / Destructible Collisions
+      const prevBottom = p.y + p.h;
+      p.y += p.vy * dt;
+      const wasOnGround = p.onGround;
+      p.onGround = false;
+
+      for (const s of lvl.solids) {
+        if (s.broken) continue;
+        if (rectsOverlap(p.x, p.y, p.w, p.h, s.x, s.y, s.w, s.h)) {
+          if (p.vy > 0) {
+            // Landing!
+            if (s.kind === 'crackedFloor' && p.poundType) {
+              s.broken = true;
+              Audio.sfxShatter();
+              this.shake = 11; this.hitstop = 0.05;
+              this.spawnBurst(s.x + s.w * 0.5, s.y + s.h * 0.5, '#d97706', 18, 260);
+              continue;
+            }
+            p.y = s.y - p.h;
+            if (p.poundType) this.onGroundPoundImpact();
+            else if (!wasOnGround && p.vy > 220) { p.scaleX = 1.24; p.scaleY = 0.78; }
+            p.vy = 0;
+            p.onGround = true;
+          } else if (p.vy < 0) {
+            // Hitting ceiling — Meteora Flip shatters overheadShield!
+            if (s.kind === 'overheadShield' && p.poundType === 'meteora') {
+              s.broken = true;
+              Audio.sfxShatter();
+              this.shake = 12; this.hitstop = 0.05;
+              this.spawnBurst(s.x + s.w * 0.5, s.y + s.h * 0.5, '#a855f7', 22, 300);
+              continue;
+            }
+            p.y = s.y + s.h;
+            p.vy = 0;
+          }
+        }
+      }
+
+      // One-Way Platforms
+      if (p.vy >= 0 && p.dropThrough <= 0) {
+        for (const ow of lvl.oneWays) {
+          if (p.x + p.w > ow.x + 2 && p.x < ow.x + ow.w - 2 && prevBottom <= ow.y + 8 && p.y + p.h >= ow.y) {
+            p.y = ow.y - p.h;
+            if (p.poundType) this.onGroundPoundImpact();
+            p.vy = 0;
+            p.onGround = true;
+          }
+        }
+      }
+
+      // Grab Overhead Ceiling Monkey Bars
+      if (!p.hanging && !p.onGround && !p.poundType && p.barCooldown <= 0 && p.stamina > 0.35 && !Input.downHeld) {
+        for (const mb of lvl.monkeyBars) {
+          const cx = p.x + p.w * 0.5;
+          if (cx >= mb.x && cx <= mb.x + mb.w && Math.abs(p.y - mb.y) < 18 && p.vy > -260) {
+            p.hanging = true;
+            p.y = mb.y + 4;
+            p.vy = 0;
+            Audio.sfxGrabBar();
+            break;
+          }
+        }
+      }
+
+      // Pit fall recovery (respawn safely with -1 HP instead of softlock!)
+      if (p.y > lvl.height + 100) {
+        this.damagePlayer(1);
+        p.x = Math.max(60, p.x - 160);
+        p.y = 260;
+        p.vx = 0; p.vy = 0; p.fuel = 100; p.poundType = null;
+      }
+
+      // 7. Pickups, Clue & Sea Shell Collection
+      for (const pk of lvl.pickups) {
+        if (!pk.taken && rectsOverlap(p.x, p.y, p.w, p.h, pk.x - 16, pk.y - 16, 32, 32)) {
+          pk.taken = true;
+          if (pk.kind === 'cabbage') {
+            p.fuel = 100;
+            Audio.tone(520, 0.12, 'triangle', 0.1, 780);
+            this.spawnBurst(pk.x, pk.y, '#4ade80', 10, 160);
+          } else {
+            p.hp = Math.min(p.maxHp, p.hp + 1);
+            Audio.sfxShell();
+            this.spawnBurst(pk.x, pk.y, '#ef4444', 10, 160);
+          }
+        }
+      }
+
+      if (lvl.clue && !lvl.clue.taken && rectsOverlap(p.x, p.y, p.w, p.h, lvl.clue.x - 20, lvl.clue.y - 20, 40, 40)) {
+        lvl.clue.taken = true;
+        Save.data.cluesCollected[lvl.idx] = true;
+        Save.save();
+        Audio.sfxClue();
+        this.spawnBurst(lvl.clue.x, lvl.clue.y, '#fef08a', 18, 220);
+        UI.showCluePopup(CLUES[lvl.idx]);
+      }
+
+      if (lvl.shell && !lvl.shell.taken && rectsOverlap(p.x, p.y, p.w, p.h, lvl.shell.x - 22, lvl.shell.y - 22, 44, 44)) {
+        lvl.shell.taken = true;
+        Save.data.shellsCollected[lvl.idx] = true;
+        Save.save();
+        Audio.sfxShell();
+        this.spawnBurst(lvl.shell.x, lvl.shell.y, '#fde047', 24, 260);
+        Input.showFeedback(`FOUND SEA SHELL: ${SHELL_NAMES[lvl.idx]}!`);
+      }
+
+      // 8. Shockwaves Update
+      for (let i = this.shockwaves.length - 1; i >= 0; i--) {
+        const sw = this.shockwaves[i];
+        sw.x += sw.vx * dt;
+        sw.life -= dt;
+        if (Math.random() < 0.6) {
+          this.particles.push({ x: sw.x, y: sw.y, vx: 0, vy: -40, r: 5, color: sw.golden ? '#fde047' : '#fb923c', life: 0.2, maxLife: 0.2 });
+        }
+        if (sw.life <= 0) this.shockwaves.splice(i, 1);
+      }
+
+      // 9. Enemies Update & Combat
+      this.updateEnemies(dt);
+
+      // 10. Boss Update & Combat
+      if (lvl.boss) this.updateBoss(dt);
+
+      // 11. Goal Ring Check (for non-boss levels)
+      if (lvl.goal && Math.abs((p.x + p.w * 0.5) - lvl.goal.x) < 42 && Math.abs((p.y + p.h) - lvl.goal.y) < 90) {
+        this.completeStage();
+      }
+
+      // 12. Particles
+      for (let i = this.particles.length - 1; i >= 0; i--) {
+        const pt = this.particles[i];
+        pt.x += pt.vx * dt;
+        pt.y += pt.vy * dt;
+        pt.vy += 260 * dt;
+        pt.life -= dt;
+        if (pt.life <= 0) this.particles.splice(i, 1);
+      }
+
+      // 13. Smooth Camera Follow
+      const vw = canvas.width / dpr;
+      const zoom = getCameraZoom();
+      const viewW = vw / zoom;
+      const targetCam = Math.max(0, Math.min(lvl.width - viewW, p.x - viewW * 0.38));
+      this.camX += (targetCam - this.camX) * Math.min(1, dt * 8);
+
+      UI.refreshHUD();
+    },
+
+    onGroundPoundImpact() {
+      const p = this.player;
+      const type = p.poundType;
+      p.poundType = null;
+      p.scaleX = 1.42; p.scaleY = 0.62;
+      const golden = Save.isGoldenConch();
+      const baseDmg = (type === 'meteora' ? 5 : (type === 'vault' ? 4 : (type === 'corkscrew' ? 3 : 2))) * Save.strengthBonus();
+
+      Audio.sfxButtSlam(golden);
+      this.shake = type === 'meteora' ? 16 : (type === 'vault' ? 13 : 9);
+      this.hitstop = 0.04;
+      this.spawnBurst(p.x + p.w * 0.5, p.y + p.h, golden ? '#fde047' : '#f59e0b', golden ? 22 : 14, 280);
+
+      // Area shockwave on Lucha Vault, Meteora Flip, or ANY slam with Golden Conch Mask!
+      if (golden || type === 'vault' || type === 'meteora') {
+        this.spawnShockwave(p.x + p.w * 0.5, p.y + p.h - 14, -1, golden, baseDmg);
+        this.spawnShockwave(p.x + p.w * 0.5, p.y + p.h - 14, 1, golden, baseDmg);
+      }
+
+      // Immediate AoE damage around landing spot
+      const aoe = type === 'vault' || type === 'meteora' || golden ? 115 : 68;
+      const cx = p.x + p.w * 0.5, cy = p.y + p.h;
+      for (const e of this.lvl.enemies) {
+        if (!e.dead && Math.hypot((e.x + e.w * 0.5) - cx, (e.y + e.h) - cy) < aoe) {
+          this.hitEnemy(e, baseDmg);
+        }
+      }
+      if (this.lvl.boss && this.lvl.boss.hp > 0) {
+        const b = this.lvl.boss;
+        if (Math.hypot((b.x + b.w * 0.5) - cx, (b.y + b.h) - cy) < aoe + 34) {
+          this.hitBoss(baseDmg);
+        }
+      }
+    },
+
+    hitEnemy(e, dmg) {
+      e.hp -= dmg;
+      e.hitFlash = 0.16;
+      Audio.sfxHitEnemy();
+      this.spawnBurst(e.x + e.w * 0.5, e.y + e.h * 0.5, '#fef08a', 8, 200);
+      if (e.hp <= 0) {
+        e.dead = true;
+        this.spawnBurst(e.x + e.w * 0.5, e.y + e.h * 0.5, '#f97316', 16, 260);
+      }
+    },
+
+    hitBoss(dmg) {
+      const b = this.lvl.boss;
+      if (!b || b.invuln > 0 || b.hp <= 0) return;
+      b.hp = Math.max(0, b.hp - dmg);
+      b.invuln = 0.55;
+      this.shake = 12;
+      Audio.sfxHitEnemy();
+      this.spawnBurst(b.x + b.w * 0.5, b.y + b.h * 0.5, '#fde047', 18, 280);
+      if (b.hp <= 0) {
+        Audio.sfxVictory();
+        this.spawnBurst(b.x + b.w * 0.5, b.y + b.h * 0.5, '#f59e0b', 40, 360);
+        setTimeout(() => this.completeStage(), 900);
+      }
+    },
+
+    damagePlayer(amt) {
+      const p = this.player;
+      if (p.invuln > 0 || this.stageCleared) return;
+      p.hp -= amt;
+      p.invuln = 1.25;
+      p.poundType = null;
+      p.hanging = false;
+      p.vy = -340;
+      p.vx = -p.dir * 220;
+      this.shake = 10;
+      Audio.sfxHurt();
+      this.spawnBurst(p.x + p.w * 0.5, p.y + p.h * 0.5, '#ef4444', 14, 210);
+      if (p.hp <= 0) {
+        // Quick friendly restart of stage
+        Input.showFeedback('Knocked out! Try again!');
+        setTimeout(() => this.startLevel(this.levelIdx), 550);
+      }
+    },
+
+    updateEnemies(dt) {
+      const p = this.player;
+      for (const e of this.lvl.enemies) {
+        if (e.dead) continue;
+        if (e.hitFlash > 0) e.hitFlash -= dt;
+
+        const isFlyer = e.type === 'lantern' || e.type === 'drone' || e.type === 'eagle';
+        e.x += e.vx * dt;
+        if (e.x < e.minX) { e.x = e.minX; e.vx = Math.abs(e.vx); }
+        if (e.x > e.maxX) { e.x = e.maxX; e.vx = -Math.abs(e.vx); }
+
+        if (isFlyer) {
+          e.y = e.baseY - 46 + Math.sin(this.time * 3.5 + e.x * 0.02) * 28;
+        } else if (e.type === 'leaper' || e.type === 'trainee') {
+          e.hopTimer -= dt;
+          if (e.hopTimer <= 0 && e.y >= e.baseY) {
+            e.vy = -380; e.hopTimer = 1.6;
+          }
+          e.vy += 1200 * dt;
+          e.y += e.vy * dt;
+          if (e.y > e.baseY) { e.y = e.baseY; e.vy = 0; }
+        }
+
+        // Shockwave hits
+        for (const sw of this.shockwaves) {
+          if (Math.hypot((e.x + e.w * 0.5) - sw.x, (e.y + e.h * 0.5) - sw.y) < sw.r + 24) {
+            this.hitEnemy(e, sw.dmg);
+          }
+        }
+        if (e.dead) continue;
+
+        // Player interaction
+        if (rectsOverlap(p.x, p.y, p.w, p.h, e.x, e.y, e.w, e.h)) {
+          if (p.poundType) {
+            const mult = p.poundType === 'meteora' ? 5 : (p.poundType === 'vault' ? 4 : (p.poundType === 'corkscrew' ? 3 : 2));
+            this.hitEnemy(e, mult * Save.strengthBonus());
+            if (p.poundType === 'butt') p.vy = -360;
+          } else if (p.vy > 0 && p.y + p.h - e.y < 24) {
+            // Classic stomp!
+            this.hitEnemy(e, 1.5 * Save.strengthBonus());
+            p.vy = -480;
+            p.fuel = Math.min(100, p.fuel + 35);
+          } else {
+            this.damagePlayer(1);
+          }
+        }
+      }
+    },
+
+    updateBoss(dt) {
+      const b = this.lvl.boss;
+      if (!b || b.hp <= 0) return;
+      const p = this.player;
+      const baseY = 480;
+      if (b.invuln > 0) b.invuln -= dt;
+      b.timer -= dt;
+
+      // Boss state machine with unique country wrestler attacks
+      if (b.state === 'idle') {
+        b.dir = (p.x < b.x) ? -1 : 1;
+        b.vx = b.dir * (85 + b.worldId * 24);
+        if (b.timer <= 0) {
+          const roll = Math.random();
+          if (roll < 0.45) {
+            // Special Projectile / Signature Attack
+            b.state = 'attack';
+            b.timer = 1.1;
+            const kind = ['barrel', 'typhoon', 'dice', 'goldwave'][b.worldId];
+            b.projectiles.push({
+              x: b.x + b.w * 0.5, y: b.y + b.h * 0.65,
+              vx: b.dir * (260 + b.worldId * 40),
+              vy: kind === 'dice' ? -240 : 0,
+              r: 17, kind, life: 4.5
+            });
+            if (b.worldId === 3) {
+              // El Abuelo fires dual waves!
+              b.projectiles.push({ x: b.x + b.w * 0.5, y: b.y + b.h * 0.65, vx: -b.dir * 290, vy: 0, r: 17, kind: 'goldwave', life: 4.0 });
+            }
+            Audio.tone(180, 0.16, 'sawtooth', 0.1, 90);
+          } else {
+            // High-Flying Lucha Leap Slam!
+            b.state = 'leap';
+            b.vy = -640 - b.worldId * 35;
+            b.vx = b.dir * (250 + b.worldId * 35);
+            b.timer = 1.5;
+            Audio.sfxJump();
+          }
+        }
+      } else if (b.state === 'attack') {
+        b.vx *= 0.85;
+        if (b.timer <= 0) { b.state = 'idle'; b.timer = 1.3 - b.worldId * 0.12; }
+      } else if (b.state === 'leap') {
+        if (b.y + b.h >= baseY && b.vy > 0) {
+          b.y = baseY - b.h;
+          b.vy = 0; b.vx = 0;
+          this.shake = 12;
+          Audio.sfxButtSlam(false);
+          this.spawnBurst(b.x + b.w * 0.5, baseY, '#f59e0b', 16, 260);
+          b.state = 'dizzy';
+          b.timer = 1.55 - b.worldId * 0.12; // Window to counter-slam!
+        }
+      } else if (b.state === 'dizzy') {
+        b.vx = 0;
+        if (b.timer <= 0) { b.state = 'idle'; b.timer = 1.0; }
+      }
+
+      b.vy += 1550 * dt;
+      b.x = Math.max(40, Math.min(this.lvl.width - b.w - 40, b.x + b.vx * dt));
+      b.y += b.vy * dt;
+      if (b.y + b.h > baseY) { b.y = baseY - b.h; b.vy = 0; }
+
+      // Update boss projectiles
+      for (let i = b.projectiles.length - 1; i >= 0; i--) {
+        const pr = b.projectiles[i];
+        pr.x += pr.vx * dt;
+        if (pr.kind === 'dice') {
+          pr.vy += 900 * dt;
+          pr.y += pr.vy * dt;
+          if (pr.y + pr.r > baseY) { pr.y = baseY - pr.r; pr.vy = -340; }
+        }
+        pr.life -= dt;
+        if (rectsOverlap(p.x, p.y, p.w, p.h, pr.x - pr.r, pr.y - pr.r, pr.r * 2, pr.r * 2)) {
+          this.damagePlayer(1);
+          b.projectiles.splice(i, 1);
+          continue;
+        }
+        if (pr.life <= 0 || pr.x < -40 || pr.x > this.lvl.width + 40) b.projectiles.splice(i, 1);
+      }
+
+      // Shockwaves vs Boss
+      for (const sw of this.shockwaves) {
+        if (Math.hypot((b.x + b.w * 0.5) - sw.x, (b.y + b.h * 0.5) - sw.y) < sw.r + 42) {
+          this.hitBoss(sw.dmg);
+        }
+      }
+
+      // Player vs Boss
+      if (rectsOverlap(p.x, p.y, p.w, p.h, b.x, b.y, b.w, b.h)) {
+        if (p.poundType) {
+          const mult = p.poundType === 'meteora' ? 4.5 : (p.poundType === 'vault' ? 3.5 : (p.poundType === 'corkscrew' ? 2.8 : 2));
+          this.hitBoss(mult * Save.strengthBonus());
+          p.vy = -440;
+          p.poundType = null;
+        } else if (p.vy > 0 && p.y + p.h - b.y < 30) {
+          this.hitBoss(1.5 * Save.strengthBonus());
+          p.vy = -520;
+          p.fuel = Math.min(100, p.fuel + 45);
+        } else if (b.state !== 'dizzy') {
+          this.damagePlayer(1);
+        }
+      }
+    },
+
+    completeStage() {
+      if (this.stageCleared) return;
+      this.stageCleared = true;
+      Audio.stopFartLoop();
+      Audio.sfxVictory();
+
+      const idx = this.levelIdx;
+      const worldId = Math.floor(idx / 4);
+      const isBoss = idx % 4 === 3;
+
+      Save.data.completedLevels[idx] = true;
+      if (idx + 1 > Save.data.maxUnlockedLevel && idx + 1 < 16) Save.data.maxUnlockedLevel = idx + 1;
+      if (isBoss) {
+        Save.data.bossesDefeated[worldId] = true;
+        if (worldId === 3) Save.data.storyCompleted = true;
+      }
+      Save.save();
+
+      // Trigger World Clear / Ending Cutscenes after defeating Country Bosses!
+      if (isBoss) {
+        const cutKey = worldId === 3 ? 'ending' : `world${worldId + 1}_clear`;
+        Cutscene.start(cutKey, () => {
+          if (worldId === 3) {
+            UI.openStageSelect();
+          } else {
+            this.startLevel(idx + 1);
+          }
+        });
+      } else {
+        UI.showStageEnd(idx);
+      }
+    },
+
+    draw(ctx, w, h) {
+      const zoom = getCameraZoom();
+      const vw = w / zoom, vh = h / zoom;
+
+      Renderer.drawParallax(ctx, this.lvl.world, this.camX, w, h, this.time);
+
+      ctx.save();
+      ctx.scale(zoom, zoom);
+      const sx = this.shake > 0 ? (Math.random() - 0.5) * this.shake : 0;
+      const sy = this.shake > 0 ? (Math.random() - 0.5) * this.shake : 0;
+      // Align ground nicely near bottom of viewport
+      const camY = Math.min(0, vh - 585);
+      ctx.translate(-this.camX + sx, camY + sy);
+
+      Renderer.drawLevel(ctx, this.lvl, this.time);
+
+      // Draw Shockwaves
+      for (const sw of this.shockwaves) {
+        ctx.save();
+        ctx.fillStyle = sw.golden ? 'rgba(253, 224, 71, 0.85)' : 'rgba(251, 146, 60, 0.78)';
+        ctx.strokeStyle = '#111827'; ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.arc(sw.x, sw.y, sw.r, Math.PI, 0);
+        ctx.closePath(); ctx.fill(); ctx.stroke();
+        ctx.restore();
+      }
+
+      for (const e of this.lvl.enemies) Renderer.drawEnemy(ctx, e, this.time);
+      if (this.lvl.boss) Renderer.drawBoss(ctx, this.lvl.boss, this.time);
+      Renderer.drawPlayer(ctx, this.player, this.time);
+
+      // Draw Particles
+      for (const pt of this.particles) {
+        ctx.globalAlpha = Math.max(0, pt.life / pt.maxLife);
+        ctx.fillStyle = pt.color;
+        ctx.beginPath(); ctx.arc(pt.x, pt.y, pt.r, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+      ctx.restore();
+
+      // Dynamic Virtual Joysticks on top in screen coordinates
+      Input.drawJoysticks(ctx, w, h);
+    }
+  };
+
+  function rectsOverlap(ax, ay, aw, ah, bx, by, bw, bh) {
+    return ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by;
+  }
+
+  /* =========================================================================
+   * 8. MODULAR SCENE MANAGER & UI CONTROLLERS (TITLE, STAGE SELECT, SCRAPBOOK)
+   * ========================================================================= */
+  const Scene = {
+    current: 'title', // 'title' | 'cutscene' | 'play'
+    transitionAlpha: 0,
+    set(next) {
+      this.current = next;
+      this.transitionAlpha = 0.85;
+      document.getElementById('title-overlay').classList.toggle('active', next === 'title');
+      document.getElementById('hud').classList.toggle('active', next === 'play');
+      document.getElementById('cutscene-ui').classList.toggle('active', next === 'cutscene');
+      if (next !== 'play') {
+        document.getElementById('boss-bar').classList.remove('active');
+        document.getElementById('touch-hint').classList.remove('visible');
+        Audio.stopFartLoop();
+      }
+      if (next === 'title') {
+        Audio.playMusic('title');
+        UI.refreshTitleMeta();
+      }
+    }
+  };
+
+  const UI = {
+    scrapTab: 'story',
+    scrapPausedFromGame: false,
+    selectedWorld: 0,
+
+    isModalOpen() {
+      return ['clue-overlay', 'stage-end-overlay', 'scrapbook-overlay', 'select-overlay']
+        .some(id => document.getElementById(id).classList.contains('active'));
+    },
+
+    closeAllModals() {
+      ['clue-overlay', 'stage-end-overlay', 'scrapbook-overlay', 'select-overlay']
+        .forEach(id => document.getElementById(id).classList.remove('active'));
+    },
+
+    refreshTitleMeta() {
+      const shells = Save.shellCount();
+      const clues = Save.clueCount();
+      const playBtn = document.getElementById('btn-play-story');
+      playBtn.textContent = Save.data.prologueSeen ? 'Continue Story' : 'Play Story';
+      const meta = document.getElementById('title-meta');
+      const rank = Save.isGoldenConch() ? 'Golden Conch Master' : (Save.data.storyCompleted ? 'Trasero de Hierro (Iron Butt)' : 'Shamrock Challenger');
+      meta.innerHTML = `<span>Rank: <strong>${rank}</strong></span><span>·</span><span>Clues: ${clues}/16</span><span>·</span><span>Sea Shells: ${shells}/16</span>`;
+    },
+
+    refreshHUD() {
+      if (!Game.player || !Game.lvl) return;
+      const p = Game.player;
+      const lvl = Game.lvl;
+      const wNum = lvl.worldId + 1, sNum = lvl.stageInWorld + 1;
+      document.getElementById('hud-stage').innerHTML = `${wNum}-${sNum} · ${lvl.name} <span class="muted">(${lvl.world.name})</span>`;
+
+      // Mask icon state
+      const mIcon = document.getElementById('hud-mask');
+      mIcon.className = 'hud-mask-icon' + (Save.isGoldenConch() ? ' gold' : (Save.data.storyCompleted ? ' true' : ''));
+      mIcon.textContent = Save.isGoldenConch() ? '🐚' : '☘';
+
+      // Hearts
+      let heartsHtml = '';
+      for (let i = 0; i < p.maxHp; i++) {
+        heartsHtml += `<span style="color:${i < p.hp ? '#ef4444' : '#475569'}">♥</span>`;
+      }
+      document.getElementById('hud-hearts').innerHTML = heartsHtml;
+
+      // Fart-Jet Fuel Bar
+      const fuelEl = document.getElementById('hud-fuel');
+      if (Save.isGoldenConch()) {
+        fuelEl.style.width = '100%';
+        fuelEl.classList.add('infinite');
+      } else {
+        fuelEl.style.width = `${Math.max(0, Math.min(100, p.fuel))}%`;
+        fuelEl.classList.remove('infinite');
+      }
+
+      // Collectibles status
+      const hasShell = Save.data.shellsCollected[lvl.idx];
+      const hasClue = Save.data.cluesCollected[lvl.idx];
+      document.getElementById('hud-shell-stat').textContent = hasShell ? 'Shell: Found' : 'Shell: Hidden';
+      document.getElementById('hud-shell-stat').style.color = hasShell ? '#fde047' : '#cbd5e1';
+      document.getElementById('hud-clue-stat').textContent = hasClue ? 'Clue: Found' : 'Clue: Hidden';
+      document.getElementById('hud-clue-stat').style.color = hasClue ? '#86efac' : '#cbd5e1';
+
+      // Boss HP bar
+      const bossBar = document.getElementById('boss-bar');
+      if (lvl.boss && lvl.boss.hp > 0) {
+        bossBar.classList.add('active');
+        document.getElementById('boss-title').textContent = lvl.boss.name;
+        const pct = Math.ceil((lvl.boss.hp / lvl.boss.maxHp) * 100);
+        document.getElementById('boss-hp-text').textContent = `${pct}%`;
+        document.getElementById('boss-fill').style.width = `${pct}%`;
+      } else {
+        bossBar.classList.remove('active');
+      }
+    },
+
+    showCluePopup(clue) {
+      document.getElementById('clue-popup-title').textContent = clue.isBeat ? `★ ${clue.title}` : clue.title;
+      document.getElementById('clue-popup-body').textContent = clue.text;
+      document.getElementById('clue-overlay').classList.add('active');
+    },
+
+    showStageEnd(idx) {
+      const lvl = Game.lvl;
+      document.getElementById('end-title').textContent = `Stage ${lvl.worldId + 1}-${lvl.stageInWorld + 1} Cleared!`;
+      document.getElementById('end-subtitle').textContent = `${lvl.world.name} · ${lvl.name}`;
+      document.getElementById('end-note').textContent = STAGE_END_TAUNTS[idx] || 'The chase continues!';
+      const shellTxt = Save.data.shellsCollected[idx] ? `Sea Shell: Found (${SHELL_NAMES[idx]})` : 'Sea Shell: Still Hidden';
+      const clueTxt = Save.data.cluesCollected[idx] ? 'Clue: Collected' : 'Clue: Missed';
+      document.getElementById('end-stats').innerHTML = `<span>${clueTxt}</span><span>·</span><span>${shellTxt}</span>`;
+
+      const nextBtn = document.getElementById('btn-end-next');
+      nextBtn.style.display = idx < 15 ? 'inline-flex' : 'none';
+      document.getElementById('stage-end-overlay').classList.add('active');
+    },
+
+    openScrapbook(tab = 'story', fromGame = false) {
+      this.scrapTab = tab;
+      this.scrapPausedFromGame = fromGame;
+      this.closeAllModals();
+      document.getElementById('scrapbook-overlay').classList.add('active');
+      this.renderScrapbook();
+    },
+
+    renderScrapbook() {
+      const shells = Save.shellCount();
+      document.querySelectorAll('#scrapbook-overlay .tab-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tab === this.scrapTab);
+        if (btn.dataset.tab === 'shells') btn.textContent = `Sea Shells (${shells}/16)`;
+      });
+
+      const body = document.getElementById('scrapbook-body');
+      if (this.scrapTab === 'story') {
+        const beats = CLUES.filter(c => c.isBeat);
+        let html = `<div style="margin-bottom:14px;font-size:13.5px;line-height:1.5;color:#334155;">
+          <strong>Keister's Case Notes:</strong> The OG Luchadores stole Keister's prized wrestling mask in Dublin! Track their world tour clues and uncover the torn mementos left along the way.
+        </div>`;
+
+        beats.forEach((b) => {
+          const origIdx = CLUES.indexOf(b);
+          const unlocked = Save.data.cluesCollected[origIdx] || Save.data.storyCompleted;
+          html += `<div class="beat-box ${unlocked ? '' : 'locked'}">
+            <div class="beat-title">${unlocked ? '★ ' + b.title : `Hidden Story Beat ${b.beatNum} (Undiscovered Memento)`}</div>
+            <p class="beat-text">${unlocked ? b.text : 'Explore the stages carefully to discover this torn memento about Keister\'s true origins!'}</p>
+          </div>`;
+        });
+
+        if (Save.data.storyCompleted) {
+          html += `<div class="beat-box" style="border-color:#15803d;background:#f0fdf4;">
+            <div class="beat-title" style="color:#15803d;">★ Ending Twist: El Abuelo Chingon & Iron Butt McFannigan</div>
+            <p class="beat-text">The leader of the OG Luchadores was Keister's biological grandfather, El Abuelo Chingon! Every trap was secret training to crown Keister "Trasero de Hierro" — Iron Butt McFannigan — and unite him with his adoptive Irish family. Now retired, Abuelo hopes to recover his 16 lost Sea Shells!</p>
+          </div>`;
+        }
+
+        html += `<h3 style="margin:14px 0 8px;font-size:15px;color:#3d2415;">Collected Tour Clues (${Save.clueCount()}/16)</h3><div class="clue-grid">`;
+        CLUES.forEach((c, i) => {
+          const found = Save.data.cluesCollected[i];
+          const wNum = Math.floor(i / 4) + 1, sNum = (i % 4) + 1;
+          html += `<div class="scrap-item ${found ? 'found' : ''}">
+            <h4>${wNum}-${sNum}: ${found ? c.title : 'Undiscovered Clue'}</h4>
+            <p>${found ? c.text : `Search ${WORLDS[wNum - 1].name} · ${LEVEL_NAMES[i]}`}</p>
+          </div>`;
+        });
+        html += '</div>';
+        body.innerHTML = html;
+      } else if (this.scrapTab === 'moves') {
+        const moves = [
+          { name: 'Move, Jump & Monkey Bars', gesture: 'Left Dynamic Joystick · WASD / Arrows + Space', unlocked: true,
+            desc: 'Touch anywhere on the left half of the screen to move left/right, push Up to jump, or Down to drop through platforms & release ceiling monkey bars. Hanging drains your circular stamina ring!' },
+          { name: 'Fart-Jet Flight', gesture: 'Right Joystick: Swipe Up & Hold · Z / J', unlocked: true,
+            desc: 'Blasts green & gold shamrock clouds to fly upward. Drains your Bean/Cabbage GAS meter, which refills rapidly on the ground.' },
+          { name: 'Underwear Parachute', gesture: 'Right Joystick: Swipe Down & Hold · X / K', unlocked: true,
+            desc: 'Deploys oversized shamrock-print briefs to glide slowly and ride glowing upward wind vents to high secret perches.' },
+          { name: 'Original Butt Slam', gesture: 'Right Joystick: Double-Swipe Down · C / L', unlocked: true,
+            desc: 'Vertical ground pound attack! Crushes enemies below and smashes cracked floor panels.' },
+          { name: 'Corkscrew Ground Pound', gesture: 'Right Joystick: Swipe Left · Q / U', unlocked: Save.hasCorkscrew(),
+            desc: 'Unlocked by beating World 1 Boss (Ireland). Gymnastic horizontal spin-slam dealing higher damage and shattering red cracked side barriers!' },
+          { name: 'Lucha Vault Ground Pound', gesture: 'Right Joystick: Swipe Right · E / I', unlocked: Save.hasLuchaVault(),
+            desc: 'Unlocked by beating World 2 Boss (Japan). Gymnastic handspring somersault slam triggering heavy area shockwaves!' },
+          { name: 'Meteora Flip Ground Pound', gesture: 'Right Joystick: Double-Swipe Up · V / O', unlocked: Save.hasMeteoraFlip(),
+            desc: 'Unlocked by beating World 3 Boss (Las Vegas). High-flying gymnastic backflip slam that shatters purple overhead shields and deals maximum damage!' }
+        ];
+
+        let html = '';
+        if (Save.data.goldenConchUnlocked) {
+          html += `<div class="beat-box" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+            <div>
+              <div class="beat-title">🐚 THE GOLDEN CONCH MASK (Secret Reward Unlocked!)</div>
+              <p class="beat-text">Grants INFINITE Fart-Jet flight fuel and GOLDEN SHOCKWAVE Butt Slams in every level!</p>
+            </div>
+            <label class="toggle-label"><input type="checkbox" id="chk-golden" ${Save.data.goldenConchEquipped ? 'checked' : ''} /> Equip Golden Conch Mask</label>
+          </div>`;
+        }
+        html += `<div style="margin-bottom:10px;font-size:13px;font-weight:800;color:#334155;">
+          Ceiling Stamina: ${Save.maxStamina().toFixed(1)}s · Strength Multiplier: ${Save.strengthBonus().toFixed(1)}x (Beat Country Bosses to upgrade permanently!)
+        </div><div class="move-grid">`;
+        moves.forEach(m => {
+          html += `<div class="scrap-item ${m.unlocked ? 'found' : ''}">
+            <div class="move-gesture">${m.unlocked ? m.gesture : 'LOCKED · ' + m.gesture}</div>
+            <h4>${m.name}</h4>
+            <p>${m.desc}</p>
+          </div>`;
+        });
+        html += '</div>';
+        body.innerHTML = html;
+
+        const gChk = document.getElementById('chk-golden');
+        if (gChk) {
+          gChk.addEventListener('change', (e) => {
+            Save.data.goldenConchEquipped = e.target.checked;
+            Save.save();
+            UI.refreshHUD();
+          });
+        }
+      } else {
+        // Sea Shells Tab
+        let html = `<div style="margin-bottom:12px;font-size:13.5px;line-height:1.5;color:#334155;">
+          ${Save.data.storyCompleted
+            ? '<strong>Abuelo\'s Sea Shell Hunt:</strong> Find all 16 prized Sea Shells Abuelo accidentally dropped across the 4 countries and return them to unlock the legendary <strong>Golden Conch Mask</strong>!'
+            : '<strong>Mysterious Sea Shells:</strong> Keister keeps finding shiny sea shells tucked in hard-to-reach places across the tour. Why are they everywhere? Keep collecting them!'}
+        </div>`;
+
+        if (shells === 16 && !Save.data.goldenConchUnlocked) {
+          html += `<div class="beat-box" style="text-align:center;">
+            <div class="beat-title">ALL 16 SEA SHELLS COLLECTED!</div>
+            <button id="btn-scrap-return-shells" class="btn btn-gold" style="margin-top:6px;">Return All 16 Shells to El Abuelo!</button>
+          </div>`;
+        }
+
+        html += '<div class="shell-grid">';
+        SHELL_NAMES.forEach((name, i) => {
+          const found = Save.data.shellsCollected[i];
+          const wNum = Math.floor(i / 4) + 1, sNum = (i % 4) + 1;
+          html += `<div class="scrap-item ${found ? 'golden' : ''}">
+            <h4>${found ? '🐚 ' + name : `Shell #${i + 1} (Hidden)`}</h4>
+            <p>${WORLDS[wNum - 1].name} · Stage ${wNum}-${sNum}: ${LEVEL_NAMES[i]}</p>
+          </div>`;
+        });
+        html += '</div>';
+        body.innerHTML = html;
+
+        const retBtn = document.getElementById('btn-scrap-return-shells');
+        if (retBtn) retBtn.addEventListener('click', () => triggerGoldenConchReward());
+      }
+
+      // Footer controls
+      const fl = document.getElementById('scrap-footer-left');
+      const fr = document.getElementById('scrap-footer-right');
+      fl.innerHTML = ''; fr.innerHTML = '';
+      if (this.scrapPausedFromGame) {
+        fl.innerHTML = `<button id="btn-scrap-restart" class="btn btn-secondary">Restart Stage</button>
+          <button id="btn-scrap-select" class="btn btn-secondary">Stage Select</button>
+          <button id="btn-scrap-title" class="btn btn-secondary">Title</button>`;
+        fr.innerHTML = `<button id="btn-scrap-resume" class="btn btn-primary">Resume Game</button>`;
+        document.getElementById('btn-scrap-restart').onclick = () => { this.closeAllModals(); Game.startLevel(Game.levelIdx); };
+        document.getElementById('btn-scrap-select').onclick = () => { this.openStageSelect(); };
+        document.getElementById('btn-scrap-title').onclick = () => { this.closeAllModals(); Scene.set('title'); };
+        document.getElementById('btn-scrap-resume').onclick = () => { this.closeAllModals(); };
+      } else {
+        fl.innerHTML = `<button id="btn-replay-prologue" class="btn btn-secondary">Replay Prologue</button>`;
+        fr.innerHTML = `<button id="btn-scrap-done" class="btn btn-primary">Back</button>`;
+        document.getElementById('btn-replay-prologue').onclick = () => {
+          this.closeAllModals();
+          Cutscene.start('prologue', () => Scene.set('title'));
+        };
+        document.getElementById('btn-scrap-done').onclick = () => this.closeAllModals();
+      }
+    },
+
+    openStageSelect() {
+      this.closeAllModals();
+      document.getElementById('select-overlay').classList.add('active');
+      document.getElementById('chk-sandbox').checked = Save.data.sandboxMode;
+      this.renderStageSelect();
+    },
+
+    renderStageSelect() {
+      const wt = document.getElementById('world-tabs');
+      wt.innerHTML = WORLDS.map((w, i) =>
+        `<button class="tab-btn ${i === this.selectedWorld ? 'active' : ''}" data-w="${i}">${i + 1}. ${w.name}</button>`
+      ).join('');
+      wt.querySelectorAll('button').forEach(btn => {
+        btn.onclick = () => { this.selectedWorld = Number(btn.dataset.w); this.renderStageSelect(); };
+      });
+
+      const grid = document.getElementById('level-grid');
+      const start = this.selectedWorld * 4;
+      let html = '';
+      for (let i = start; i < start + 4; i++) {
+        const unlocked = Save.data.sandboxMode || Save.data.storyCompleted || i <= Save.data.maxUnlockedLevel;
+        const isBoss = i % 4 === 3;
+        const cleared = Save.data.completedLevels[i];
+        const hasShell = Save.data.shellsCollected[i];
+        const hasClue = Save.data.cluesCollected[i];
+        html += `<button class="level-card ${unlocked ? '' : 'locked'} ${isBoss ? 'boss' : ''}" data-idx="${i}" ${unlocked ? '' : 'disabled'}>
+          <div class="level-num">Stage ${this.selectedWorld + 1}-${(i % 4) + 1} ${cleared ? '· Cleared' : (unlocked ? '' : '· Locked')}</div>
+          <div class="level-name">${LEVEL_NAMES[i]}</div>
+          <div class="level-meta">Clue: ${hasClue ? 'Yes' : 'No'} · Shell: ${hasShell ? 'Found' : 'Hidden'}</div>
+        </button>`;
+      }
+      grid.innerHTML = html;
+      grid.querySelectorAll('button:not([disabled])').forEach(btn => {
+        btn.onclick = () => {
+          this.closeAllModals();
+          Game.startLevel(Number(btn.dataset.idx));
+        };
+      });
+
+      const shells = Save.shellCount();
+      document.getElementById('select-summary').textContent =
+        `Sea Shells: ${shells}/16 · Clues: ${Save.clueCount()}/16${Save.data.goldenConchUnlocked ? ' · Golden Conch Unlocked!' : ''}`;
+
+      const act = document.getElementById('select-actions');
+      act.innerHTML = '';
+      if (shells === 16 && !Save.data.goldenConchUnlocked) {
+        act.innerHTML = `<button id="btn-return-shells" class="btn btn-gold">Return 16 Shells to Abuelo!</button>`;
+        document.getElementById('btn-return-shells').onclick = () => triggerGoldenConchReward();
+      } else if (Save.data.storyCompleted) {
+        act.innerHTML = `<button id="btn-rewatch-end" class="btn btn-secondary">Rewatch Ending</button>`;
+        document.getElementById('btn-rewatch-end').onclick = () => {
+          this.closeAllModals();
+          Cutscene.start('ending', () => this.openStageSelect());
+        };
+      }
+    }
+  };
+
+  function triggerGoldenConchReward() {
+    UI.closeAllModals();
+    Save.data.goldenConchUnlocked = true;
+    Save.data.goldenConchEquipped = true;
+    Save.save();
+    Cutscene.start('golden_conch', () => {
+      UI.openScrapbook('moves', false);
+    });
+  }
+
+  /* =========================================================================
+   * 9. CANVAS SETUP, EVENT BINDING & MAIN 60FPS GAME LOOP
+   * ========================================================================= */
+  const canvas = document.getElementById('gameCanvas');
+  const ctx = canvas.getContext('2d');
+  let dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+  function resizeCanvas() {
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = Math.floor(window.innerWidth * dpr);
+    canvas.height = Math.floor(window.innerHeight * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  window.addEventListener('resize', resizeCanvas);
+  resizeCanvas();
+
+  function getCameraZoom() {
+    const h = window.innerHeight;
+    return Math.max(0.75, Math.min(1.25, h / 600));
+  }
+
+  // Wire UI Buttons
+  document.getElementById('btn-play-story').onclick = () => {
+    Audio.init();
+    Save.data.sandboxMode = false;
+    Save.save();
+    if (!Save.data.prologueSeen) {
+      Save.data.prologueSeen = true;
+      Save.save();
+      Cutscene.start('prologue', () => Game.startLevel(0));
+    } else {
+      Game.startLevel(Math.min(15, Save.data.maxUnlockedLevel));
+    }
+  };
+  document.getElementById('btn-stage-select').onclick = () => { Audio.init(); UI.openStageSelect(); };
+  document.getElementById('btn-title-scrapbook').onclick = () => { Audio.init(); UI.openScrapbook('story', false); };
+  document.getElementById('btn-mute').onclick = () => { Audio.init(); Audio.toggleMute(); };
+  document.getElementById('btn-cutscene-mute').onclick = () => { Audio.init(); Audio.toggleMute(); };
+  document.getElementById('btn-pause').onclick = () => { UI.openScrapbook('story', true); };
+  document.getElementById('btn-scrap-close').onclick = () => { UI.closeAllModals(); };
+  document.getElementById('btn-select-close').onclick = () => { UI.closeAllModals(); };
+  document.getElementById('btn-clue-close').onclick = () => { document.getElementById('clue-overlay').classList.remove('active'); };
+  document.getElementById('btn-cutscene-next').onclick = () => Cutscene.advance();
+  document.getElementById('btn-cutscene-skip').onclick = () => Cutscene.finish();
+  document.getElementById('btn-end-next').onclick = () => {
+    UI.closeAllModals();
+    Game.startLevel(Math.min(15, Game.levelIdx + 1));
+  };
+  document.getElementById('btn-end-replay').onclick = () => {
+    UI.closeAllModals();
+    Game.startLevel(Game.levelIdx);
+  };
+  document.getElementById('btn-end-scrapbook').onclick = () => {
+    UI.openScrapbook('story', true);
+  };
+  document.querySelectorAll('#scrapbook-overlay .tab-btn').forEach(btn => {
+    btn.onclick = () => { UI.scrapTab = btn.dataset.tab; UI.renderScrapbook(); };
+  });
+  document.getElementById('chk-sandbox').onchange = (e) => {
+    Save.data.sandboxMode = e.target.checked;
+    Save.save();
+    UI.renderStageSelect();
+  };
+
+  Input.init(canvas);
+  UI.refreshTitleMeta();
+
+  let lastTs = performance.now();
+  let titleTime = 0;
+
+  function loop(ts) {
+    const dt = Math.min(0.05, Math.max(0.001, (ts - lastTs) / 1000));
+    lastTs = ts;
+    Input.poll(dt);
+
+    const w = window.innerWidth, h = window.innerHeight;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    if (Scene.current === 'title') {
+      titleTime += dt;
+      Renderer.drawTitleScene(ctx, w, h, titleTime);
+    } else if (Scene.current === 'cutscene') {
+      Cutscene.draw(ctx, w, h, dt);
+    } else if (Scene.current === 'play') {
+      Game.update(dt);
+      Game.draw(ctx, w, h);
+    }
+
+    // Scene transition flash fade
+    if (Scene.transitionAlpha > 0) {
+      Scene.transitionAlpha = Math.max(0, Scene.transitionAlpha - dt * 2.8);
+      ctx.fillStyle = `rgba(9, 13, 22, ${Scene.transitionAlpha})`;
+      ctx.fillRect(0, 0, w, h);
+    }
+
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+{
+  "name": "The Mask of Keister McFannigan",
+  "description": "A 2D side-scrolling HTML5 Canvas touchscreen adventure game starring Irish Luchador Keister McFannigan across 4 country worlds, 16 levels, dynamic dual joysticks, comic cutscenes, and 16 hidden Sea Shells.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
