@@ -642,6 +642,7 @@
   .level-name { font-family: var(--px-head); font-size: 9px !important; line-height: 1.5; }
   .level-meta { font-family: var(--px-body); font-size: 17px !important; }
   .popup-box h2 { font-family: var(--px-head) !important; font-size: 13px !important; color: #0b4a24 !important; line-height: 1.5; }
+  #restart-overlay .popup-box h2 { color: var(--px-crimson) !important; }
   .popup-note { background: #fff8e2 !important; border: 3px solid var(--px-gold-dark) !important; font-size: 18px !important; }
   .popup-stats { font-family: var(--px-head); font-size: 8px !important; }
   .toggle-label { font-family: var(--px-body); font-size: 18px !important; }
@@ -730,6 +731,7 @@
         <button id="btn-stage-select" class="btn btn-gold">Stage Select / Sandbox</button>
         <button id="btn-title-scrapbook" class="btn btn-secondary">Scrapbook</button>
         <button id="btn-title-fullscreen" class="btn btn-secondary" data-fullscreen-toggle aria-label="Enter Fullscreen">Fullscreen</button>
+        <button id="btn-restart-story" class="btn btn-danger">Restart Story</button>
       </div>
       <div id="title-meta" class="title-meta"></div>
     </div>
@@ -754,6 +756,20 @@
       <div id="clue-popup-body" class="popup-note"></div>
       <div class="btn-row">
         <button id="btn-clue-close" class="btn btn-primary">Keep Moving!</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Restart Story Confirmation Popup -->
+  <div id="restart-overlay" class="overlay scrim" role="dialog" aria-modal="true" aria-labelledby="restart-popup-title">
+    <div class="popup-box">
+      <h2 id="restart-popup-title">Restart Story Over?</h2>
+      <div id="restart-popup-body" class="popup-note">
+        This will erase all saved progress — unlocked stages, clues, sea shells, boss upgrades, and masks — and start Keister's adventure over from the opening prologue cutscene.
+      </div>
+      <div class="btn-row">
+        <button id="btn-restart-confirm" class="btn btn-danger">Yes, Start Over</button>
+        <button id="btn-restart-cancel" class="btn btn-secondary">Cancel</button>
       </div>
     </div>
   </div>
@@ -872,7 +888,22 @@
     },
     reset() {
       this.data = defaultSave();
+      try { localStorage.removeItem(SAVE_KEY); } catch (_) {}
       this.save();
+    },
+    hasProgress() {
+      const d = this.data;
+      return !!(
+        d.prologueSeen ||
+        d.maxUnlockedLevel > 0 ||
+        d.storyCompleted ||
+        d.goldenConchUnlocked ||
+        d.sandboxMode ||
+        d.completedLevels.some(Boolean) ||
+        d.bossesDefeated.some(Boolean) ||
+        d.cluesCollected.some(Boolean) ||
+        d.shellsCollected.some(Boolean)
+      );
     },
     shellCount() { return this.data.shellsCollected.filter(Boolean).length; },
     clueCount() { return this.data.cluesCollected.filter(Boolean).length; },
@@ -1665,6 +1696,8 @@
         if (Scene.current === 'play') {
           if (UI.isModalOpen()) UI.closeAllModals();
           else UI.openScrapbook('story', true);
+        } else if (Scene.current === 'title' && this.justPressed['Escape'] && UI.isModalOpen()) {
+          UI.closeAllModals();
         }
       }
       if (Scene.current === 'cutscene' && (this.justPressed['Space'] || this.justPressed['Enter'] || this.justPressed['ArrowRight'])) {
@@ -5863,13 +5896,25 @@
     selectedWorld: 0,
 
     isModalOpen() {
-      return ['clue-overlay', 'stage-end-overlay', 'scrapbook-overlay', 'select-overlay']
+      return ['clue-overlay', 'restart-overlay', 'stage-end-overlay', 'scrapbook-overlay', 'select-overlay']
         .some(id => document.getElementById(id).classList.contains('active'));
     },
 
     closeAllModals() {
-      ['clue-overlay', 'stage-end-overlay', 'scrapbook-overlay', 'select-overlay']
+      ['clue-overlay', 'restart-overlay', 'stage-end-overlay', 'scrapbook-overlay', 'select-overlay']
         .forEach(id => document.getElementById(id).classList.remove('active'));
+    },
+
+    openRestartConfirm() {
+      this.closeAllModals();
+      const body = document.getElementById('restart-popup-body');
+      if (Save.hasProgress()) {
+        const cleared = Save.data.completedLevels.filter(Boolean).length;
+        body.textContent = `This will erase all saved progress (${cleared}/16 stages cleared, ${Save.clueCount()}/16 clues, ${Save.shellCount()}/16 sea shells, boss upgrades, and masks) and start Keister's story all the way over from the opening prologue cutscene.`;
+      } else {
+        body.textContent = `Start a brand-new adventure from the very first prologue cutscene in Dublin!`;
+      }
+      document.getElementById('restart-overlay').classList.add('active');
     },
 
     refreshTitleMeta() {
@@ -6310,21 +6355,45 @@
     return canvas.height / 585;
   }
 
+  function startStoryFromPrologue() {
+    Cutscene.start('prologue', () => {
+      Save.data.prologueSeen = true;
+      Save.save();
+      Game.startLevel(0);
+    });
+  }
+
+  function restartAllProgressAndStory() {
+    Audio.init();
+    UI.closeAllModals();
+    Save.reset();
+    UI.selectedWorld = 0;
+    Game.levelIdx = 0;
+    Game.lvl = null;
+    Game.player = null;
+    UI.refreshTitleMeta();
+    startStoryFromPrologue();
+  }
+
   // Wire UI Buttons
   document.getElementById('btn-play-story').onclick = () => {
     Audio.init();
     Save.data.sandboxMode = false;
     Save.save();
     if (!Save.data.prologueSeen) {
-      Save.data.prologueSeen = true;
-      Save.save();
-      Cutscene.start('prologue', () => Game.startLevel(0));
+      startStoryFromPrologue();
     } else {
       Game.startLevel(Math.min(15, Save.data.maxUnlockedLevel));
     }
   };
   document.getElementById('btn-stage-select').onclick = () => { Audio.init(); UI.openStageSelect(); };
   document.getElementById('btn-title-scrapbook').onclick = () => { Audio.init(); UI.openScrapbook('story', false); };
+  document.getElementById('btn-restart-story').onclick = () => { Audio.init(); UI.openRestartConfirm(); };
+  document.getElementById('btn-restart-confirm').onclick = () => restartAllProgressAndStory();
+  document.getElementById('btn-restart-cancel').onclick = () => UI.closeAllModals();
+  document.getElementById('restart-overlay').onclick = (e) => {
+    if (e.target === e.currentTarget) UI.closeAllModals();
+  };
   document.getElementById('btn-mute').onclick = () => { Audio.init(); Audio.toggleMute(); };
   document.getElementById('btn-cutscene-mute').onclick = () => { Audio.init(); Audio.toggleMute(); };
   document.querySelectorAll('[data-fullscreen-toggle]').forEach(btn => {
