@@ -4096,56 +4096,115 @@
     ctx.restore();
   }
 
-  // Pixel-art shamrock briefs used as Keister's parachute: two leg openings up
-  // top, waistband gripped below, shadowy noir shading baked into the sprite.
+  // Illustrated shamrock briefs parachute: deep green stitched panels, ornate
+  // gold filigree along both leg openings, an embroidered clover on the seat and
+  // a riveted brass waistband buckle — same detail level as the noir cutouts.
   let _paraSprite = null;
   function getParaSprite() {
     if (_paraSprite) return _paraSprite;
-    const W = 41, H = 24;
+    const W = 88, H = 52;
     const cv = document.createElement('canvas');
     cv.width = W; cv.height = H;
     const c = cv.getContext('2d');
-    const box = (x, y, w, h, col) => { c.fillStyle = col; c.fillRect(x, y, w, h); };
+    const ink = '#04060a';
+    const px = (x, y, col) => { c.fillStyle = col; c.fillRect(Math.round(x), Math.round(y), 1, 1); };
+    const box = (x, y, w, h, col) => { c.fillStyle = col; c.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h)); };
 
-    // Fabric rows: [y] => spans, with the crotch notch splitting the top rows
-    const fabric = [
-      [[5, 17], [23, 35]], [[4, 17], [23, 36]], [[4, 18], [22, 36]],
-      [[4, 18], [22, 36]], [[4, 19], [21, 36]],
-      [[4, 36]], [[4, 36]], [[4, 36]], [[4, 36]], [[4, 36]],
-      [[4, 36]], [[4, 36]], [[4, 36]], [[4, 36]],
-      [[5, 35]], [[5, 35]], [[6, 34]], [[6, 34]], [[7, 33]]
-    ];
-    fabric.forEach((spans, y) => {
-      spans.forEach(([a, b]) => {
-        const w = b - a;
-        box(a, y, w, 1, '#155c33');
-        const sh = y > 13 ? 0.52 : 0.68;
-        box(a + Math.floor(w * sh), y, Math.ceil(w * (1 - sh)), 1, '#0a2a1a');
-        if (y === 0) box(a, y, w, 1, '#04060a');
-        else box(a, y, 2, 1, '#2a8f52');
-        box(a, y, 1, 1, '#04060a');
-        box(b - 1, y, 1, 1, '#04060a');
-      });
-    });
-
-    // Shamrock motifs on the seat
-    const clover = (x, y) => {
-      box(x, y, 2, 2, '#46b673'); box(x + 4, y, 2, 2, '#46b673'); box(x + 2, y + 2, 2, 2, '#46b673');
-      box(x + 2, y + 4, 1, 2, '#0a2a1a');
-      box(x, y, 1, 1, '#7ee2a8'); box(x + 2, y + 2, 1, 1, '#7ee2a8');
+    // Silhouette: two leg openings up top, seat widening, cinched waistband
+    const spansAt = (y) => {
+      if (y < 14) return [[9, 40], [48, 79]];
+      if (y < 44) {
+        const k = (y - 14) / 30;
+        return [[Math.round(8 + k * 3), Math.round(80 - k * 3)]];
+      }
+      return [[15, 73]];
     };
-    clover(10, 9); clover(26, 9);
+    const mask = [];
+    for (let y = 0; y < H; y++) {
+      mask[y] = [];
+      for (const [a, b] of spansAt(y)) for (let x = a; x <= b; x++) mask[y][x] = 1;
+    }
+    const solid = (x, y) => !!(mask[y] && mask[y][x]);
 
-    // Waistband: bone elastic, green stripe, brass buckle
-    box(7, 18, 26, 1, '#04060a');
-    box(7, 19, 26, 5, '#d9d2bd');
-    box(7, 19, 26, 1, '#f2ecd8');
-    box(7, 21, 26, 1, '#155c33');
-    box(7, 23, 26, 1, '#04060a');
-    box(7, 19, 1, 5, '#04060a');
-    box(32, 19, 1, 5, '#04060a');
-    box(19, 19, 3, 3, '#f5c77a');
-    box(19, 19, 3, 1, '#fde68a');
+    // Heavy ink silhouette first so every detail sits inside a clean edge
+    for (let y = 0; y < H; y++) {
+      for (let x = 0; x < W; x++) {
+        if (solid(x, y)) continue;
+        if (solid(x - 1, y) || solid(x + 1, y) || solid(x, y - 1) || solid(x, y + 1)) px(x, y, ink);
+      }
+    }
+
+    // Fabric: lit left shoulder, mid-tone panels, deep shadow down the right
+    for (let y = 0; y < H; y++) {
+      const base = y < 8 ? '#1d6b3c' : y < 30 ? '#155c33' : y < 44 ? '#114a2a' : '#0e3f24';
+      for (const [a, b] of spansAt(y)) {
+        for (let x = a; x <= b; x++) {
+          let col = base;
+          if (y >= 3) {
+            const k = (x - a) / Math.max(1, b - a);
+            if (k > 0.78) col = y < 44 ? '#0a2a1a' : '#0a2417';
+            else if (k > 0.6) col = '#0f4526';
+            if (x - a < 2) col = y < 44 ? '#2a8f52' : '#1d6b3c';
+          }
+          px(x, y, col);
+        }
+      }
+    }
+
+    // Ornate gold rim + filigree scrolls along both leg openings
+    for (const [a, b] of [[9, 40], [48, 79]]) {
+      box(a, 0, b - a + 1, 1, '#f7e3b8');
+      box(a, 1, b - a + 1, 1, '#d2a465');
+      box(a, 2, b - a + 1, 1, '#a67540');
+      box(a, 7, b - a + 1, 1, '#6b4a1f');
+      for (let x = a + 2; x < b - 4; x += 9) {
+        box(x, 4, 4, 1, '#c99b5c');
+        px(x + 4, 5, '#a67540');
+        box(x + 2, 6, 3, 1, '#c99b5c');
+        px(x + 1, 5, '#f0cf9a');
+        px(x + 3, 7, '#a67540');
+      }
+    }
+
+    // Stitched panel seams
+    for (const sx of [24, 62]) {
+      for (let y = 17; y < 44; y += 3) {
+        box(sx, y, 1, 2, '#a67540');
+        px(sx, y + 2, '#0a2a1a');
+      }
+    }
+
+    // Embroidered clover on the seat, gold outlined
+    const cloverLobe = (x, y, r) => {
+      c.fillStyle = '#c99b5c';
+      c.beginPath(); c.arc(x, y, r + 1.7, 0, Math.PI * 2); c.fill();
+      c.fillStyle = '#2fae63';
+      c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill();
+      c.fillStyle = '#7ee2a8';
+      c.beginPath(); c.arc(x - r * 0.34, y - r * 0.4, Math.max(0.9, r * 0.3), 0, Math.PI * 2); c.fill();
+    };
+    box(43, 34, 3, 9, '#c99b5c');
+    box(44, 34, 1, 8, '#2fae63');
+    cloverLobe(44, 22, 5.5);
+    cloverLobe(37, 31, 5.5);
+    cloverLobe(51, 31, 5.5);
+
+    // Waistband: bone elastic, gold stitching, brass rivets, buckled clasp
+    box(15, 44, 59, 1, ink);
+    box(15, 45, 59, 3, '#e8dfc6');
+    box(15, 45, 59, 1, '#f7f1de');
+    box(15, 48, 59, 1, '#155c33');
+    box(15, 49, 59, 2, '#cdc4ad');
+    box(15, 51, 59, 1, ink);
+    for (const rx of [19, 27, 61, 69]) {
+      box(rx, 46, 2, 2, '#d2a465');
+      px(rx, 46, '#f7e3b8');
+      px(rx + 1, 47, '#a67540');
+    }
+    box(39, 44, 10, 7, ink);
+    box(40, 45, 8, 5, '#d2a465');
+    box(41, 46, 6, 3, '#4a3410');
+    box(43, 45, 2, 5, '#f0cf9a');
 
     _paraSprite = cv;
     return cv;
@@ -5146,19 +5205,33 @@
         for (const [ax, ay] of [[mp.startX + mp.w * 0.5, mp.startY + mp.h * 0.5], [mp.endX + mp.w * 0.5, mp.endY + mp.h * 0.5]]) {
           ctx.beginPath(); ctx.arc(ax, ay, 5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
         }
-        // Riveted brass shuttle deck
-        ctx.fillStyle = '#d97706';
+        // Cast shadow under the shuttle deck
+        ctx.fillStyle = 'rgba(3, 6, 14, 0.38)';
+        ctx.fillRect(mp.x + 4, mp.y + mp.h + 2, Math.max(0, mp.w - 4), 6);
+        // Riveted brass shuttle deck with an engraved clover seal
+        const deck = ctx.createLinearGradient(0, mp.y, 0, mp.y + mp.h);
+        deck.addColorStop(0, '#f0cf9a'); deck.addColorStop(0.3, '#d2a465');
+        deck.addColorStop(0.62, '#a67540'); deck.addColorStop(1, '#6b4a1f');
+        ctx.fillStyle = deck;
         ctx.fillRect(mp.x, mp.y, mp.w, mp.h);
-        ctx.fillStyle = '#fde047';
-        ctx.fillRect(mp.x + 2, mp.y + 2, mp.w - 4, 5);
-        ctx.fillStyle = '#78350f';
+        ctx.fillStyle = '#fde68a';
+        ctx.fillRect(mp.x + 2, mp.y + 2, mp.w - 4, 2);
+        ctx.fillStyle = 'rgba(74, 52, 16, 0.85)';
         ctx.fillRect(mp.x + 2, mp.y + mp.h - 5, mp.w - 4, 4);
-        ctx.strokeStyle = '#0b1220'; ctx.lineWidth = 3;
-        ctx.strokeRect(mp.x, mp.y, mp.w, mp.h);
-        ctx.fillStyle = '#0b1220';
-        for (let rx = mp.x + 12; rx < mp.x + mp.w - 8; rx += 24) {
-          ctx.fillRect(rx, mp.y + 9, 4, 4);
+        const sealX = mp.x + mp.w * 0.5, sealY = mp.y + mp.h * 0.5;
+        ctx.fillStyle = '#1d6b3c';
+        ctx.beginPath(); ctx.arc(sealX, sealY - 1, 5.5, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#f7e3b8'; ctx.lineWidth = 1.4;
+        ctx.beginPath(); ctx.arc(sealX, sealY - 1, 5.5, 0, Math.PI * 2); ctx.stroke();
+        for (let rx = mp.x + 10; rx < mp.x + mp.w - 6; rx += 22) {
+          if (Math.abs(rx - sealX) < 11) continue;
+          ctx.fillStyle = '#7a4d1c';
+          ctx.beginPath(); ctx.arc(rx, mp.y + mp.h * 0.5, 2.6, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#f7e3b8';
+          ctx.fillRect(rx - 0.8, mp.y + mp.h * 0.5 - 1.6, 1.6, 1.4);
         }
+        ctx.strokeStyle = '#04060a'; ctx.lineWidth = 3;
+        ctx.strokeRect(mp.x, mp.y, mp.w, mp.h);
         ctx.restore();
       }
 
@@ -5189,6 +5262,19 @@
           }
           ctx.fillStyle = cp.state === 'shaking' ? '#fbbf24' : 'rgba(226, 232, 240, 0.42)';
           ctx.fillRect(cx0 + 2, cp.y + 2, cp.w - 4, 3);
+          // Bronze corner brackets, damp moss and a soft underside shadow
+          ctx.fillStyle = '#a67540';
+          ctx.fillRect(cx0 + 1, cp.y + 1, 5, 3);
+          ctx.fillRect(cx0 + cp.w - 6, cp.y + 1, 5, 3);
+          ctx.fillStyle = '#f7e3b8';
+          ctx.fillRect(cx0 + 1, cp.y + 1, 5, 1);
+          ctx.fillRect(cx0 + cp.w - 6, cp.y + 1, 5, 1);
+          ctx.fillStyle = 'rgba(21, 128, 61, 0.75)';
+          for (let mx = cx0 + 12; mx < cx0 + cp.w - 10; mx += 21) {
+            ctx.fillRect(mx, cp.y + cp.h - 3, 6, 3);
+          }
+          ctx.fillStyle = 'rgba(3, 6, 14, 0.35)';
+          ctx.fillRect(cx0 + 4, cp.y + cp.h, Math.max(0, cp.w - 8), 4);
           ctx.strokeStyle = cp.state === 'shaking' ? '#fef08a' : '#04060a';
           ctx.lineWidth = 2.4;
           ctx.beginPath();
@@ -5208,64 +5294,119 @@
         if (!inView(hz.x - 16, hz.w + 32)) continue;
         ctx.save();
         if (hz.kind === 'spikes') {
-          const pitch = 16;
-          const count = Math.max(1, Math.floor(hz.w / pitch));
+          const baseH = 7;
+          const baseY = hz.y + hz.h - baseH;
+          const pitch = 15;
+          const count = Math.max(1, Math.round(hz.w / pitch));
           const step = hz.w / count;
+          // Riveted iron bed with a bronze trim rail the spikes are set into
+          const bed = ctx.createLinearGradient(0, baseY, 0, hz.y + hz.h);
+          bed.addColorStop(0, '#5b6672'); bed.addColorStop(0.45, '#39424e'); bed.addColorStop(1, '#141a22');
+          ctx.fillStyle = bed;
+          ctx.strokeStyle = '#04060a'; ctx.lineWidth = 2.4;
+          ctx.beginPath(); ctx.roundRect(hz.x, baseY, hz.w, baseH, 2); ctx.fill(); ctx.stroke();
+          ctx.fillStyle = '#a67540';
+          ctx.fillRect(hz.x + 2, baseY + 1, hz.w - 4, 1.4);
+          ctx.fillStyle = 'rgba(210, 164, 101, 0.55)';
+          for (let bx = hz.x + 5; bx < hz.x + hz.w - 3; bx += 13) ctx.fillRect(bx, baseY + 4, 2, 2);
           for (let i = 0; i < count; i++) {
             const sx = hz.x + i * step;
-            ctx.fillStyle = '#94a3b8';
-            ctx.strokeStyle = '#0b1220'; ctx.lineWidth = 2.4;
+            const cx = sx + step * 0.5;
+            const hw = Math.max(3, step * 0.34);
+            // Polished steel spike: lit left facet, shadowed right facet
+            const steel = ctx.createLinearGradient(cx - hw, 0, cx + hw, 0);
+            steel.addColorStop(0, '#6b7280'); steel.addColorStop(0.4, '#d7dde5');
+            steel.addColorStop(0.62, '#9aa3ad'); steel.addColorStop(1, '#414a55');
+            ctx.fillStyle = steel;
+            ctx.strokeStyle = '#04060a'; ctx.lineWidth = 2.2; ctx.lineJoin = 'round';
             ctx.beginPath();
-            ctx.moveTo(sx + 1, hz.y + hz.h);
-            ctx.lineTo(sx + step * 0.5, hz.y);
-            ctx.lineTo(sx + step - 1, hz.y + hz.h);
-            ctx.closePath();
-            ctx.fill(); ctx.stroke();
-            // Bright edge gleam
-            ctx.fillStyle = '#f8fafc';
-            ctx.beginPath();
-            ctx.moveTo(sx + 3, hz.y + hz.h - 2);
-            ctx.lineTo(sx + step * 0.5, hz.y + 2);
-            ctx.lineTo(sx + step * 0.5, hz.y + hz.h - 2);
-            ctx.closePath();
-            ctx.fill();
+            ctx.moveTo(cx, hz.y);
+            ctx.lineTo(cx + hw, baseY + 2.5);
+            ctx.quadraticCurveTo(cx, baseY + 5.5, cx - hw, baseY + 2.5);
+            ctx.closePath(); ctx.fill(); ctx.stroke();
+            // Specular glint down the lit facet
+            ctx.strokeStyle = 'rgba(255,255,255,0.82)'; ctx.lineWidth = 1.4; ctx.lineCap = 'round';
+            ctx.beginPath(); ctx.moveTo(cx - hw * 0.3, baseY); ctx.lineTo(cx - 0.5, hz.y + 3.5); ctx.stroke();
+            // Bronze collar seating each spike
+            ctx.fillStyle = '#a67540';
+            ctx.fillRect(cx - hw - 0.5, baseY + 1, hw * 2 + 1, 2);
+            ctx.fillStyle = '#d2a465';
+            ctx.fillRect(cx - hw - 0.5, baseY + 1, hw * 2 + 1, 1);
           }
-          // Iron base bar
-          ctx.fillStyle = '#334155'; ctx.strokeStyle = '#0b1220'; ctx.lineWidth = 2;
-          ctx.fillRect(hz.x, hz.y + hz.h - 4, hz.w, 5);
-          ctx.strokeRect(hz.x, hz.y + hz.h - 4, hz.w, 5);
+          // Damp moss creeping over the bed
+          ctx.fillStyle = 'rgba(26, 61, 36, 0.9)';
+          for (let mx = hz.x + 4; mx < hz.x + hz.w - 4; mx += 17) {
+            ctx.fillRect(mx, hz.y + hz.h - 2.5, 5, 2);
+          }
         } else if (hz.kind === 'jet') {
           const cy = (t + (hz.phase || 0)) % hz.period;
           const active = cy < hz.activeDur;
           const warn = !active && (hz.period - cy) < 0.58;
           const nozY = hz.y + hz.h - 12;
+          const jetCx = hz.x + hz.w * 0.5;
+          const cool = lvl.worldId === 0;
           if (active) {
             const flick = Math.sin(t * 44 + hz.x) * 4;
-            const jetColorOuter = lvl.worldId === 0 ? '#38bdf8' : '#f97316';
-            const jetColorInner = lvl.worldId === 0 ? '#e0f2fe' : '#fef08a';
-            ctx.fillStyle = jetColorOuter;
-            ctx.beginPath();
-            ctx.roundRect(hz.x + 4, hz.y + flick * 0.4, hz.w - 8, hz.h - 10, 12);
-            ctx.fill();
-            ctx.fillStyle = jetColorInner;
-            ctx.beginPath();
-            ctx.roundRect(hz.x + 11, hz.y + 8 + flick * 0.3, hz.w - 22, hz.h - 18, 8);
-            ctx.fill();
+            const jetTop = hz.y + flick * 0.4;
+            const jetH = hz.h - 10;
+            // Heat bloom behind the plume
+            const bloom = ctx.createRadialGradient(jetCx, jetTop + jetH * 0.45, 3, jetCx, jetTop + jetH * 0.45, Math.max(18, hz.w));
+            bloom.addColorStop(0, cool ? 'rgba(125, 211, 252, 0.5)' : 'rgba(251, 191, 36, 0.5)');
+            bloom.addColorStop(1, 'rgba(251, 146, 60, 0)');
+            ctx.fillStyle = bloom;
+            ctx.beginPath(); ctx.arc(jetCx, jetTop + jetH * 0.45, Math.max(18, hz.w), 0, Math.PI * 2); ctx.fill();
+            // Ragged outer tongues licking up the column
+            const tongueW = (hz.w - 6) / 4;
+            ctx.fillStyle = cool ? '#38bdf8' : '#f97316';
+            for (let i = 0; i < 4; i++) {
+              const tx = hz.x + 3 + i * tongueW;
+              const th = jetH * (0.82 + Math.sin(t * 9 + i * 1.7) * 0.14);
+              ctx.beginPath();
+              ctx.moveTo(tx, jetTop + jetH);
+              ctx.quadraticCurveTo(tx - 4, jetTop + jetH - th * 0.55, tx + tongueW * 0.5, jetTop + jetH - th);
+              ctx.quadraticCurveTo(tx + tongueW + 4, jetTop + jetH - th * 0.55, tx + tongueW, jetTop + jetH);
+              ctx.closePath(); ctx.fill();
+            }
+            // Molten core and white-hot centre
+            ctx.fillStyle = cool ? '#7dd3fc' : '#fbbf24';
+            ctx.beginPath(); ctx.roundRect(hz.x + 6, jetTop + 6, hz.w - 12, Math.max(6, jetH - 8), 9); ctx.fill();
+            ctx.fillStyle = cool ? '#f0f9ff' : '#fff7d6';
+            ctx.beginPath(); ctx.roundRect(hz.x + 11, jetTop + 13, hz.w - 22, Math.max(4, jetH - 20), 6); ctx.fill();
+            // Rising sparks
+            ctx.fillStyle = 'rgba(255, 236, 179, 0.9)';
+            for (let i = 0; i < 3; i++) {
+              const sy = jetTop + ((t * 90 + i * 47) % jetH);
+              ctx.fillRect(jetCx + Math.sin(t * 7 + i * 2.1) * (hz.w * 0.34), sy, 2, 2);
+            }
           } else if (warn) {
             const pulse = 0.45 + 0.45 * Math.sin(t * 36);
-            ctx.fillStyle = `rgba(251, 146, 60, ${pulse})`;
-            ctx.beginPath();
-            ctx.arc(hz.x + hz.w * 0.5, nozY - 4, 13, Math.PI, 0);
-            ctx.fill();
+            const warnGlow = ctx.createRadialGradient(jetCx, nozY - 6, 2, jetCx, nozY - 6, 20);
+            warnGlow.addColorStop(0, `rgba(251, 146, 60, ${pulse})`);
+            warnGlow.addColorStop(1, 'rgba(251, 146, 60, 0)');
+            ctx.fillStyle = warnGlow;
+            ctx.beginPath(); ctx.arc(jetCx, nozY - 6, 20, 0, Math.PI * 2); ctx.fill();
+            // Stoked pilot flame
+            ctx.fillStyle = `rgba(254, 240, 138, ${0.5 + pulse * 0.5})`;
+            ctx.beginPath(); ctx.arc(jetCx, nozY - 5, 3.5, 0, Math.PI * 2); ctx.fill();
           }
-          // Heavy brass nozzle
-          ctx.fillStyle = active ? '#fbbf24' : '#92400e';
-          ctx.strokeStyle = '#0b1220'; ctx.lineWidth = 2.6;
-          ctx.beginPath();
-          ctx.roundRect(hz.x, nozY, hz.w, 12, 3);
-          ctx.fill(); ctx.stroke();
-          ctx.fillStyle = '#1e293b';
-          ctx.fillRect(hz.x + 6, nozY - 3, hz.w - 12, 4);
+          // Cast-iron mounting collar
+          ctx.fillStyle = '#1e293b'; ctx.strokeStyle = '#04060a'; ctx.lineWidth = 2.2;
+          ctx.beginPath(); ctx.roundRect(hz.x + 3, nozY + 6, hz.w - 6, 7, 2); ctx.fill(); ctx.stroke();
+          // Riveted brass nozzle with a flared lip
+          const brass = ctx.createLinearGradient(hz.x, nozY, hz.x + hz.w, nozY);
+          brass.addColorStop(0, '#8a5a22'); brass.addColorStop(0.32, '#d2a465');
+          brass.addColorStop(0.6, '#f0cf9a'); brass.addColorStop(1, '#7a4d1c');
+          ctx.fillStyle = brass;
+          ctx.strokeStyle = '#04060a'; ctx.lineWidth = 2.6;
+          ctx.beginPath(); ctx.roundRect(hz.x, nozY, hz.w, 12, 3); ctx.fill(); ctx.stroke();
+          ctx.fillStyle = '#f7e3b8';
+          ctx.fillRect(hz.x + 2, nozY + 1.5, hz.w - 4, 1.6);
+          ctx.fillStyle = 'rgba(4,6,10,0.6)';
+          for (let bx = hz.x + 5; bx < hz.x + hz.w - 4; bx += 9) ctx.fillRect(bx, nozY + 6, 2, 2);
+          // Hot bore
+          ctx.fillStyle = active ? '#fff7d6' : '#2b3440';
+          ctx.strokeStyle = '#04060a'; ctx.lineWidth = 1.6;
+          ctx.beginPath(); ctx.roundRect(hz.x + 6, nozY - 3, hz.w - 12, 5, 2); ctx.fill(); ctx.stroke();
         }
         ctx.restore();
       }
@@ -5606,19 +5747,19 @@
         ctx.translate(0, -p.h - 26);
         ctx.rotate(Math.sin(t * 3.2) * 0.04);
         const sp = getParaSprite();
-        const S = 2;
+        const S = 1;
         const pw = sp.width * S, ph = sp.height * S;
 
         // Waistband cords down to Keister's grip
         ctx.strokeStyle = 'rgba(4,6,10,0.85)'; ctx.lineWidth = 3.2;
         ctx.beginPath();
-        ctx.moveTo(-23, -6); ctx.quadraticCurveTo(-30, 10, -13, 25);
-        ctx.moveTo(23, -6); ctx.quadraticCurveTo(30, 10, 13, 25);
+        ctx.moveTo(-22, -3); ctx.quadraticCurveTo(-30, 10, -13, 25);
+        ctx.moveTo(22, -3); ctx.quadraticCurveTo(30, 10, 13, 25);
         ctx.stroke();
         ctx.strokeStyle = '#d9d2bd'; ctx.lineWidth = 1.3;
         ctx.beginPath();
-        ctx.moveTo(-23, -6); ctx.quadraticCurveTo(-30, 10, -13, 25);
-        ctx.moveTo(23, -6); ctx.quadraticCurveTo(30, 10, 13, 25);
+        ctx.moveTo(-22, -3); ctx.quadraticCurveTo(-30, 10, -13, 25);
+        ctx.moveTo(22, -3); ctx.quadraticCurveTo(30, 10, 13, 25);
         ctx.stroke();
 
         ctx.imageSmoothingEnabled = false;
