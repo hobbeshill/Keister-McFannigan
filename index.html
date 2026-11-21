@@ -849,7 +849,8 @@
     storyCompleted: false,
     goldenConchUnlocked: false,
     goldenConchEquipped: false,
-    sandboxMode: false
+    sandboxMode: false,
+    mysterySeen: 0 // mysterious transmissions witnessed, 0..8
   });
 
   const Save = {
@@ -864,6 +865,8 @@
           if (!Array.isArray(this.data.cluesCollected) || this.data.cluesCollected.length !== 16) this.data.cluesCollected = Array(16).fill(false);
           if (!Array.isArray(this.data.shellsCollected) || this.data.shellsCollected.length !== 16) this.data.shellsCollected = Array(16).fill(false);
           if (!Array.isArray(this.data.bossesDefeated) || this.data.bossesDefeated.length !== 4) this.data.bossesDefeated = [false, false, false, false];
+          if (typeof this.data.mysterySeen !== 'number' || !isFinite(this.data.mysterySeen)) this.data.mysterySeen = 0;
+          this.data.mysterySeen = Math.max(0, Math.min(8, Math.floor(this.data.mysterySeen)));
         }
       } catch (_) { this.data = defaultSave(); }
     },
@@ -1850,6 +1853,64 @@
     ]
   };
 
+  /* -------------------------------------------------------------------------
+   * MYSTERIOUS TRANSMISSIONS
+   * Random in-level cutscenes. A hooded stranger reaches Keister through the
+   * static, and each transmission carries one tiny sepia memory from the day
+   * his birth parents fell. The final transmission drops the hood: El Abuelo.
+   * ----------------------------------------------------------------------- */
+  const MYSTERY_SCENES = {
+    mystery_1: [
+      { art: 'mystery_veil', title: 'A WHISPER IN THE STATIC', speaker: '???',
+        text: '"Chamaco... you chase a stolen mask across the world, yet never ask who you are. Listen. The static remembers what you forgot."' },
+      { art: 'memory_1', title: 'FLASHBACK · THE LAST MORNING', speaker: 'A Faded Memory',
+        text: 'A blue ribbon tied around a luchador boot. A wicker basket by the door. Inside it, a baby laughs. It is the happiest morning this family will ever have.' }
+    ],
+    mystery_2: [
+      { art: 'mystery_veil', title: 'A WHISPER IN THE STATIC', speaker: '???',
+        text: '"You were not born in Dublin, muchacho. Before the shamrocks there was a sky ring — and two flyers who loved you more than any crowd."' },
+      { art: 'memory_2', title: 'FLASHBACK · ONE NIGHT ONLY', speaker: 'A Faded Memory',
+        text: 'Backstage, your father tapes up a poster: GRAN ARENA — ONE NIGHT ONLY. Your mother ties her lucky ribbon. "After this show, we hang up the capes."' }
+    ],
+    mystery_3: [
+      { art: 'mystery_veil', title: 'A WHISPER IN THE STATIC', speaker: '???',
+        text: '"The crowd saw two legends. I saw my family. I was there that night, chamaco — too proud to wave, too stubborn to speak."' },
+      { art: 'memory_3', title: 'FLASHBACK · THE FRONT ROW', speaker: 'A Faded Memory',
+        text: 'Front row, arms crossed, a silver-mustached man watches two tiny figures wave from the high wire. He does not cheer. He tells himself there is always tomorrow.' }
+    ],
+    mystery_4: [
+      { art: 'mystery_veil', title: 'A WHISPER IN THE STATIC', speaker: '???',
+        text: '"One frayed thread. One dropped wrench. One gust of wind. The smallest things decide everything, muchacho. The wire was tired, and nobody listened."' },
+      { art: 'memory_4', title: 'FLASHBACK · THE FRAYED WIRE', speaker: 'A Faded Memory',
+        text: 'Behind the curtain, a steel cable frays strand by strand. A wrench slips into the dark. The wind picks up. The show must go on.' }
+    ],
+    mystery_5: [
+      { art: 'mystery_veil', title: 'A WHISPER IN THE STATIC', speaker: '???',
+        text: '"They leapt for the trapeze as if the sky belonged to them. For one perfect heartbeat, it did. I would give anything to hold that heartbeat still."' },
+      { art: 'memory_5', title: 'FLASHBACK · THE LEAP', speaker: 'A Faded Memory',
+        text: 'The trapeze swings out. Your mother reaches for your father, her blue ribbon streaming loose. The crowd holds its breath. Above them, a bolt gives way.' }
+    ],
+    mystery_6: [
+      { art: 'mystery_veil', title: 'A WHISPER IN THE STATIC', speaker: '???',
+        text: '"When the cable snapped, the arena went silent. I was already running. I caught you before the world could — I only wish I had been faster for them."' },
+      { art: 'memory_6', title: 'FLASHBACK · THE SNAP', speaker: 'A Faded Memory',
+        text: 'A crack like thunder. The trapeze lurches. Two silhouettes drop through the spotlight as the crowd rises in a wave of gasps. A silver-mustached man is already on his feet.' }
+    ],
+    mystery_7: [
+      { art: 'mystery_veil', title: 'A WHISPER IN THE STATIC', speaker: '???',
+        text: '"Two masks fell that night. I kept them polished. I kept them safe. And I kept you safer — far away, with a family who could love you out loud."' },
+      { art: 'memory_7', title: 'FLASHBACK · TWO MASKS FALL', speaker: 'A Faded Memory',
+        text: 'The spotlight finds the empty trapeze. Two masks tumble slowly through the light — one emerald, one gold — and settle on the sawdust. The ring is silent.' }
+    ],
+    mystery_8: [
+      { art: 'mystery_reveal', title: 'THE STRANGER REVEALED', speaker: 'El Abuelo Chingon',
+        text: '"Look at me, Keister. The stranger in the static was never a stranger. I am El Abuelo Chingon... your grandfather. Everything I could not say, I hid in your trials."' },
+      { art: 'memory_8', title: 'FLASHBACK · THE PROMISE', speaker: 'A Faded Memory',
+        text: 'Rain on the arena roof. An old luchador wraps his cape around a wicker basket and carries it into the dark. "I will keep you safe, mijo," he whispers. "Even if you never know my name."' }
+    ]
+  };
+  const MYSTERY_ORDER = ['mystery_1', 'mystery_2', 'mystery_3', 'mystery_4', 'mystery_5', 'mystery_6', 'mystery_7', 'mystery_8'];
+
   /* Illustrated Canvas Comic-Panel Cutscene Engine */
   const Cutscene = {
     activeKey: null,
@@ -1860,7 +1921,7 @@
 
     start(key, onDone) {
       this.activeKey = key;
-      this.panels = CUTSCENES[key] || [];
+      this.panels = CUTSCENES[key] || MYSTERY_SCENES[key] || [];
       this.index = 0;
       this.onDone = onDone;
       this.t = 0;
@@ -1987,6 +2048,12 @@
     drawPanelArt(ctx, art, x, y, w, h, t) {
       const cx = x + w * 0.5, cy = y + h * 0.55;
       const bob = Math.sin(t * 3.2) * 5;
+
+      // Mysterious transmissions and sepia memories get their own illustrations
+      if (art.indexOf('memory_') === 0 || art === 'mystery_veil' || art === 'mystery_reveal') {
+        drawMysteryPanelArt(ctx, art, x, y, w, h, t);
+        return;
+      }
 
       // Sky / Backdrop per panel art
       const grad = ctx.createLinearGradient(x, y, x, y + h);
@@ -2149,6 +2216,547 @@
       }
     }
   };
+
+  /* Random in-level transmissions. Each one plays the next unseen memory and
+     hands control back to the exact spot the player was standing in. */
+  const Mystery = {
+    trigger() {
+      const idx = Save.data.mysterySeen;
+      const key = MYSTERY_ORDER[idx];
+      if (!key) return;
+      Audio.stopFartLoop();
+      Audio.init();
+      // A cold carrier wave resolves into Abuelo's lullaby.
+      Audio.tone(72, 0.7, 'sawtooth', 0.045, 38);
+      Audio.tone(1180, 0.16, 'square', 0.02, 240, 0.08);
+      Cutscene.start(key, () => {
+        Save.data.mysterySeen = Math.min(MYSTERY_ORDER.length, idx + 1);
+        Save.save();
+        // Drop inputs buffered while the comic was open so Keister doesn't lurch.
+        Input.jumpPressed = false;
+        Input.jumpHeld = false;
+        Input.parachuteTriggered = false;
+        Input.poundQueue = null;
+        Scene.set('play');
+        if (Game.lvl) Audio.playMusic(Game.lvl.isBoss ? 'boss' : Game.lvl.world.music);
+        Game.mysteryTimer = 0;
+        Game.mysteryNextAt = 999;
+        Input.showFeedback(`MEMORY RECOVERED · ${Save.data.mysterySeen}/${MYSTERY_ORDER.length}`);
+      });
+    }
+  };
+
+  /* --- Mysterious transmission & sepia flashback illustrations ------------ */
+  function drawMysteryPanelArt(ctx, art, x, y, w, h, t) {
+    if (art.indexOf('memory_') === 0) {
+      drawMemoryPanelArt(ctx, art, x, y, w, h, t);
+    } else {
+      drawMysteryVeil(ctx, art === 'mystery_reveal', x, y, w, h, t);
+    }
+  }
+
+  function drawMysteryVeil(ctx, revealed, x, y, w, h, t) {
+    const cx = x + w * 0.5, cy = y + h * 0.55;
+    const bg = ctx.createRadialGradient(cx, cy - h * 0.08, 12, cx, cy, Math.max(w, h) * 0.78);
+    bg.addColorStop(0, revealed ? '#7f1d1d' : '#1e1b4b');
+    bg.addColorStop(0.45, revealed ? '#450a0a' : '#0f172a');
+    bg.addColorStop(1, '#04060b');
+    ctx.fillStyle = bg;
+    ctx.fillRect(x, y, w, h);
+
+    // Drifting static bands and CRT scanlines
+    for (let i = 0; i < 30; i++) {
+      const yy = y + ((i * 41 + Math.floor(t * 70)) % h);
+      ctx.fillStyle = `rgba(203,213,225,${0.022 + (i % 4) * 0.011})`;
+      ctx.fillRect(x, yy, w, 1 + (i % 3));
+    }
+    ctx.fillStyle = 'rgba(2,6,23,0.2)';
+    for (let yy = y; yy < y + h; yy += 6) ctx.fillRect(x, yy, w, 2);
+
+    // A glowing mask-shaped portal hums behind the stranger
+    const pulse = 1 + Math.sin(t * 3.4) * 0.035;
+    ctx.save();
+    ctx.translate(cx, cy - h * 0.02);
+    ctx.scale(pulse, pulse);
+    const halo = ctx.createRadialGradient(0, 0, 10, 0, 0, h * 0.55);
+    halo.addColorStop(0, revealed ? 'rgba(253,224,71,0.5)' : 'rgba(74,222,128,0.28)');
+    halo.addColorStop(0.6, revealed ? 'rgba(245,158,11,0.16)' : 'rgba(56,189,248,0.1)');
+    halo.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = halo;
+    ctx.beginPath(); ctx.arc(0, 0, h * 0.55, 0, Math.PI * 2); ctx.fill();
+    drawMaskEmblem(ctx, 0, 0, h * 0.23, revealed ? 'gold' : 'true');
+    ctx.restore();
+
+    drawMysteryFigure(ctx, cx, y + h * 0.88, h / 270, revealed, t);
+
+    // Signal readout
+    ctx.fillStyle = 'rgba(15,23,42,0.78)';
+    ctx.fillRect(x + 12, y + 12, 138, 22);
+    ctx.strokeStyle = revealed ? '#f59e0b' : '#4ade80';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(x + 12, y + 12, 138, 22);
+    ctx.fillStyle = revealed ? '#fde047' : '#86efac';
+    ctx.font = '9px "Press Start 2P", ui-monospace, monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText(revealed ? 'SIGNAL: CLEAR' : 'SIGNAL: UNKNOWN', x + 20, y + 27);
+
+    // Occasional glitch tear
+    if (Math.sin(t * 17) > 0.9) {
+      ctx.fillStyle = 'rgba(255,255,255,0.16)';
+      ctx.fillRect(x + (Math.sin(t * 5) * 0.5 + 0.5) * (w - 100), y + h * 0.36, 100, 6);
+    }
+  }
+
+  function drawMysteryFigure(ctx, x, y, s, revealed, t) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(s, s);
+    const ink = '#05070d';
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+
+    if (revealed) {
+      const glow = ctx.createRadialGradient(0, -46, 8, 0, -46, 120);
+      glow.addColorStop(0, 'rgba(253,224,71,0.5)');
+      glow.addColorStop(1, 'rgba(253,224,71,0)');
+      ctx.fillStyle = glow;
+      ctx.beginPath(); ctx.arc(0, -46, 120, 0, Math.PI * 2); ctx.fill();
+      // Hood fallen at his feet
+      ctx.fillStyle = '#0b1220';
+      ctx.strokeStyle = '#f59e0b';
+      ctx.lineWidth = 2.4;
+      ctx.beginPath();
+      ctx.moveTo(-74, 18);
+      ctx.quadraticCurveTo(-42, -8, -8, 14);
+      ctx.quadraticCurveTo(-40, 34, -74, 18);
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+      drawAbueloPortrait(ctx, 0, -14, 1.15, false);
+      // The true mask, safe in his hand
+      drawMaskEmblem(ctx, 62, -20, 15, 'true');
+    } else {
+      // Heavy hooded cloak, shoulders squared like an old wrestler
+      const cloak = ctx.createLinearGradient(0, -108, 0, 24);
+      cloak.addColorStop(0, '#1e293b');
+      cloak.addColorStop(0.55, '#0b1220');
+      cloak.addColorStop(1, '#05070d');
+      ctx.fillStyle = cloak;
+      ctx.strokeStyle = '#f59e0b';
+      ctx.lineWidth = 2.4;
+      ctx.beginPath();
+      ctx.moveTo(-26, -62);
+      ctx.quadraticCurveTo(-60, -22, -70, 24);
+      ctx.lineTo(70, 24);
+      ctx.quadraticCurveTo(60, -22, 26, -62);
+      ctx.closePath();
+      ctx.fill(); ctx.stroke();
+      // Gold hem and inner folds
+      ctx.strokeStyle = 'rgba(245,158,11,0.7)'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(-70, 24); ctx.lineTo(70, 24); ctx.stroke();
+      ctx.strokeStyle = 'rgba(148,163,184,0.18)'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(-30, -40); ctx.quadraticCurveTo(-42, 0, -46, 24); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(30, -40); ctx.quadraticCurveTo(42, 0, 46, 24); ctx.stroke();
+      // Hood
+      ctx.fillStyle = '#0b1220';
+      ctx.strokeStyle = '#f59e0b';
+      ctx.lineWidth = 2.4;
+      ctx.beginPath();
+      ctx.moveTo(-34, -46);
+      ctx.quadraticCurveTo(-40, -106, 0, -108);
+      ctx.quadraticCurveTo(40, -106, 34, -46);
+      ctx.quadraticCurveTo(0, -32, -34, -46);
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+      // Face void with two embers of light
+      ctx.fillStyle = '#020617';
+      ctx.beginPath(); ctx.ellipse(0, -64, 23, 26, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.save();
+      ctx.shadowColor = '#fbbf24';
+      ctx.shadowBlur = 14;
+      ctx.fillStyle = '#fde047';
+      for (const sx of [-1, 1]) {
+        ctx.beginPath(); ctx.ellipse(sx * 9, -66, 5, 2.6, sx * 0.14, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.restore();
+      // A silver mustache, half-hidden in the dark
+      ctx.strokeStyle = 'rgba(248,250,252,0.55)';
+      ctx.lineWidth = 2.4;
+      ctx.beginPath(); ctx.moveTo(-13, -50); ctx.quadraticCurveTo(0, -45, 13, -50); ctx.stroke();
+      // Gloved hand raising Keister's true mask
+      ctx.fillStyle = '#0b1220';
+      ctx.strokeStyle = '#f59e0b';
+      ctx.lineWidth = 2.2;
+      ctx.beginPath(); ctx.roundRect(32, -34, 16, 42, 7); ctx.fill(); ctx.stroke();
+      drawMaskEmblem(ctx, 56, -38, 16, 'true');
+      // A slow shimmer travels the hem
+      ctx.fillStyle = `rgba(253,224,71,${0.25 + Math.sin(t * 3) * 0.12})`;
+      ctx.beginPath(); ctx.arc(-52 + (Math.sin(t * 1.7) * 0.5 + 0.5) * 104, 24, 3, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function drawMemoryFlyer(ctx, x, y, dir, color) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(dir, 1);
+    ctx.fillStyle = color;
+    ctx.strokeStyle = color;
+    ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.ellipse(0, 0, 15, 28, 0.18, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(-5, -34, 12, 0, Math.PI * 2); ctx.fill();
+    ctx.lineWidth = 8;
+    ctx.beginPath(); ctx.moveTo(4, -16); ctx.lineTo(44, -36); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, 22); ctx.lineTo(-30, 52); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, 22); ctx.lineTo(20, 56); ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawMemoryPanelArt(ctx, art, x, y, w, h, t) {
+    const idx = Math.max(1, Math.min(8, parseInt(art.split('_')[1], 10) || 1));
+    const cx = x + w * 0.5, cy = y + h * 0.52;
+    const s = Math.min(w / 800, h / 360);
+
+    // Aged photo paper
+    const paper = ctx.createLinearGradient(x, y, x, y + h);
+    paper.addColorStop(0, '#f8eed6');
+    paper.addColorStop(0.55, '#e8d0a6');
+    paper.addColorStop(1, '#c39f6d');
+    ctx.fillStyle = paper;
+    ctx.fillRect(x, y, w, h);
+
+    // Vignette, grain and scratches
+    const vig = ctx.createRadialGradient(cx, cy, h * 0.1, cx, cy, Math.max(w, h) * 0.72);
+    vig.addColorStop(0, 'rgba(255,250,235,0)');
+    vig.addColorStop(0.7, 'rgba(120,72,30,0.16)');
+    vig.addColorStop(1, 'rgba(55,30,10,0.6)');
+    ctx.fillStyle = vig;
+    ctx.fillRect(x, y, w, h);
+    for (let i = 0; i < 80; i++) {
+      const gx = x + ((i * 97 + idx * 31) % w);
+      const gy = y + ((i * 53 + idx * 17) % h);
+      ctx.fillStyle = i % 3 ? 'rgba(90,55,20,0.1)' : 'rgba(255,255,255,0.18)';
+      ctx.fillRect(gx, gy, 1 + (i % 2), 1 + (i % 3));
+    }
+    ctx.strokeStyle = 'rgba(90,55,20,0.13)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 4; i++) {
+      const sx = x + ((i * 211 + 40) % w);
+      ctx.beginPath(); ctx.moveTo(sx, y + 10); ctx.lineTo(sx + 18, y + h - 10); ctx.stroke();
+    }
+
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.scale(s, s);
+    const ink = '#4a2c14';
+    const faded = '#8a6a45';
+    const cream = '#fdf6e3';
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+
+    if (idx === 1) {
+      // Morning light through a backstage window
+      ctx.fillStyle = 'rgba(255,248,214,0.55)';
+      ctx.beginPath(); ctx.arc(-260, -96, 74, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = faded; ctx.lineWidth = 3;
+      ctx.strokeRect(-330, -140, 200, 120);
+      ctx.beginPath(); ctx.moveTo(-230, -140); ctx.lineTo(-230, -20); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-330, -80); ctx.lineTo(-130, -80); ctx.stroke();
+      // Two luchador boots waiting by the door
+      for (const sx of [-1, 1]) {
+        ctx.save();
+        ctx.translate(sx * 55, 18);
+        ctx.fillStyle = '#9c6a35';
+        ctx.strokeStyle = ink; ctx.lineWidth = 4;
+        ctx.beginPath(); ctx.roundRect(-22, -82, 44, 110, 12); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#6b4423';
+        ctx.beginPath(); ctx.roundRect(-29, 16, 58, 24, 8); ctx.fill(); ctx.stroke();
+        ctx.strokeStyle = cream; ctx.lineWidth = 3;
+        for (let i = 0; i < 4; i++) {
+          ctx.beginPath(); ctx.moveTo(-14, -64 + i * 15); ctx.lineTo(14, -58 + i * 15); ctx.stroke();
+        }
+        ctx.restore();
+      }
+      // Ma's lucky blue ribbon
+      ctx.strokeStyle = '#2563eb'; ctx.lineWidth = 7;
+      ctx.beginPath();
+      ctx.moveTo(-82, -44);
+      ctx.quadraticCurveTo(-136, -22, -124, 16);
+      ctx.quadraticCurveTo(-114, 42, -150, 54);
+      ctx.stroke();
+      // Wicker basket with baby Keister
+      ctx.fillStyle = '#c08a4a';
+      ctx.strokeStyle = ink; ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.ellipse(210, 66, 74, 46, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.ellipse(210, 46, 60, 20, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.strokeStyle = '#8a5a2b'; ctx.lineWidth = 3;
+      for (let i = -2; i <= 2; i++) {
+        ctx.beginPath(); ctx.moveTo(210 + i * 19, 26); ctx.lineTo(210 + i * 23, 100); ctx.stroke();
+      }
+      ctx.fillStyle = cream;
+      ctx.beginPath(); ctx.ellipse(210, 46, 36, 16, 0, 0, Math.PI * 2); ctx.fill();
+      drawMaskEmblem(ctx, 210, 36, 14, 'true');
+      // Sun motes
+      ctx.fillStyle = 'rgba(255,248,214,0.8)';
+      for (let i = 0; i < 6; i++) {
+        ctx.beginPath(); ctx.arc(-210 + i * 34, -40 + Math.sin(t * 2 + i) * 8 + i * 14, 2.5, 0, Math.PI * 2); ctx.fill();
+      }
+    } else if (idx === 2) {
+      // Brick wall behind the curtain
+      ctx.strokeStyle = 'rgba(90,55,20,0.22)'; ctx.lineWidth = 2;
+      for (let row = 0; row < 7; row++) {
+        ctx.beginPath(); ctx.moveTo(-400, -150 + row * 46); ctx.lineTo(400, -150 + row * 46); ctx.stroke();
+      }
+      // Tour poster
+      ctx.save();
+      ctx.translate(20, -8);
+      ctx.rotate(-0.035);
+      ctx.fillStyle = cream; ctx.strokeStyle = ink; ctx.lineWidth = 5;
+      ctx.fillRect(-190, -128, 380, 246); ctx.strokeRect(-190, -128, 380, 246);
+      ctx.fillStyle = '#9f1239';
+      ctx.font = '900 30px "Trebuchet MS", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('GRAN ARENA', 0, -84);
+      ctx.fillStyle = ink;
+      ctx.font = '800 19px "Trebuchet MS", sans-serif';
+      ctx.fillText('ONE NIGHT ONLY', 0, -56);
+      ctx.strokeStyle = 'rgba(74,44,20,0.5)'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(-160, -42); ctx.lineTo(160, -42); ctx.stroke();
+      // Two flyers painted on the poster
+      drawMemoryFlyer(ctx, -70, 20, 1, ink);
+      drawMemoryFlyer(ctx, 70, 26, -1, ink);
+      ctx.restore();
+      // Tape strips
+      ctx.fillStyle = 'rgba(255,250,235,0.75)';
+      ctx.strokeStyle = 'rgba(90,55,20,0.3)'; ctx.lineWidth = 1.5;
+      for (const p of [[-140, -118], [150, -118], [-140, 106], [150, 106]]) {
+        ctx.save(); ctx.translate(p[0], p[1]); ctx.rotate(0.2);
+        ctx.fillRect(-18, -8, 36, 16); ctx.strokeRect(-18, -8, 36, 16);
+        ctx.restore();
+      }
+      // Lucky ribbon on a hook
+      ctx.strokeStyle = '#2563eb'; ctx.lineWidth = 7;
+      ctx.beginPath(); ctx.moveTo(-290, -60); ctx.quadraticCurveTo(-320, 0, -300, 46); ctx.quadraticCurveTo(-288, 76, -320, 96); ctx.stroke();
+      ctx.fillStyle = ink;
+      ctx.beginPath(); ctx.arc(-290, -62, 5, 0, Math.PI * 2); ctx.fill();
+    } else if (idx === 3) {
+      // Spotlight from the high wire
+      ctx.fillStyle = 'rgba(255,248,214,0.28)';
+      ctx.beginPath(); ctx.moveTo(20, -170); ctx.lineTo(-150, 70); ctx.lineTo(190, 70); ctx.closePath(); ctx.fill();
+      // The wire
+      ctx.strokeStyle = ink; ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.moveTo(-400, -74); ctx.quadraticCurveTo(0, -42, 400, -74); ctx.stroke();
+      drawMemoryFlyer(ctx, -54, -44, 1, ink);
+      drawMemoryFlyer(ctx, 54, -44, -1, ink);
+      // Rows of the crowd
+      for (let row = 0; row < 4; row++) {
+        for (let i = 0; i < 13; i++) {
+          const px = -360 + i * 58 + (row % 2) * 24;
+          const py = 30 + row * 30;
+          ctx.fillStyle = row < 2 ? 'rgba(74,44,20,0.42)' : 'rgba(74,44,20,0.62)';
+          ctx.beginPath(); ctx.arc(px, py, 13 - row, 0, Math.PI * 2); ctx.fill();
+        }
+      }
+      // Abuelo in the front row, arms crossed, seen from behind
+      ctx.fillStyle = '#2b1a0c';
+      ctx.beginPath(); ctx.ellipse(-250, 178, 130, 92, 0, Math.PI, 0); ctx.fill();
+      ctx.beginPath(); ctx.arc(-250, 70, 44, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#e5e7eb'; ctx.lineWidth = 6;
+      ctx.beginPath(); ctx.arc(-250, 62, 42, 3.55, 5.9); ctx.stroke();
+      ctx.strokeStyle = '#2b1a0c'; ctx.lineWidth = 28;
+      ctx.beginPath(); ctx.moveTo(-340, 130); ctx.lineTo(-160, 130); ctx.stroke();
+      // A forgotten program on his lap
+      ctx.fillStyle = cream; ctx.strokeStyle = ink; ctx.lineWidth = 3;
+      ctx.save(); ctx.translate(-110, 156); ctx.rotate(-0.18);
+      ctx.fillRect(-34, -24, 68, 48); ctx.strokeRect(-34, -24, 68, 48);
+      ctx.fillStyle = '#9f1239'; ctx.font = '900 12px "Trebuchet MS", sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText('FINAL', 0, -4); ctx.fillText('SHOW', 0, 12);
+      ctx.restore();
+    } else if (idx === 4) {
+      // The tired cable, seen close
+      ctx.strokeStyle = '#6b4423'; ctx.lineWidth = 16;
+      ctx.beginPath(); ctx.moveTo(-380, -110); ctx.lineTo(380, 86); ctx.stroke();
+      ctx.strokeStyle = '#a97c50'; ctx.lineWidth = 6;
+      ctx.beginPath(); ctx.moveTo(-380, -114); ctx.lineTo(380, 82); ctx.stroke();
+      // Frayed strands near the middle
+      ctx.strokeStyle = ink; ctx.lineWidth = 3;
+      for (let i = 0; i < 11; i++) {
+        const bx = -30 + i * 7;
+        ctx.beginPath();
+        ctx.moveTo(bx, -4 + i * 2);
+        ctx.quadraticCurveTo(bx - 14, 16 + i * 3, bx - 30 - i * 2, 34 + i * 4);
+        ctx.stroke();
+      }
+      // A wrench slipping into the dark
+      ctx.save();
+      ctx.translate(150, 22);
+      ctx.rotate(0.7);
+      ctx.fillStyle = '#8a6a45'; ctx.strokeStyle = ink; ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.roundRect(-11, -58, 22, 98, 6); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.arc(0, -62, 18, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = cream;
+      ctx.beginPath(); ctx.arc(0, -62, 8, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+      // Wind streaks
+      ctx.strokeStyle = 'rgba(74,44,20,0.4)'; ctx.lineWidth = 2;
+      for (let i = 0; i < 5; i++) {
+        ctx.beginPath();
+        ctx.moveTo(-350 + i * 26, 110 - i * 18);
+        ctx.quadraticCurveTo(-290 + i * 26, 94 - i * 18, -230 + i * 26, 106 - i * 18);
+        ctx.stroke();
+      }
+      // Loose bolt on the floor
+      ctx.fillStyle = '#8a6a45'; ctx.strokeStyle = ink; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(-300, 140, 9, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    } else if (idx === 5) {
+      // Spotlight through the big top
+      ctx.fillStyle = 'rgba(255,248,214,0.3)';
+      ctx.beginPath(); ctx.moveTo(-20, -180); ctx.lineTo(-190, 120); ctx.lineTo(200, 120); ctx.closePath(); ctx.fill();
+      // Trapeze bar and ropes
+      ctx.strokeStyle = ink; ctx.lineWidth = 6;
+      ctx.beginPath(); ctx.moveTo(-260, -160); ctx.lineTo(-40, -160); ctx.stroke();
+      ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(-244, -160); ctx.lineTo(-216, -70); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-56, -160); ctx.lineTo(-84, -70); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-216, -70); ctx.lineTo(-84, -70); ctx.stroke();
+      // The leap
+      drawMemoryFlyer(ctx, -70, -18, 1, ink);
+      drawMemoryFlyer(ctx, 74, 2, -1, ink);
+      // Ma's ribbon streaming loose
+      ctx.strokeStyle = '#2563eb'; ctx.lineWidth = 7;
+      ctx.beginPath();
+      ctx.moveTo(104, -12);
+      ctx.bezierCurveTo(170, -34, 190, 26, 250, 4);
+      ctx.bezierCurveTo(290, -10, 310, 20, 340, 8);
+      ctx.stroke();
+      // The bolt above, quietly giving way
+      ctx.strokeStyle = '#9f1239'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(-30, -164); ctx.lineTo(-18, -148); ctx.lineTo(-34, -144); ctx.lineTo(-22, -128); ctx.stroke();
+      // Crowd below
+      for (let i = 0; i < 11; i++) {
+        ctx.fillStyle = 'rgba(74,44,20,0.4)';
+        ctx.beginPath(); ctx.arc(-330 + i * 66, 132 + (i % 3) * 8, 12, 0, Math.PI * 2); ctx.fill();
+      }
+    } else if (idx === 6) {
+      // A crack like thunder: one side of the rig snaps
+      ctx.fillStyle = 'rgba(255,248,214,0.26)';
+      ctx.beginPath(); ctx.moveTo(30, -180); ctx.lineTo(-160, 90); ctx.lineTo(210, 90); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = ink; ctx.lineWidth = 5;
+      ctx.beginPath(); ctx.moveTo(-380, -120); ctx.lineTo(-120, -104); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-96, -102); ctx.lineTo(-60, -132); ctx.lineTo(-40, -96); ctx.lineTo(-12, -118); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(40, -96); ctx.lineTo(380, -60); ctx.stroke();
+      // The falling pair
+      drawMemoryFlyer(ctx, -20, -4, 1, ink);
+      drawMemoryFlyer(ctx, 96, 44, -1, ink);
+      // The reaching hand left behind
+      ctx.strokeStyle = ink; ctx.lineWidth = 8;
+      ctx.beginPath(); ctx.moveTo(-70, -36); ctx.lineTo(-116, -58); ctx.stroke();
+      // Crowd rising as one
+      for (let i = 0; i < 12; i++) {
+        const px = -350 + i * 62;
+        ctx.fillStyle = 'rgba(74,44,20,0.52)';
+        ctx.beginPath(); ctx.arc(px, 122 + (i % 2) * 10, 12, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = 'rgba(74,44,20,0.52)'; ctx.lineWidth = 6;
+        ctx.beginPath(); ctx.moveTo(px, 118); ctx.lineTo(px + (i % 2 ? 14 : -14), 92); ctx.stroke();
+      }
+      // Abuelo already on his feet
+      ctx.fillStyle = '#2b1a0c';
+      ctx.beginPath(); ctx.ellipse(-300, 168, 78, 80, 0, Math.PI, 0); ctx.fill();
+      ctx.beginPath(); ctx.arc(-300, 82, 36, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#e5e7eb'; ctx.lineWidth = 5;
+      ctx.beginPath(); ctx.arc(-300, 76, 34, 3.6, 5.9); ctx.stroke();
+    } else if (idx === 7) {
+      // Empty trapeze in a cone of light
+      ctx.fillStyle = 'rgba(255,248,214,0.32)';
+      ctx.beginPath(); ctx.moveTo(0, -180); ctx.lineTo(-180, 110); ctx.lineTo(200, 110); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = ink; ctx.lineWidth = 5;
+      ctx.beginPath(); ctx.moveTo(-150, -160); ctx.lineTo(150, -160); ctx.stroke();
+      ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(-134, -160); ctx.lineTo(-96, -76); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(134, -160); ctx.lineTo(96, -76); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-96, -76); ctx.lineTo(96, -76); ctx.stroke();
+      // Two masks tumbling through the spotlight
+      ctx.save();
+      ctx.translate(-52, 16);
+      ctx.rotate(-0.55);
+      drawMaskEmblem(ctx, 0, 0, 27, 'true');
+      ctx.restore();
+      ctx.save();
+      ctx.translate(58, -14);
+      ctx.rotate(0.7);
+      drawMaskEmblem(ctx, 0, 0, 27, 'gold');
+      ctx.restore();
+      // Sawdust ring
+      ctx.strokeStyle = 'rgba(74,44,20,0.5)'; ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.ellipse(0, 128, 250, 42, 0, 0, Math.PI * 2); ctx.stroke();
+      // Silent crowd
+      for (let i = 0; i < 12; i++) {
+        ctx.fillStyle = 'rgba(74,44,20,0.36)';
+        ctx.beginPath(); ctx.arc(-360 + i * 64, 146 + (i % 3) * 6, 11, 0, Math.PI * 2); ctx.fill();
+      }
+      // A single spotlight dust mote
+      ctx.fillStyle = 'rgba(255,250,235,0.8)';
+      ctx.beginPath(); ctx.arc(Math.sin(t * 2) * 40, 20 + Math.cos(t * 1.5) * 20, 2.5, 0, Math.PI * 2); ctx.fill();
+    } else {
+      // Rain on the arena roof
+      ctx.strokeStyle = 'rgba(74,44,20,0.35)'; ctx.lineWidth = 2;
+      for (let i = 0; i < 34; i++) {
+        const rx = -400 + ((i * 53 + Math.floor(t * 60)) % 800);
+        const ry = -170 + ((i * 37 + Math.floor(t * 90)) % 340);
+        ctx.beginPath(); ctx.moveTo(rx, ry); ctx.lineTo(rx - 6, ry + 22); ctx.stroke();
+      }
+      // Wet ground
+      ctx.fillStyle = 'rgba(74,44,20,0.32)';
+      ctx.fillRect(-400, 118, 800, 62);
+      // Abuelo's cape held over the basket like a roof
+      ctx.fillStyle = '#7f1d1d';
+      ctx.strokeStyle = ink; ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(-140, 20);
+      ctx.quadraticCurveTo(-120, -130, 40, -132);
+      ctx.quadraticCurveTo(180, -120, 180, 10);
+      ctx.quadraticCurveTo(20, -46, -140, 20);
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.strokeStyle = 'rgba(17,24,39,0.35)'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(-80, -30); ctx.quadraticCurveTo(0, -70, 120, -40); ctx.stroke();
+      // The old luchador, bent against the rain
+      ctx.fillStyle = '#3b2412';
+      ctx.beginPath(); ctx.ellipse(-44, 104, 62, 54, 0, Math.PI, 0); ctx.fill();
+      ctx.beginPath(); ctx.arc(-44, 38, 30, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#e5e7eb'; ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.arc(-44, 34, 28, 3.6, 5.9); ctx.stroke();
+      ctx.strokeStyle = 'rgba(248,250,252,0.8)'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(-56, 46); ctx.quadraticCurveTo(-44, 51, -32, 46); ctx.stroke();
+      // Baby basket tucked against his chest
+      ctx.fillStyle = '#c08a4a'; ctx.strokeStyle = ink; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.ellipse(62, 92, 44, 28, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = cream;
+      ctx.beginPath(); ctx.ellipse(62, 84, 28, 12, 0, 0, Math.PI * 2); ctx.fill();
+      drawMaskEmblem(ctx, 62, 78, 10, 'true');
+      // Two masks left in the mud
+      ctx.save(); ctx.translate(-236, 138); ctx.rotate(0.35); drawMaskEmblem(ctx, 0, 0, 15, 'true'); ctx.restore();
+      ctx.save(); ctx.translate(-176, 152); ctx.rotate(-0.3); drawMaskEmblem(ctx, 0, 0, 15, 'gold'); ctx.restore();
+      // A torn family photo, half sunk in a puddle
+      ctx.save();
+      ctx.translate(226, 146);
+      ctx.rotate(-0.12);
+      ctx.fillStyle = cream; ctx.strokeStyle = ink; ctx.lineWidth = 2;
+      ctx.fillRect(-38, -26, 76, 52); ctx.strokeRect(-38, -26, 76, 52);
+      ctx.strokeStyle = ink; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(6, -26); ctx.lineTo(-2, -8); ctx.lineTo(10, 2); ctx.lineTo(0, 26); ctx.stroke();
+      drawMaskEmblem(ctx, -14, -2, 9, 'true');
+      drawMaskEmblem(ctx, 20, 2, 9, 'gold');
+      ctx.restore();
+    }
+    ctx.restore();
+
+    // Memory stamp
+    ctx.fillStyle = 'rgba(253,246,227,0.82)';
+    ctx.fillRect(x + 12, y + h - 30, 150, 20);
+    ctx.strokeStyle = 'rgba(90,55,20,0.5)'; ctx.lineWidth = 1.5;
+    ctx.strokeRect(x + 12, y + h - 30, 150, 20);
+    ctx.fillStyle = '#6b4423';
+    ctx.font = '8px "Press Start 2P", ui-monospace, monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText(`MEMORY ${idx} OF 8`, x + 20, y + h - 16);
+  }
 
   // Small colour helper so gradients can fade to transparent
   function hexToRgba(hex, a) {
@@ -4887,6 +5495,8 @@
     hintTimer: 7,
     staminaTickTimer: 0,
     stageCleared: false,
+    mysteryTimer: 0,
+    mysteryNextAt: 0,
 
     startLevel(idx) {
       Audio.init();
@@ -4900,6 +5510,8 @@
       this.hitstop = 0;
       this.stageCleared = false;
       this.hintTimer = idx === 0 ? 8.5 : 3.5;
+      this.mysteryTimer = 0;
+      this.mysteryNextAt = 10 + Math.random() * 10;
 
       const maxStam = Save.maxStamina();
       this.player = {
@@ -4959,6 +5571,23 @@
       UI.refreshHUD();
     },
 
+    updateMystery(dt) {
+      if (Save.data.mysterySeen >= MYSTERY_ORDER.length) return false;
+      this.mysteryTimer += dt;
+      if (this.mysteryTimer < this.mysteryNextAt) return false;
+      if (!this.canTriggerMystery()) return false;
+      this.mysteryNextAt = 999; // at most one transmission per stage
+      Mystery.trigger();
+      return true;
+    },
+
+    canTriggerMystery() {
+      if (!this.lvl || this.lvl.isBoss) return false;
+      if (!this.player || this.player.hp <= 0) return false;
+      if (Scene.current !== 'play' || UI.isModalOpen() || this.stageCleared) return false;
+      return true;
+    },
+
     spawnBurst(x, y, color, count = 10, speed = 220) {
       for (let i = 0; i < count; i++) {
         const a = Math.random() * Math.PI * 2;
@@ -4992,6 +5621,9 @@
       this.time += dt;
       if (this.hitstop > 0) { this.hitstop -= dt; return; }
       if (this.shake > 0) this.shake = Math.max(0, this.shake - dt * 28);
+
+      // A mysterious transmission can cut in at a random quiet moment
+      if (this.updateMystery(dt)) return;
 
       const hintEl = document.getElementById('touch-hint');
       if (this.hintTimer > 0) {
