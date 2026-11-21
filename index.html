@@ -508,6 +508,30 @@
   }
   .hud-btn:hover { background: var(--px-navy-lite) !important; border-color: var(--px-ink) !important; }
   .hud-btn:active { transform: translateY(4px); box-shadow: inset 0 0 0 2px var(--px-navy-lite), 0 0 0 var(--px-ink) !important; }
+  /* Fullscreen: the button flips to gold while the game owns the screen */
+  .hud-btn.is-active {
+    background: var(--px-gold) !important;
+    color: var(--px-ink) !important;
+    box-shadow: inset 0 0 0 2px var(--px-gold-dark), 0 4px 0 var(--px-ink) !important;
+  }
+  #game-wrap:fullscreen, #game-wrap:-webkit-full-screen {
+    width: 100vw; height: 100vh;
+    background: #0e1726;
+  }
+  /* Small pixel toast for fullscreen / device messages */
+  #toast {
+    position: absolute; left: 50%; bottom: 74px; z-index: 60;
+    transform: translateX(-50%) translateY(10px);
+    max-width: 88vw; text-align: center;
+    padding: 9px 16px;
+    background: var(--px-navy); color: var(--px-cream);
+    border: 3px solid var(--px-ink);
+    box-shadow: inset 0 0 0 2px var(--px-navy-lite), 3px 3px 0 rgba(0,0,0,0.55);
+    font-family: var(--px-head); font-size: 8px; line-height: 1.7; letter-spacing: 0.02em;
+    pointer-events: none; opacity: 0;
+    transition: opacity 0.2s steps(3, end), transform 0.2s steps(3, end);
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
   #touch-hint {
     background: var(--px-navy); color: var(--px-cream);
     border: 3px solid var(--px-ink);
@@ -680,6 +704,7 @@
     </div>
     <div class="hud-right">
       <button id="btn-mute" class="hud-btn" data-icon="♪" aria-label="Toggle Sound">Sound: On</button>
+      <button id="btn-fullscreen" class="hud-btn" data-icon="⛶" data-fullscreen-toggle aria-label="Enter Fullscreen">Fullscreen</button>
       <button id="btn-pause" class="hud-btn" data-icon="☰" aria-label="Open Scrapbook">Scrapbook</button>
     </div>
   </div>
@@ -690,6 +715,7 @@
   </div>
 
   <div id="touch-hint">Left: Move/Jump · Up = Fart-Jet · Right Down = Drop · Falls auto-glide!</div>
+  <div id="toast" role="status" aria-live="polite"></div>
 
   <!-- Title Screen Overlay -->
   <div id="title-overlay" class="overlay active">
@@ -703,6 +729,7 @@
         <button id="btn-play-story" class="btn btn-primary">Play Story</button>
         <button id="btn-stage-select" class="btn btn-gold">Stage Select / Sandbox</button>
         <button id="btn-title-scrapbook" class="btn btn-secondary">Scrapbook</button>
+        <button id="btn-title-fullscreen" class="btn btn-secondary" data-fullscreen-toggle aria-label="Enter Fullscreen">Fullscreen</button>
       </div>
       <div id="title-meta" class="title-meta"></div>
     </div>
@@ -712,6 +739,7 @@
   <div id="cutscene-ui">
     <div class="cutscene-top">
       <button id="btn-cutscene-mute" class="hud-btn">Sound: On</button>
+      <button id="btn-cutscene-fullscreen" class="hud-btn" data-fullscreen-toggle aria-label="Enter Fullscreen">Fullscreen</button>
       <button id="btn-cutscene-skip" class="hud-btn">Skip</button>
     </div>
     <div class="cutscene-bottom">
@@ -1430,6 +1458,7 @@
       window.addEventListener('keydown', (e) => {
         if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code)) e.preventDefault();
         Audio.init();
+        if (e.code === 'KeyF' && !e.repeat) Fullscreen.toggle();
         if (!this.keys[e.code]) this.justPressed[e.code] = true;
         this.keys[e.code] = true;
       });
@@ -2204,52 +2233,163 @@
   function drawMaskEmblem(ctx, x, y, r, style) {
     ctx.save();
     ctx.translate(x, y);
-    ctx.fillStyle = style === 'gold' ? '#f59e0b' : (style === 'true' ? '#0f7a43' : '#16a34a');
-    ctx.strokeStyle = '#111827';
+    const ink = '#111827';
+    const base = style === 'gold' ? '#fbbf24' : (style === 'true' ? '#0f7a43' : '#16a34a');
+    const shade = style === 'gold' ? '#b45309' : (style === 'true' ? '#0a5a31' : '#0f7a43');
+    const trim = style === 'gold' ? '#fef9c3' : (style === 'true' ? '#dc2626' : '#fde047');
+    // Head silhouette: lit crown on the left, shadowed back on the right
+    const head = ctx.createLinearGradient(-r, -r, r, r);
+    head.addColorStop(0, mixHex(base, '#ffffff', 0.3));
+    head.addColorStop(0.55, base);
+    head.addColorStop(1, shade);
+    ctx.fillStyle = head;
+    ctx.strokeStyle = ink;
     ctx.lineWidth = Math.max(2, r * 0.12);
     ctx.beginPath(); ctx.ellipse(0, 0, r, r * 1.12, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    // Ear tabs
+    ctx.fillStyle = base;
+    for (const sx of [-1, 1]) {
+      ctx.beginPath(); ctx.ellipse(sx * r * 1.01, r * 0.06, r * 0.15, r * 0.25, 0, 0, Math.PI * 2);
+      ctx.fill(); ctx.stroke();
+    }
     // Forehead crest
-    ctx.fillStyle = style === 'gold' ? '#fef08a' : (style === 'true' ? '#dc2626' : '#fde047');
+    ctx.fillStyle = trim;
     ctx.beginPath();
-    ctx.moveTo(0, -r * 0.9); ctx.lineTo(r * 0.42, -r * 0.2); ctx.lineTo(-r * 0.42, -r * 0.2); ctx.closePath();
+    ctx.moveTo(0, -r * 0.92); ctx.lineTo(r * 0.44, -r * 0.2); ctx.lineTo(-r * 0.44, -r * 0.2); ctx.closePath();
     ctx.fill();
-    // Eyes
-    ctx.fillStyle = '#fff';
-    ctx.beginPath();
-    ctx.ellipse(-r * 0.36, -r * 0.05, r * 0.26, r * 0.16, -0.2, 0, Math.PI * 2);
-    ctx.ellipse(r * 0.36, -r * 0.05, r * 0.26, r * 0.16, 0.2, 0, Math.PI * 2);
-    ctx.fill(); ctx.stroke();
-    // Mouth cutout
-    ctx.fillStyle = '#fed7aa';
-    ctx.beginPath(); ctx.ellipse(0, r * 0.48, r * 0.34, r * 0.22, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = ink; ctx.lineWidth = Math.max(1.2, r * 0.07); ctx.stroke();
+    // Eye holes with bright irises and pin glints
+    for (const sx of [-1, 1]) {
+      ctx.fillStyle = '#ffffff'; ctx.strokeStyle = ink; ctx.lineWidth = Math.max(1.4, r * 0.08);
+      ctx.beginPath(); ctx.ellipse(sx * r * 0.36, -r * 0.06, r * 0.27, r * 0.18, sx * 0.22, 0, Math.PI * 2);
+      ctx.fill(); ctx.stroke();
+      ctx.fillStyle = ink;
+      ctx.beginPath(); ctx.arc(sx * r * 0.38, -r * 0.05, r * 0.1, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath(); ctx.arc(sx * r * 0.34, -r * 0.1, r * 0.04, 0, Math.PI * 2); ctx.fill();
+    }
+    // Stitched mouth cutout
+    ctx.fillStyle = '#f8b48a'; ctx.strokeStyle = ink; ctx.lineWidth = Math.max(1.2, r * 0.07);
+    ctx.beginPath(); ctx.ellipse(0, r * 0.48, r * 0.3, r * 0.2, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = 'rgba(17,24,39,0.5)'; ctx.lineWidth = Math.max(1, r * 0.05);
+    ctx.beginPath(); ctx.moveTo(-r * 0.22, r * 0.48); ctx.lineTo(r * 0.22, r * 0.48); ctx.stroke();
+    // Laces trailing off the left side
+    ctx.strokeStyle = trim; ctx.lineWidth = Math.max(1.6, r * 0.09); ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(-r * 0.95, r * 0.2); ctx.quadraticCurveTo(-r * 1.25, r * 0.34, -r * 1.45, r * 0.22); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-r * 0.95, r * 0.4); ctx.quadraticCurveTo(-r * 1.2, r * 0.52, -r * 1.4, r * 0.46); ctx.stroke();
     ctx.restore();
   }
 
   function drawMiniCharacter(ctx, x, y, hairColor, outfitColor, s, tag) {
     ctx.save();
     ctx.translate(x, y); ctx.scale(s, s);
-    ctx.fillStyle = outfitColor; ctx.strokeStyle = '#111827'; ctx.lineWidth = 2.5;
-    ctx.fillRect(-16, -24, 32, 34); ctx.strokeRect(-16, -24, 32, 34);
+    const ink = '#111827';
+    ctx.lineJoin = 'round';
+    // Legs and boots
+    ctx.strokeStyle = ink; ctx.lineWidth = 2.2;
+    for (const sx of [-1, 1]) {
+      ctx.fillStyle = '#334155';
+      ctx.beginPath(); ctx.roundRect(sx * 8 - 5, 8, 10, 13, 3); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#111827';
+      ctx.beginPath(); ctx.roundRect(sx * 8 - 7, 18, 15, 7, 3); ctx.fill();
+    }
+    // Arms behind the torso
+    ctx.fillStyle = mixHex(outfitColor, '#000000', 0.18);
+    ctx.beginPath(); ctx.roundRect(-23, -20, 8, 22, 4); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.roundRect(15, -20, 8, 22, 4); ctx.fill(); ctx.stroke();
+    // Torso with a sunlit crown and shadowed hem
+    const torso = ctx.createLinearGradient(0, -26, 0, 12);
+    torso.addColorStop(0, mixHex(outfitColor, '#ffffff', 0.24));
+    torso.addColorStop(0.55, outfitColor);
+    torso.addColorStop(1, mixHex(outfitColor, '#000000', 0.34));
+    ctx.fillStyle = torso;
+    ctx.beginPath(); ctx.roundRect(-16, -24, 32, 34, 7); ctx.fill(); ctx.stroke();
+    // Collar + buttons
+    ctx.fillStyle = mixHex(outfitColor, '#ffffff', 0.45);
+    ctx.beginPath(); ctx.roundRect(-9, -23, 18, 5, 2); ctx.fill();
+    ctx.fillStyle = '#fde047';
+    ctx.beginPath(); ctx.arc(0, -11, 1.8, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(0, -4, 1.8, 0, Math.PI * 2); ctx.fill();
+    // Hands
     ctx.fillStyle = '#fed7aa';
+    ctx.beginPath(); ctx.arc(-19, 4, 4.4, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.arc(19, 4, 4.4, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    // Head with soft shading
+    const head = ctx.createRadialGradient(-5, -43, 2, 0, -38, 20);
+    head.addColorStop(0, '#ffe6c9'); head.addColorStop(1, '#dfa878');
+    ctx.fillStyle = head;
     ctx.beginPath(); ctx.arc(0, -38, 16, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    // Hair
     ctx.fillStyle = hairColor;
-    ctx.beginPath(); ctx.arc(0, -44, 15, Math.PI, 0); ctx.fill();
-    ctx.fillStyle = '#111827'; ctx.font = '800 10px sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText(tag, 0, 22);
+    ctx.beginPath();
+    ctx.moveTo(-16, -40);
+    ctx.quadraticCurveTo(-15, -56, 0, -55);
+    ctx.quadraticCurveTo(15, -56, 16, -40);
+    ctx.quadraticCurveTo(8, -47, 0, -46);
+    ctx.quadraticCurveTo(-8, -47, -16, -40);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    // Eyes, nose, smile
+    ctx.fillStyle = ink;
+    ctx.beginPath(); ctx.ellipse(-5.5, -39, 2.1, 2.6, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(5.5, -39, 2.1, 2.6, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath(); ctx.arc(-6.2, -40, 0.8, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(4.8, -40, 0.8, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(120,72,40,0.6)'; ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.moveTo(0, -37); ctx.quadraticCurveTo(2.5, -34, 0, -32.5); ctx.stroke();
+    ctx.strokeStyle = ink; ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.arc(0, -33, 5, 0.25, Math.PI - 0.25); ctx.stroke();
+    // Name plate
+    ctx.fillStyle = ink; ctx.font = '800 10px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText(tag, 0, 34);
     ctx.restore();
   }
 
   function drawKeisterPortrait(ctx, x, y, s, maskStyle) {
     ctx.save();
     ctx.translate(x, y); ctx.scale(s, s);
-    // Torso
-    ctx.fillStyle = '#fed7aa'; ctx.strokeStyle = '#111827'; ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.roundRect(-22, -22, 44, 36, 10); ctx.fill(); ctx.stroke();
-    // Oversized shamrock briefs
-    ctx.fillStyle = '#ffffff';
+    const ink = '#111827';
+    const capeCol = maskStyle === 'gold' ? '#b45309' : (maskStyle === 'true' ? '#0a5a31' : '#0f7a43');
+    // Cape billowing behind the shoulders
+    ctx.fillStyle = capeCol; ctx.strokeStyle = ink; ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(-24, -18); ctx.quadraticCurveTo(-40, 4, -33, 33);
+    ctx.lineTo(33, 33); ctx.quadraticCurveTo(40, 4, 24, -18);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,0.22)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(-17, -12); ctx.quadraticCurveTo(-27, 8, -25, 30); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(17, -12); ctx.quadraticCurveTo(27, 8, 25, 30); ctx.stroke();
+    // Bare, lit torso with pec definition
+    const skin = ctx.createLinearGradient(0, -24, 0, 16);
+    skin.addColorStop(0, '#ffe3c2'); skin.addColorStop(0.6, '#f7cda6'); skin.addColorStop(1, '#d9a172');
+    ctx.fillStyle = skin;
+    ctx.beginPath(); ctx.roundRect(-22, -22, 44, 37, 11); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = 'rgba(120,72,40,0.42)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(-9, -13, 9, 0.15, Math.PI - 0.45); ctx.stroke();
+    ctx.beginPath(); ctx.arc(9, -13, 9, 0.15, Math.PI - 0.45); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(13, -19); ctx.quadraticCurveTo(18, -10, 14, 0); ctx.stroke();
+    // Arms and fists at the sides
+    ctx.fillStyle = '#e9b183'; ctx.strokeStyle = ink; ctx.lineWidth = 2.6;
+    for (const sx of [-1, 1]) {
+      ctx.beginPath(); ctx.roundRect(sx * 27 - 6, -18, 12, 26, 5); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#f7cda6';
+      ctx.beginPath(); ctx.arc(sx * 27, 10, 6.5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#e9b183';
+    }
+    // Oversized shamrock briefs with a lit waistband and gold buckle
+    const briefs = ctx.createLinearGradient(0, 10, 0, 32);
+    briefs.addColorStop(0, '#ffffff'); briefs.addColorStop(1, '#dbe3ee');
+    ctx.fillStyle = briefs;
     ctx.beginPath(); ctx.roundRect(-24, 10, 48, 22, 6); ctx.fill(); ctx.stroke();
     ctx.fillStyle = '#16a34a'; ctx.fillRect(-24, 8, 48, 6);
-    ctx.fillStyle = '#f59e0b'; ctx.beginPath(); ctx.arc(0, 11, 6, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.fillRect(-24, 8, 48, 2);
+    ctx.fillStyle = '#f59e0b'; ctx.strokeStyle = ink; ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.arc(0, 13, 5.5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#16a34a';
+    ctx.beginPath();
+    ctx.arc(-3, 25, 2.2, 0, Math.PI * 2); ctx.arc(-6.5, 25, 2.2, 0, Math.PI * 2); ctx.arc(-4.6, 22.4, 2.2, 0, Math.PI * 2);
+    ctx.fill();
     // Mask head
     drawMaskEmblem(ctx, 0, -42, 22, maskStyle);
     ctx.restore();
@@ -2258,32 +2398,75 @@
   function drawAbueloPortrait(ctx, x, y, s, strawHat) {
     ctx.save();
     ctx.translate(x, y); ctx.scale(s, s);
-    // Lucha cape
-    ctx.fillStyle = '#dc2626'; ctx.strokeStyle = '#111827'; ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.moveTo(-26, -18); ctx.lineTo(-42, 32); ctx.lineTo(42, 32); ctx.lineTo(26, -18); ctx.closePath(); ctx.fill(); ctx.stroke();
-    // Chest
-    ctx.fillStyle = '#d97706';
-    ctx.beginPath(); ctx.roundRect(-22, -20, 44, 42, 10); ctx.fill(); ctx.stroke();
-    // Head & glorious silver mustache
-    ctx.fillStyle = '#e7b589';
+    const ink = '#111827';
+    ctx.lineJoin = 'round';
+    // Lucha cape with rolling folds
+    const cape = ctx.createLinearGradient(0, -18, 0, 32);
+    cape.addColorStop(0, '#ef4444'); cape.addColorStop(1, '#991b1b');
+    ctx.fillStyle = cape; ctx.strokeStyle = ink; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(-26, -18); ctx.quadraticCurveTo(-36, 8, -42, 32);
+    ctx.lineTo(42, 32); ctx.quadraticCurveTo(36, 8, 26, -18); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = 'rgba(17,24,39,0.35)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(-14, -14); ctx.quadraticCurveTo(-22, 8, -26, 30); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(14, -14); ctx.quadraticCurveTo(22, 8, 26, 30); ctx.stroke();
+    // Gold-trimmed chest with a championship buckle
+    const chest = ctx.createLinearGradient(0, -22, 0, 22);
+    chest.addColorStop(0, '#f0a63c'); chest.addColorStop(0.6, '#d97706'); chest.addColorStop(1, '#b45309');
+    ctx.fillStyle = chest;
+    ctx.beginPath(); ctx.roundRect(-22, -20, 44, 42, 11); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = 'rgba(17,24,39,0.3)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(-9, -8, 9, 0.2, Math.PI - 0.5); ctx.stroke();
+    ctx.beginPath(); ctx.arc(9, -8, 9, 0.2, Math.PI - 0.5); ctx.stroke();
+    ctx.fillStyle = '#fbbf24'; ctx.strokeStyle = ink; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.roundRect(-18, -2, 36, 8, 3); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#fde68a';
+    ctx.beginPath(); ctx.ellipse(0, 2, 7, 5.5, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    // Head with warm lighting
+    const head = ctx.createRadialGradient(-7, -47, 3, 0, -40, 24);
+    head.addColorStop(0, '#f7d0a8'); head.addColorStop(1, '#d19a6a');
+    ctx.fillStyle = head;
     ctx.beginPath(); ctx.arc(0, -40, 21, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-    // Silver mustache
-    ctx.fillStyle = '#f8fafc';
+    // Silver brows, eyes with glints
+    ctx.strokeStyle = '#f8fafc'; ctx.lineWidth = 3.2; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(-13, -48); ctx.lineTo(-4, -47); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(4, -47); ctx.lineTo(13, -48); ctx.stroke();
+    ctx.fillStyle = ink;
+    ctx.beginPath(); ctx.ellipse(-8, -44, 3, 3.6, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(8, -44, 3, 3.6, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath(); ctx.arc(-9, -45.2, 1, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(7, -45.2, 1, 0, Math.PI * 2); ctx.fill();
+    // Nose and grin
+    ctx.strokeStyle = 'rgba(120,72,40,0.55)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(0, -42); ctx.quadraticCurveTo(3, -37, 0, -35); ctx.stroke();
+    ctx.strokeStyle = ink; ctx.lineWidth = 1.8;
+    ctx.beginPath(); ctx.arc(0, -31, 5, 0.2, Math.PI - 0.2); ctx.stroke();
+    // Glorious silver mustache
+    ctx.fillStyle = '#f8fafc'; ctx.strokeStyle = ink; ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(0, -34); ctx.quadraticCurveTo(-18, -42, -26, -28); ctx.quadraticCurveTo(-12, -24, 0, -29);
     ctx.quadraticCurveTo(12, -24, 26, -28); ctx.quadraticCurveTo(18, -42, 0, -34);
     ctx.fill(); ctx.stroke();
-    // Eyes
-    ctx.fillStyle = '#111827';
-    ctx.fillRect(-9, -46, 5, 5); ctx.fillRect(4, -46, 5, 5);
     if (strawHat) {
-      ctx.fillStyle = '#fde047';
+      const straw = ctx.createLinearGradient(0, -64, 0, -46);
+      straw.addColorStop(0, '#fef08a'); straw.addColorStop(1, '#d9a520');
+      ctx.fillStyle = straw; ctx.strokeStyle = ink; ctx.lineWidth = 2.6;
       ctx.beginPath(); ctx.ellipse(0, -56, 36, 9, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
       ctx.beginPath(); ctx.arc(0, -58, 18, Math.PI, 0); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#dc2626';
+      ctx.beginPath(); ctx.roundRect(-18, -60, 36, 5, 2); ctx.fill();
+      ctx.strokeStyle = 'rgba(120,72,40,0.35)'; ctx.lineWidth = 1.4;
+      for (let i = -2; i <= 2; i++) {
+        ctx.beginPath(); ctx.moveTo(i * 12, -56); ctx.lineTo(i * 14, -49); ctx.stroke();
+      }
     } else {
-      // Half gold lucha headband
-      ctx.fillStyle = '#f59e0b';
-      ctx.fillRect(-20, -56, 40, 8); ctx.strokeRect(-20, -56, 40, 8);
+      // Half gold lucha headband with a crown of laurels
+      ctx.fillStyle = '#f59e0b'; ctx.strokeStyle = ink; ctx.lineWidth = 2.2;
+      ctx.beginPath(); ctx.roundRect(-20, -56, 40, 8, 2); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#fde047';
+      for (let i = 0; i < 4; i++) {
+        ctx.beginPath(); ctx.arc(-13 + i * 9, -60, 2.6, 0, Math.PI * 2); ctx.fill();
+      }
     }
     ctx.restore();
   }
@@ -2291,23 +2474,36 @@
   function drawShellIcon(ctx, x, y, r) {
     ctx.save();
     ctx.translate(x, y);
-    const g = ctx.createRadialGradient(-r * 0.25, -r * 0.25, 2, 0, 0, r);
-    g.addColorStop(0, '#fff7ed');
-    g.addColorStop(0.55, '#fda4af');
+    const ink = '#111827';
+    // Scallop fan: pearl-white crown falling into warm amber at the hinge
+    const g = ctx.createRadialGradient(-r * 0.3, -r * 0.4, r * 0.08, 0, 0, r * 1.2);
+    g.addColorStop(0, '#fffaf0');
+    g.addColorStop(0.5, '#fbcfe8');
     g.addColorStop(1, '#f59e0b');
     ctx.fillStyle = g;
-    ctx.strokeStyle = '#111827';
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = ink;
+    ctx.lineWidth = Math.max(1.6, r * 0.16);
     ctx.beginPath();
-    ctx.moveTo(-r, r * 0.3);
-    ctx.quadraticCurveTo(-r * 0.6, -r, r * 0.2, -r * 0.9);
-    ctx.quadraticCurveTo(r * 1.1, -r * 0.5, r * 0.85, r * 0.55);
-    ctx.quadraticCurveTo(0, r * 1.0, -r, r * 0.3);
+    ctx.moveTo(0, r * 0.92);
+    ctx.bezierCurveTo(-r * 1.15, r * 0.52, -r * 1.08, -r * 0.58, -r * 0.45, -r * 0.96);
+    ctx.quadraticCurveTo(0, -r * 1.22, r * 0.45, -r * 0.96);
+    ctx.bezierCurveTo(r * 1.08, -r * 0.58, r * 1.15, r * 0.52, 0, r * 0.92);
     ctx.closePath(); ctx.fill(); ctx.stroke();
-    // Spiral ribs
-    ctx.beginPath();
-    ctx.arc(r * 0.1, 0, r * 0.45, 0, Math.PI * 1.4);
-    ctx.stroke();
+    // Radiating ribs fan out from the hinge
+    ctx.strokeStyle = 'rgba(146, 64, 14, 0.5)';
+    ctx.lineWidth = Math.max(1, r * 0.1);
+    for (let i = -2; i <= 2; i++) {
+      ctx.beginPath();
+      ctx.moveTo(0, r * 0.82);
+      ctx.quadraticCurveTo(i * r * 0.52, -r * 0.22, i * r * 0.42, -r * 0.88);
+      ctx.stroke();
+    }
+    // Pearl sheen on the crown
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.78)';
+    ctx.beginPath(); ctx.ellipse(-r * 0.3, -r * 0.42, r * 0.22, r * 0.34, -0.5, 0, Math.PI * 2); ctx.fill();
+    // Hinge nub
+    ctx.fillStyle = '#f59e0b'; ctx.strokeStyle = ink; ctx.lineWidth = Math.max(1.4, r * 0.12);
+    ctx.beginPath(); ctx.ellipse(0, r * 0.92, r * 0.24, r * 0.16, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
     ctx.restore();
   }
 
@@ -2939,6 +3135,17 @@
           ctx.lineTo(sx + Math.sin(t * 6 + i) * 5, Math.max(v.y, sy - 34));
           ctx.stroke();
         }
+        // Upward chevrons so the updraft reads instantly
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+        ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+        const chevSpan = Math.max(40, v.h - 30);
+        for (let i = 0; i < 3; i++) {
+          const cy = v.y + v.h - 24 - ((t * 55 + i * (chevSpan / 3)) % chevSpan);
+          const ccx = v.x + v.w * 0.5;
+          ctx.beginPath();
+          ctx.moveTo(ccx - 8, cy + 6); ctx.lineTo(ccx, cy); ctx.lineTo(ccx + 8, cy + 6);
+          ctx.stroke();
+        }
         // Glowing vent grate base
         ctx.fillStyle = 'rgba(186, 230, 253, 0.4)';
         ctx.beginPath(); ctx.ellipse(v.x + v.w * 0.5, v.y + v.h - 8, v.w * 0.85, 14, 0, 0, Math.PI * 2); ctx.fill();
@@ -3148,31 +3355,71 @@
           cg.addColorStop(1, 'rgba(74,222,128,0)');
           ctx.fillStyle = cg;
           ctx.beginPath(); ctx.arc(0, 0, 26, 0, Math.PI * 2); ctx.fill();
+          // Pointed wrapper leaves fanning out under the head
+          ctx.fillStyle = '#15803d'; ctx.strokeStyle = 'rgba(7,12,22,0.8)'; ctx.lineWidth = 2;
+          for (let i = 0; i < 4; i++) {
+            ctx.save();
+            ctx.rotate(-2.6 + i * 1.15);
+            ctx.beginPath();
+            ctx.moveTo(0, 2);
+            ctx.bezierCurveTo(-9, -5, -7, -14, 0, -17);
+            ctx.bezierCurveTo(7, -14, 9, -5, 0, 2);
+            ctx.closePath(); ctx.fill(); ctx.stroke();
+            ctx.strokeStyle = 'rgba(187, 247, 208, 0.4)'; ctx.lineWidth = 1.2;
+            ctx.beginPath(); ctx.moveTo(0, 1); ctx.lineTo(0, -14); ctx.stroke();
+            ctx.strokeStyle = 'rgba(7,12,22,0.8)'; ctx.lineWidth = 2;
+            ctx.restore();
+          }
           // Leafy head
           const leaf = ctx.createRadialGradient(-4, -5, 1, 0, 1, 15);
-          leaf.addColorStop(0, '#d9fbe5');
+          leaf.addColorStop(0, '#ecfdf5');
           leaf.addColorStop(0.45, '#4ade80');
           leaf.addColorStop(1, '#15803d');
           ctx.fillStyle = leaf;
-          ctx.strokeStyle = 'rgba(7,12,22,0.8)'; ctx.lineWidth = 2;
-          ctx.beginPath(); ctx.arc(0, 0, 13, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-          // Inner leaf folds
-          ctx.strokeStyle = 'rgba(21,128,61,0.55)'; ctx.lineWidth = 1.5;
-          ctx.beginPath(); ctx.arc(0, 0, 8.5, 0.5, 2.4); ctx.stroke();
-          ctx.beginPath(); ctx.arc(0, 0, 8.5, 3.6, 5.6); ctx.stroke();
-          ctx.beginPath(); ctx.arc(0, 0, 5, 1.4, 4.6); ctx.stroke();
+          ctx.beginPath(); ctx.arc(0, -1, 12, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+          // Wavy leaf edges read as a tight cabbage head rather than a plain ball
+          ctx.strokeStyle = 'rgba(6,78,59,0.5)'; ctx.lineWidth = 1.5;
+          for (let i = 0; i < 2; i++) {
+            const rr0 = 9.5 - i * 3;
+            ctx.beginPath();
+            for (let a = Math.PI * 1.04; a <= Math.PI * 1.96; a += 0.1) {
+              const rr = rr0 + Math.sin(a * 4 + i * 1.5) * 1.1;
+              const px2 = Math.cos(a) * rr, py2 = Math.sin(a) * rr + 1;
+              if (a === Math.PI * 1.04) ctx.moveTo(px2, py2); else ctx.lineTo(px2, py2);
+            }
+            ctx.stroke();
+          }
+          ctx.strokeStyle = 'rgba(187, 247, 208, 0.4)'; ctx.lineWidth = 1.2;
+          ctx.beginPath(); ctx.moveTo(0, -11); ctx.quadraticCurveTo(-2, -2, 0, 8); ctx.stroke();
+          // Cut stem
+          ctx.fillStyle = '#a3e635'; ctx.strokeStyle = '#14532d'; ctx.lineWidth = 1.6;
+          ctx.beginPath(); ctx.roundRect(-2.5, 9, 5, 7, 2); ctx.fill(); ctx.stroke();
           // Specular highlight
-          ctx.fillStyle = 'rgba(255,255,255,0.5)';
-          ctx.beginPath(); ctx.ellipse(-4.5, -5, 4.2, 2.8, -0.6, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = 'rgba(255,255,255,0.55)';
+          ctx.beginPath(); ctx.ellipse(-4.5, -6, 3.8, 2.5, -0.6, 0, Math.PI * 2); ctx.fill();
           ctx.restore();
         } else {
-          ctx.fillStyle = material(ctx, '#ef4444', py - 12, py + 14, 0.26, 0.3);
-          ctx.strokeStyle = '#0b1220'; ctx.lineWidth = 2.4;
+          // Heart with a pulse, shaded sides and a wet highlight
+          const pulse = 1 + Math.sin(t * 6 + pk.x) * 0.06;
+          ctx.save();
+          ctx.translate(pk.x, py);
+          ctx.scale(pulse, pulse);
+          const hg = ctx.createRadialGradient(-3, -4, 1, 0, 0, 14);
+          hg.addColorStop(0, '#fecaca');
+          hg.addColorStop(0.5, '#ef4444');
+          hg.addColorStop(1, '#b91c1c');
+          ctx.fillStyle = hg;
+          ctx.strokeStyle = '#450a0a'; ctx.lineWidth = 2.2;
           ctx.beginPath();
-          ctx.arc(pk.x - 5, py - 2, 7, 0, Math.PI * 2);
-          ctx.arc(pk.x + 5, py - 2, 7, 0, Math.PI * 2);
-          ctx.moveTo(pk.x - 11, py + 1); ctx.lineTo(pk.x, py + 14); ctx.lineTo(pk.x + 11, py + 1);
-          ctx.fill(); ctx.stroke();
+          ctx.moveTo(0, 11);
+          ctx.bezierCurveTo(-14, 0, -11, -11, -4.5, -10.5);
+          ctx.bezierCurveTo(-2, -10.4, 0, -8.5, 0, -6);
+          ctx.bezierCurveTo(0, -8.5, 2, -10.4, 4.5, -10.5);
+          ctx.bezierCurveTo(11, -11, 14, 0, 0, 11);
+          ctx.closePath(); ctx.fill(); ctx.stroke();
+          ctx.fillStyle = 'rgba(255,255,255,0.75)';
+          ctx.beginPath(); ctx.ellipse(-4.2, -5.2, 3, 2, -0.6, 0, Math.PI * 2); ctx.fill();
+          ctx.restore();
         }
       }
 
@@ -3185,12 +3432,25 @@
         ctx.fillStyle = isBeat ? 'rgba(251, 191, 36, 0.35)' : 'rgba(134, 239, 172, 0.32)';
         ctx.beginPath(); ctx.arc(0, 0, 24 + Math.sin(t * 6) * 3, 0, Math.PI * 2); ctx.fill();
         ctx.rotate(Math.sin(t * 2.5) * 0.14);
+        // Parchment sheet with a curled corner and a wax pin
         ctx.fillStyle = material(ctx, isBeat ? '#fef08a' : '#fffbeb', -15, 15, 0.12, 0.2);
         ctx.strokeStyle = '#0b1220'; ctx.lineWidth = 2.4;
-        ctx.fillRect(-13, -15, 26, 30); ctx.strokeRect(-13, -15, 26, 30);
+        ctx.beginPath(); ctx.roundRect(-13, -15, 26, 30, 2); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = isBeat ? '#fcd34d' : '#f5e6c8';
+        ctx.strokeStyle = '#0b1220'; ctx.lineWidth = 1.6;
+        ctx.beginPath(); ctx.moveTo(6, 15); ctx.lineTo(13, 15); ctx.lineTo(13, 8); ctx.closePath();
+        ctx.fill(); ctx.stroke();
+        // Header bar and ruled ink lines
         ctx.fillStyle = isBeat ? '#dc2626' : '#0f7a43';
-        ctx.font = '14px "Press Start 2P", ui-monospace, monospace'; ctx.textAlign = 'center';
-        ctx.fillText(isBeat ? '*' : '?', 0, 5);
+        ctx.fillRect(-10, -12, 20, 3);
+        ctx.strokeStyle = 'rgba(17,24,39,0.45)'; ctx.lineWidth = 1.2;
+        for (let i = 0; i < 3; i++) {
+          ctx.beginPath(); ctx.moveTo(-9, 6 + i * 3); ctx.lineTo(9, 6 + i * 3); ctx.stroke();
+        }
+        // Big glyph
+        ctx.fillStyle = isBeat ? '#dc2626' : '#0f7a43';
+        ctx.font = '13px "Press Start 2P", ui-monospace, monospace'; ctx.textAlign = 'center';
+        ctx.fillText(isBeat ? '*' : '?', 0, 3);
         ctx.restore();
       }
 
@@ -3209,27 +3469,88 @@
         const gx = lvl.goal.x, gy = lvl.goal.y;
         const foesLeft = lvl.enemies.filter(e => !e.dead).length;
         const locked = foesLeft > 0;
-        ctx.fillStyle = locked ? '#64748b' : '#f59e0b';
-        ctx.strokeStyle = '#111827'; ctx.lineWidth = 3;
-        ctx.fillRect(gx - 42, gy - 118, 14, 118); ctx.strokeRect(gx - 42, gy - 118, 14, 118);
-        ctx.fillRect(gx + 28, gy - 118, 14, 118); ctx.strokeRect(gx + 28, gy - 118, 14, 118);
+        // Canvas mat apron so the ring reads as a place, not two sticks
+        ctx.fillStyle = locked ? 'rgba(71, 85, 105, 0.45)' : 'rgba(15, 122, 67, 0.45)';
+        ctx.strokeStyle = '#111827'; ctx.lineWidth = 2.5;
+        ctx.beginPath(); ctx.ellipse(gx, gy + 2, 66, 12, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        // Posts with steel shading, turnbuckle pads and gold caps
+        for (const side of [-1, 1]) {
+          const postX = gx + side * 35;
+          const post = ctx.createLinearGradient(postX - 7, 0, postX + 7, 0);
+          post.addColorStop(0, locked ? '#cbd5e1' : '#f1f5f9');
+          post.addColorStop(0.45, locked ? '#94a3b8' : '#cbd5e1');
+          post.addColorStop(1, locked ? '#475569' : '#64748b');
+          ctx.fillStyle = post;
+          ctx.strokeStyle = '#111827'; ctx.lineWidth = 3;
+          ctx.beginPath(); ctx.roundRect(postX - 7, gy - 118, 14, 118, 3); ctx.fill(); ctx.stroke();
+          // Turnbuckle pad
+          ctx.fillStyle = locked ? '#64748b' : (side < 0 ? '#dc2626' : '#2563eb');
+          ctx.beginPath(); ctx.roundRect(postX - 10, gy - 92, 20, 26, 5); ctx.fill(); ctx.stroke();
+          ctx.strokeStyle = 'rgba(255,255,255,0.45)'; ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.moveTo(postX - 6, gy - 88); ctx.lineTo(postX - 6, gy - 72); ctx.stroke();
+          // Post cap
+          ctx.fillStyle = locked ? '#94a3b8' : '#fbbf24';
+          ctx.strokeStyle = '#111827'; ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.arc(postX, gy - 120, 6.5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        }
+        // Three sagging ring ropes
+        ctx.strokeStyle = locked ? '#94a3b8' : '#fde047';
+        ctx.lineWidth = 3;
+        for (const ry of [gy - 100, gy - 78, gy - 56]) {
+          ctx.beginPath(); ctx.moveTo(gx - 35, ry);
+          ctx.quadraticCurveTo(gx, ry + 7, gx + 35, ry);
+          ctx.stroke();
+        }
+        ctx.strokeStyle = 'rgba(255,255,255,0.45)'; ctx.lineWidth = 1.2;
+        for (const ry of [gy - 100, gy - 78, gy - 56]) {
+          ctx.beginPath(); ctx.moveTo(gx - 34, ry - 1);
+          ctx.quadraticCurveTo(gx, ry + 5.5, gx + 34, ry - 1);
+          ctx.stroke();
+        }
         // Arch banner
-        ctx.fillStyle = locked ? '#991b1b' : '#0f7a43';
+        const banner = ctx.createLinearGradient(0, gy - 142, 0, gy - 110);
+        banner.addColorStop(0, locked ? '#b91c1c' : '#16a34a');
+        banner.addColorStop(1, locked ? '#7f1d1d' : '#0f7a43');
+        ctx.fillStyle = banner;
+        ctx.strokeStyle = '#111827'; ctx.lineWidth = 3;
         ctx.beginPath(); ctx.roundRect(gx - 62, gy - 142, 124, 32, 8); ctx.fill(); ctx.stroke();
+        ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(gx - 56, gy - 137); ctx.lineTo(gx + 56, gy - 137); ctx.stroke();
         ctx.fillStyle = locked ? '#fecaca' : '#fef08a';
         ctx.font = '11px "Press Start 2P", ui-monospace, monospace'; ctx.textAlign = 'center';
         ctx.fillText(locked ? `LOCKED (${foesLeft} FOE${foesLeft === 1 ? '' : 'S'})` : 'GOAL RING OPEN!', gx, gy - 121);
         if (locked) {
-          // Crossed barrier rope across locked ring
-          ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 4;
-          ctx.beginPath();
-          ctx.moveTo(gx - 28, gy - 82); ctx.lineTo(gx + 28, gy - 26);
-          ctx.moveTo(gx + 28, gy - 82); ctx.lineTo(gx - 28, gy - 26);
-          ctx.stroke();
+          // Chain + padlock hanging in the ropes
+          ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 3; ctx.setLineDash([4, 3]);
+          ctx.beginPath(); ctx.moveTo(gx - 30, gy - 100); ctx.quadraticCurveTo(gx, gy - 72, gx + 30, gy - 100); ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.fillStyle = '#facc15'; ctx.strokeStyle = '#111827'; ctx.lineWidth = 2.4;
+          ctx.beginPath(); ctx.roundRect(gx - 10, gy - 76, 20, 17, 4); ctx.fill(); ctx.stroke();
+          ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 3.4;
+          ctx.beginPath(); ctx.arc(gx, gy - 76, 6, Math.PI, 0); ctx.stroke();
+          ctx.fillStyle = '#111827';
+          ctx.beginPath(); ctx.arc(gx, gy - 68, 2.4, 0, Math.PI * 2); ctx.fill();
+          ctx.fillRect(gx - 1.2, gy - 68, 2.4, 5);
         } else {
-          // Fluttering golden bell
-          ctx.fillStyle = '#fde047';
-          ctx.beginPath(); ctx.arc(gx, gy - 95 + Math.sin(t * 5) * 4, 12, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+          // Spotlights sweep the open ring
+          ctx.save();
+          ctx.globalAlpha = 0.28;
+          ctx.fillStyle = '#fef08a';
+          ctx.beginPath(); ctx.moveTo(gx - 58, gy - 150); ctx.lineTo(gx - 8, gy - 20); ctx.lineTo(gx + 22, gy - 20); ctx.closePath(); ctx.fill();
+          ctx.beginPath(); ctx.moveTo(gx + 58, gy - 150); ctx.lineTo(gx + 8, gy - 20); ctx.lineTo(gx - 22, gy - 20); ctx.closePath(); ctx.fill();
+          ctx.restore();
+          // Fluttering golden bell with a shine
+          const bellY = gy - 95 + Math.sin(t * 5) * 4;
+          ctx.fillStyle = '#fde047'; ctx.strokeStyle = '#111827'; ctx.lineWidth = 2.4;
+          ctx.beginPath();
+          ctx.moveTo(gx - 11, bellY + 6);
+          ctx.quadraticCurveTo(gx - 9, bellY - 12, gx, bellY - 13);
+          ctx.quadraticCurveTo(gx + 9, bellY - 12, gx + 11, bellY + 6);
+          ctx.closePath(); ctx.fill(); ctx.stroke();
+          ctx.fillStyle = '#b45309';
+          ctx.beginPath(); ctx.roundRect(gx - 3, bellY + 6, 6, 4, 2); ctx.fill();
+          ctx.fillStyle = 'rgba(255,255,255,0.8)';
+          ctx.beginPath(); ctx.ellipse(gx - 4, bellY - 4, 2.2, 3.4, 0.3, 0, Math.PI * 2); ctx.fill();
         }
       }
     },
@@ -3246,6 +3567,43 @@
         ctx.beginPath(); ctx.ellipse(p.x + p.w * 0.5, p.y + p.h, 24, 7, 0, 0, Math.PI * 2); ctx.fill();
         ctx.restore();
       }
+      // Landing dust: kicks out when the squash-and-stretch bottoms out
+      if (p.onGround && p.scaleY < 0.93 && !p.poundType) {
+        const k = Math.min(1, (0.93 - p.scaleY) / 0.16);
+        ctx.save();
+        ctx.fillStyle = `rgba(226, 232, 240, ${0.5 * k})`;
+        for (let i = 0; i < 4; i++) {
+          const dirn = i < 2 ? -1 : 1;
+          const dx = dirn * (9 + (i % 2) * 7 + k * 9);
+          const dy = -2 - (i % 2) * 3;
+          ctx.beginPath();
+          ctx.ellipse(p.x + p.w * 0.5 + dx, p.y + p.h + dy, 5 + k * 5, 2.6 + k * 2, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+
+      // Boot dust trailing a sprint along the ground
+      if (p.onGround && Math.abs(p.vx) > 150 && !p.poundType) {
+        const phase = (t * 9) % 1;
+        ctx.fillStyle = `rgba(226, 232, 240, ${0.34 * (1 - phase)})`;
+        ctx.beginPath();
+        ctx.ellipse(p.x + p.w * 0.5 - p.dir * (9 + phase * 17), p.y + p.h - 1, 4 + phase * 3, 2 + phase * 1.6, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Rocket streak behind the hero while the fart-jet lifts him
+      if (p.vy < -170) {
+        ctx.strokeStyle = 'rgba(255, 248, 214, 0.55)';
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        for (let i = 0; i < 3; i++) {
+          const lx = p.x + p.w * 0.5 + (i - 1) * 9;
+          const ly = p.y + p.h + 4 + ((t * 90 + i * 11) % 18);
+          ctx.beginPath(); ctx.moveTo(lx, ly); ctx.lineTo(lx, ly + 9 + i * 3); ctx.stroke();
+        }
+      }
+
       ctx.translate(p.x + p.w * 0.5, p.y + p.h);
 
       // Blink if invulnerable
@@ -3340,6 +3698,9 @@
       const stride = moving ? Math.sin(t * 17) : 0;
       const bob = moving ? Math.abs(stride) * 1.8 : Math.sin(t * 2.6) * 0.9;
       const capeWave = Math.sin(t * 7) * 3;
+      // Idle life: a slow blink and a breathing chest so the hero never freezes
+      const blink = ((t + 0.6) % 3.8) < 0.1;
+      const breathe = Math.sin(t * 2.1) * 0.8;
       const maskCols = maskStyle === 'gold'
         ? { base: '#fbbf24', shade: '#b45309', trim: '#fef9c3' }
         : maskStyle === 'true'
@@ -3448,8 +3809,9 @@
       ctx.strokeStyle = 'rgba(11,18,32,0.32)'; ctx.lineWidth = 1.5;
       ctx.beginPath(); ctx.moveTo(7, -40); ctx.quadraticCurveTo(11, -37, 9, -32); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(3, -30); ctx.quadraticCurveTo(7, -28, 8, -25); ctx.stroke();
-      ctx.strokeStyle = 'rgba(255,255,255,0.34)'; ctx.lineWidth = 1.6;
-      ctx.beginPath(); ctx.moveTo(10, -44); ctx.quadraticCurveTo(13.5, -37, 10.5, -28); ctx.stroke();
+      // Breathing chest sheen rises and falls with the idle cycle
+      ctx.strokeStyle = `rgba(255,255,255,${0.3 + Math.max(0, breathe) * 0.14})`; ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.moveTo(10, -44 - breathe * 0.7); ctx.quadraticCurveTo(13.5, -37, 10.5, -28); ctx.stroke();
 
       // Oversized shamrock briefs with a lit waistband
       ctx.fillStyle = material(ctx, '#ffffff', -31, -16, 0.1, 0.18);
@@ -3515,13 +3877,21 @@
       ctx.beginPath(); ctx.ellipse(11.4, -49.4, 3.8, 3, -0.12, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
       ctx.strokeStyle = '#8a3b1e'; ctx.lineWidth = 1.3;
       ctx.beginPath(); ctx.arc(11.7, -50, 2.1, 0.25, Math.PI - 0.3); ctx.stroke();
-      // Eye hole with a glint
-      ctx.fillStyle = '#ffffff'; ctx.strokeStyle = ink; ctx.lineWidth = 1.6;
-      ctx.beginPath(); ctx.ellipse(10.2, -58.4, 3.7, 4.2, -0.12, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = '#0b1220';
-      ctx.beginPath(); ctx.arc(11.6, -58, 1.9, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#ffffff';
-      ctx.beginPath(); ctx.arc(12.4, -58.9, 0.75, 0, Math.PI * 2); ctx.fill();
+      // Eye hole with a glint — lids close on a slow blink
+      if (blink) {
+        ctx.fillStyle = material(ctx, maskCols.base, -63, -54, 0.24, 0.3);
+        ctx.strokeStyle = ink; ctx.lineWidth = 1.4;
+        ctx.beginPath(); ctx.ellipse(10.2, -58.4, 4, 4.5, -0.12, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        ctx.strokeStyle = ink; ctx.lineWidth = 1.7; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(6.8, -58.6); ctx.lineTo(13.4, -58.6); ctx.stroke();
+      } else {
+        ctx.fillStyle = '#ffffff'; ctx.strokeStyle = ink; ctx.lineWidth = 1.6;
+        ctx.beginPath(); ctx.ellipse(10.2, -58.4, 3.7, 4.2, -0.12, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#0b1220';
+        ctx.beginPath(); ctx.arc(11.6, -58, 1.9, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath(); ctx.arc(12.4, -58.9, 0.75, 0, Math.PI * 2); ctx.fill();
+      }
       // Brow and mask trim
       ctx.strokeStyle = ink; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.moveTo(6, -62.6); ctx.lineTo(13.4, -60.6); ctx.stroke();
@@ -3577,7 +3947,33 @@
         ctx.fillStyle = 'rgba(15, 23, 42, 0.14)';
         ctx.beginPath(); ctx.ellipse(0, 6, e.w * 0.36, 3, 0, 0, Math.PI * 2); ctx.fill();
       }
+
+      // Scuffed dust behind a trotting foe so movement reads on the ground
+      if (!flyer && anim.speed > 0.45) {
+        const ph = (t * 7) % 1;
+        ctx.fillStyle = `rgba(226, 232, 240, ${0.26 * (1 - ph)})`;
+        ctx.beginPath();
+        ctx.ellipse(-anim.face * (e.w * 0.35 + ph * 12), -1, 3.5 + ph * 3, 1.8 + ph, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
       this.drawFoeSilhouette(ctx, e, t, c1, c2, anim);
+
+      // Impact sparks fly off the silhouette while it flashes from a hit
+      if (e.hitFlash > 0) {
+        const a = Math.min(1, e.hitFlash * 2.6);
+        ctx.strokeStyle = `rgba(255, 248, 214, ${a})`;
+        ctx.lineWidth = 2; ctx.lineCap = 'round';
+        for (let i = 0; i < 4; i++) {
+          const ang = (i / 4) * Math.PI * 2 + e.x * 0.05;
+          const rr = e.w * 0.55 + 5;
+          const sx = Math.cos(ang) * rr, sy = -e.h * 0.55 + Math.sin(ang) * (e.w * 0.42 + 5);
+          ctx.beginPath();
+          ctx.moveTo(sx, sy);
+          ctx.lineTo(sx + Math.cos(ang) * 5, sy + Math.sin(ang) * 5);
+          ctx.stroke();
+        }
+      }
 
       // Chunky bordered HP bar, hue stepping green -> amber -> red
       if (e.hp < e.maxHp) {
@@ -4408,6 +4804,24 @@
           core.addColorStop(1, '#fbbf24');
           ctx.fillStyle = core;
           ctx.beginPath(); ctx.arc(0, 0, pr.r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      // Impact sparks ring the big man while he flashes from a hit
+      if (b.invuln > 0) {
+        ctx.save();
+        ctx.translate(b.x + b.w * 0.5, b.y + b.h);
+        ctx.strokeStyle = 'rgba(255, 248, 214, 0.9)';
+        ctx.lineWidth = 3; ctx.lineCap = 'round';
+        for (let i = 0; i < 6; i++) {
+          const ang = (i / 6) * Math.PI * 2 + t * 5;
+          const rr = 36 + Math.sin(t * 22 + i) * 5;
+          const sx = Math.cos(ang) * rr, sy = -55 + Math.sin(ang) * rr;
+          ctx.beginPath();
+          ctx.moveTo(sx, sy);
+          ctx.lineTo(sx + Math.cos(ang) * 9, sy + Math.sin(ang) * 9);
+          ctx.stroke();
         }
         ctx.restore();
       }
@@ -5805,6 +6219,61 @@
   window.addEventListener('orientationchange', () => setTimeout(resizeCanvas, 50));
   resizeCanvas();
 
+  // Small pixel toast used for device messages (e.g. fullscreen unavailable).
+  let toastTimer = null;
+  function showToast(msg) {
+    const el = document.getElementById('toast');
+    if (!el) return;
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('show'), 2400);
+  }
+
+  /* ---------------------------------------------------------------------
+   * DEVICE FULLSCREEN TOGGLE
+   * Requests real browser fullscreen on the game wrapper so phones show the
+   * whole playfield without browser chrome. Falls back to a message where the
+   * Fullscreen API is unavailable (e.g. iOS Safari on a non-video element).
+   * ------------------------------------------------------------------ */
+  const Fullscreen = {
+    el: document.getElementById('game-wrap'),
+    active() {
+      return !!(document.fullscreenElement || document.webkitFullscreenElement);
+    },
+    async toggle() {
+      try {
+        if (this.active()) {
+          if (document.exitFullscreen) await document.exitFullscreen();
+          else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+        } else if (this.el.requestFullscreen) {
+          await this.el.requestFullscreen({ navigationUI: 'hide' });
+        } else if (this.el.webkitRequestFullscreen) {
+          this.el.webkitRequestFullscreen();
+        } else {
+          showToast('Fullscreen is not supported on this device.');
+          return;
+        }
+      } catch (err) {
+        showToast('Fullscreen is not available right now.');
+      }
+      this.sync();
+      setTimeout(resizeCanvas, 90);
+    },
+    sync() {
+      const on = this.active();
+      document.querySelectorAll('[data-fullscreen-toggle]').forEach(btn => {
+        btn.classList.toggle('is-active', on);
+        btn.textContent = on ? 'Exit Fullscreen' : 'Fullscreen';
+        btn.setAttribute('aria-label', on ? 'Exit Fullscreen' : 'Enter Fullscreen');
+        btn.dataset.icon = on ? '⤡' : '⛶';
+      });
+      resizeCanvas();
+    }
+  };
+  document.addEventListener('fullscreenchange', () => Fullscreen.sync());
+  document.addEventListener('webkitfullscreenchange', () => Fullscreen.sync());
+
   // Palette snap + hard alpha: kills vector anti-aliasing so every edge lands
   // on the pixel grid as a solid cluster, the way a cartridge sprite would.
   // A 4x4 ordered Bayer dither is applied before the 15-bit quantise, so
@@ -5858,6 +6327,10 @@
   document.getElementById('btn-title-scrapbook').onclick = () => { Audio.init(); UI.openScrapbook('story', false); };
   document.getElementById('btn-mute').onclick = () => { Audio.init(); Audio.toggleMute(); };
   document.getElementById('btn-cutscene-mute').onclick = () => { Audio.init(); Audio.toggleMute(); };
+  document.querySelectorAll('[data-fullscreen-toggle]').forEach(btn => {
+    btn.onclick = () => { Audio.init(); Fullscreen.toggle(); };
+  });
+  Fullscreen.sync();
 
 
   document.getElementById('btn-pause').onclick = () => { UI.openScrapbook('story', true); };
