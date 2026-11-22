@@ -1779,6 +1779,25 @@
     fartHeld: false,
     parachuteTriggered: false,
     poundQueue: null, // 'butt' | 'corkscrew' | 'vault' | 'meteora'
+    poundBuffer: 0,
+
+    queuePound(type) {
+      this.poundQueue = type;
+      this.poundBuffer = 0.22;
+    },
+
+    reset() {
+      this.keys = {};
+      this.justPressed = {};
+      this.leftTouch = null;
+      this.rightTouch = null;
+      this.lastRightSwipe = { dir: null, time: 0 };
+      this.moveX = 0;
+      this.jumpPressed = this.jumpHeld = this.downHeld = this.fartHeld = false;
+      this.parachuteTriggered = false;
+      this.poundQueue = null;
+      this.poundBuffer = 0;
+    },
 
     init(canvas) {
       window.addEventListener('keydown', (e) => {
@@ -1789,6 +1808,8 @@
         this.keys[e.code] = true;
       });
       window.addEventListener('keyup', (e) => { this.keys[e.code] = false; });
+      window.addEventListener('blur', () => this.reset());
+      document.addEventListener('visibilitychange', () => { if (document.hidden) this.reset(); });
 
       // Touch events for Dual Dynamic Virtual Joysticks
       const onStart = (id, clientX, clientY) => {
@@ -1852,8 +1873,9 @@
             } else {
               rt.dir = newDir;
             }
-          } else {
+          } else if (dist < 12) {
             rt.dir = null;
+            rt.swipeFired = false;
           }
         }
       };
@@ -1903,28 +1925,28 @@
         const alreadyGliding = !!(Game.player && Game.player.parachuting);
         if (isDouble || alreadyGliding) {
           this.parachuteTriggered = false;
-          this.poundQueue = 'butt';
+          this.queuePound('butt');
           this.showFeedback('BUTT SLAM!');
         } else {
           this.parachuteTriggered = true;
         }
       } else if (dir === 'up' && isDouble) {
         if (Save.hasMeteoraFlip()) {
-          this.poundQueue = 'meteora';
+          this.queuePound('meteora');
           this.showFeedback('METEORA FLIP!');
         } else {
           this.showFeedback('Meteora Flip (Beat World 3 Boss)');
         }
       } else if (dir === 'left') {
         if (Save.hasCorkscrew()) {
-          this.poundQueue = 'corkscrew';
+          this.queuePound('corkscrew');
           this.showFeedback('CORKSCREW SLAM!');
         } else {
           this.showFeedback('Corkscrew Slam (Beat World 1 Boss)');
         }
       } else if (dir === 'right') {
         if (Save.hasLuchaVault()) {
-          this.poundQueue = 'vault';
+          this.queuePound('vault');
           this.showFeedback('LUCHA VAULT!');
         } else {
           this.showFeedback('Lucha Vault (Beat World 2 Boss)');
@@ -1937,12 +1959,14 @@
     },
 
     poll(dt) {
+      this.poundBuffer = Math.max(0, this.poundBuffer - dt);
+      if (this.poundBuffer === 0) this.poundQueue = null;
       // Combine Left Joystick + Keyboard
       let mx = 0;
       if (this.keys['ArrowLeft'] || this.keys['KeyA']) mx -= 1;
       if (this.keys['ArrowRight'] || this.keys['KeyD']) mx += 1;
-      if (this.leftTouch && Math.abs(this.leftTouch.dx) > 10) {
-        mx = Math.max(-1, Math.min(1, this.leftTouch.dx / 42));
+      if (this.leftTouch && Math.abs(this.leftTouch.dx) > 6) {
+        mx = Math.sign(this.leftTouch.dx) * Math.min(1, (Math.abs(this.leftTouch.dx) - 6) / 36);
       }
       this.moveX = mx;
 
@@ -1967,7 +1991,7 @@
       // Desktop Parachute toggle (X / K): 1st press glides hands-free, 2nd press while gliding slams!
       if (this.justPressed['KeyX'] || this.justPressed['KeyK']) {
         if (Game.player && Game.player.parachuting) {
-          this.poundQueue = 'butt'; this.showFeedback('BUTT SLAM!');
+          this.queuePound('butt'); this.showFeedback('BUTT SLAM!');
         } else {
           this.parachuteTriggered = true;
         }
@@ -1975,15 +1999,15 @@
 
       // Desktop Ground Pound hotkeys
       if (this.justPressed['KeyC'] || this.justPressed['KeyL']) {
-        this.poundQueue = 'butt'; this.showFeedback('BUTT SLAM!');
+        this.queuePound('butt'); this.showFeedback('BUTT SLAM!');
       } else if (this.justPressed['KeyQ'] || this.justPressed['KeyU']) {
-        if (Save.hasCorkscrew()) { this.poundQueue = 'corkscrew'; this.showFeedback('CORKSCREW SLAM!'); }
+        if (Save.hasCorkscrew()) { this.queuePound('corkscrew'); this.showFeedback('CORKSCREW SLAM!'); }
         else this.showFeedback('Beat World 1 Boss to unlock!');
       } else if (this.justPressed['KeyE'] || this.justPressed['KeyI']) {
-        if (Save.hasLuchaVault()) { this.poundQueue = 'vault'; this.showFeedback('LUCHA VAULT!'); }
+        if (Save.hasLuchaVault()) { this.queuePound('vault'); this.showFeedback('LUCHA VAULT!'); }
         else this.showFeedback('Beat World 2 Boss to unlock!');
       } else if (this.justPressed['KeyV'] || this.justPressed['KeyO']) {
-        if (Save.hasMeteoraFlip()) { this.poundQueue = 'meteora'; this.showFeedback('METEORA FLIP!'); }
+        if (Save.hasMeteoraFlip()) { this.queuePound('meteora'); this.showFeedback('METEORA FLIP!'); }
         else this.showFeedback('Beat World 3 Boss to unlock!');
       }
 
@@ -6454,6 +6478,7 @@
 
     startLevel(idx) {
       Audio.init();
+      Input.reset();
       this.levelIdx = idx;
       this.lvl = buildLevel(idx);
       this.particles = [];
@@ -6604,6 +6629,10 @@
       }
 
       this.time += dt;
+      const p = this.player;
+      p.jumpBuffer = Math.max(0, p.jumpBuffer - dt);
+      if (Input.jumpPressed) p.jumpBuffer = 0.16;
+      Input.jumpPressed = false;
       if (this.hitstop > 0) { this.hitstop -= dt; return; }
       if (this.shake > 0) this.shake = Math.max(0, this.shake - dt * 28);
 
@@ -6615,7 +6644,6 @@
         hintEl.classList.remove('visible');
       }
 
-      const p = this.player;
       const lvl = this.lvl;
 
       // Update Moving Platforms & Crumbling Ledges
@@ -6650,8 +6678,8 @@
       }
 
       // Recover squash-and-stretch smoothly
-      p.scaleX += (1 - p.scaleX) * Math.min(1, dt * 14);
-      p.scaleY += (1 - p.scaleY) * Math.min(1, dt * 14);
+      p.scaleX += (1 - p.scaleX) * (1 - Math.exp(-18 * dt));
+      p.scaleY += (1 - p.scaleY) * (1 - Math.exp(-18 * dt));
       if (p.invuln > 0) p.invuln -= dt;
       if (p.barCooldown > 0) p.barCooldown -= dt;
       if (p.dropThrough > 0) p.dropThrough -= dt;
@@ -6660,6 +6688,7 @@
       if (Input.poundQueue && !p.poundType) {
         const req = Input.poundQueue;
         Input.poundQueue = null;
+        Input.poundBuffer = 0;
         p.hanging = false;
         p.parachuting = false;
         p.farting = false;
@@ -6667,7 +6696,7 @@
         p.poundTimer = 0;
         p.poundPhase = 0;
         if (req === 'butt') {
-          p.vy = -180; p.vx *= 0.25;
+          p.vy = -150; p.vx *= 0.65;
           p.scaleX = 1.25; p.scaleY = 0.8;
         } else if (req === 'corkscrew') {
           p.vx = p.dir * 560; p.vy = 110;
@@ -6679,8 +6708,6 @@
           p.vy = -660; p.vx = Input.moveX * 160;
           Audio.sfxMeteoraFlip();
         }
-      } else {
-        Input.poundQueue = null;
       }
 
       // 2. Active Ground Pound State Machine
@@ -6688,8 +6715,9 @@
         p.poundTimer += dt;
         Audio.stopFartLoop();
         if (p.poundType === 'butt') {
-          if (p.poundTimer > 0.1) p.vy = 920;
-          p.vx *= 0.85;
+          if (p.poundTimer > 0.075) p.vy = 1020;
+          const targetVx = Input.moveX * 230;
+          p.vx += (targetVx - p.vx) * (1 - Math.exp(-12 * dt));
         } else if (p.poundType === 'corkscrew') {
           p.vx = p.dir * 540;
           p.vy = Math.min(620, p.vy + 1100 * dt);
@@ -6712,7 +6740,7 @@
         p.parachuting = false;
         p.farting = false;
         p.vy = 0;
-        p.vx = Input.moveX * 235;
+        p.vx += (Input.moveX * 280 - p.vx) * (1 - Math.exp(-24 * dt));
         if (Math.abs(Input.moveX) > 0.1) p.dir = Input.moveX > 0 ? 1 : -1;
 
         // Drain circular stamina ring
@@ -6729,10 +6757,10 @@
         const onAnyBar = lvl.monkeyBars.some(mb =>
           p.x + p.w * 0.5 >= mb.x - 10 && p.x + p.w * 0.5 <= mb.x + mb.w + 10 && Math.abs(p.y - mb.y) < 26
         );
-        if (Input.jumpPressed) {
+        if (p.jumpBuffer > 0) {
           p.hanging = false; p.barCooldown = 0.28; p.vy = -560;
           Audio.sfxJump();
-          Input.jumpPressed = false;
+          p.jumpBuffer = 0;
         } else if (Input.downHeld || p.stamina <= 0 || !onAnyBar) {
           p.hanging = false;
           p.barCooldown = p.stamina <= 0 ? 0.85 : 0.35;
@@ -6740,14 +6768,15 @@
         }
       } else {
         // 4. Standard Run, Jump, Fart-Jet & Underwear Parachute Physics
-        const targetVx = Input.moveX * (p.parachuting ? 260 : 325);
-        const accel = p.onGround ? 2400 : 1450;
+        const targetVx = Input.moveX * (p.parachuting ? 300 : 390);
+        const reversing = Input.moveX * p.vx < 0;
+        const accel = p.onGround ? (reversing ? 5600 : 4200) : (reversing ? 3400 : 2400);
         if (p.vx < targetVx) p.vx = Math.min(targetVx, p.vx + accel * dt);
         else if (p.vx > targetVx) p.vx = Math.max(targetVx, p.vx - accel * dt);
         if (Math.abs(Input.moveX) > 0.12) p.dir = Input.moveX > 0 ? 1 : -1;
 
         if (p.onGround) {
-          p.coyote = 0.11;
+          p.coyote = 0.13;
           p.fuel = Math.min(100, p.fuel + 150 * dt);
           p.stamina = Math.min(p.maxStamina, p.stamina + p.maxStamina * 0.9 * dt);
           p.parachuting = false;
@@ -6766,7 +6795,6 @@
         }
 
         // Jump
-        if (Input.jumpPressed) p.jumpBuffer = 0.14;
         if (p.jumpBuffer > 0 && p.coyote > 0) {
           p.vy = -635;
           p.onGround = false;
@@ -6779,7 +6807,6 @@
           Audio.sfxJump();
           this.spawnBurst(p.x + p.w * 0.5, p.y + p.h, '#e2e8f0', 5, 110);
         }
-        p.jumpBuffer = Math.max(0, p.jumpBuffer - dt);
         Input.jumpPressed = false;
 
         // Variable jump height
@@ -7113,7 +7140,7 @@
       const zoom = getCameraZoom();
       const viewW = vw / zoom;
       const targetCam = Math.max(0, Math.min(lvl.width - viewW, p.x - viewW * 0.38));
-      this.camX += (targetCam - this.camX) * Math.min(1, dt * 8);
+      this.camX += (targetCam - this.camX) * (1 - Math.exp(-12 * dt));
 
       UI.refreshHUD();
     },
@@ -7128,7 +7155,7 @@
 
       Audio.sfxButtSlam(golden);
       this.shake = type === 'meteora' ? 16 : (type === 'vault' ? 13 : 9);
-      this.hitstop = 0.04;
+      this.hitstop = 0.025;
       this.spawnBurst(p.x + p.w * 0.5, p.y + p.h, golden ? '#fde047' : '#f59e0b', golden ? 22 : 14, 280);
 
       if (golden || type === 'vault' || type === 'meteora') {
@@ -8284,7 +8311,8 @@
     } else if (Scene.current === 'cutscene') {
       Cutscene.draw(ctx, w, h, dt);
     } else if (Scene.current === 'play') {
-      Game.update(dt);
+      const steps = Math.ceil(dt / (1 / 120));
+      for (let step = 0; step < steps; step++) Game.update(dt / steps);
       Game.draw(ctx, w, h);
     }
 
