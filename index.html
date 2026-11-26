@@ -5897,6 +5897,32 @@
       }
     }
 
+    // Guest archetypes: each run drafts one outsider per role from other worlds
+    // into a share of the encounters, so the roster never reads identical from
+    // stage to stage. Role-matched so placement and physics stay valid.
+    {
+      const melee = ['brawler', 'leaper', 'sumo', 'bouncer', 'pinata'];
+      const ranged = ['ninja', 'cardshark', 'trainee'];
+      const flyers = ['lantern', 'drone', 'eagle'];
+      const homeTypes = new Set(enemyPool);
+      const pickGuest = (role) => {
+        const candidates = role.filter(t => !homeTypes.has(t));
+        return candidates.length ? candidates[Math.floor(rng() * candidates.length)] : null;
+      };
+      const guests = {
+        melee: pickGuest(melee),
+        ranged: pickGuest(ranged),
+        flyer: pickGuest(flyers)
+      };
+      for (const e of lvl.enemies) {
+        if (e.gate) continue;
+        if (e.type === 'bulwark' || e.type === 'clinger' || e.type === 'sentry' || e.type === 'hook') continue;
+        const role = flyers.includes(e.type) ? 'flyer' : (ranged.includes(e.type) ? 'ranged' : 'melee');
+        const guest = guests[role];
+        if (guest && rng() < 0.34) e.type = guest;
+      }
+    }
+
     // Endless waves must never touch story clues, shells or cutscenes
     if (endlessWave > 0) { lvl.clue = null; lvl.shell = null; }
 
@@ -7485,11 +7511,20 @@
       if (cutout) {
         ctx.save();
         const speedNorm = Math.min(1, Math.abs(p.vx || 0) / 260);
+        // Skid: boots bite, body leans back against the slide.
+        if (p.skid > 0) {
+          const k = p.skid / 0.16;
+          ctx.rotate(-0.22 * k);
+          ctx.translate(-8 * k, 0);
+        }
         if (noirPose === 'run') {
-          const phase = t * 13;
+          const phase = p.stride || 0;
           const lift = 0.35 + speedNorm * 0.65;
           ctx.translate(0, -Math.abs(Math.sin(phase)) * 5 * lift);
           ctx.rotate(0.05 * speedNorm);
+        } else if (noirPose === 'walk') {
+          // A lazy, weighty waddle that speeds up with actual travel.
+          ctx.rotate(Math.sin(p.stride || 0) * 0.03);
         } else if (noirPose === 'jump') {
           if (p.parachuting) {
             ctx.rotate(Math.sin(t * 4.2) * 0.09);
@@ -7499,13 +7534,21 @@
             ctx.translate(0, 6);
           } else {
             const pitch = Math.max(-0.15, Math.min(0.18, (p.vy || 0) * 0.00028));
-            ctx.rotate(pitch);
-            const stretch = (p.vy || 0) < 0 ? 1.04 : 0.98;
+            ctx.rotate(pitch + Math.max(-0.12, Math.min(0.12, (p.vx || 0) * 0.0003)));
+            const stretch = (p.vy || 0) < 0 ? 1.05 : 0.97;
             ctx.scale(1 / stretch, stretch);
           }
         } else if (noirPose === 'idle') {
+          // Breathing plus a slow weight shift and the odd curious head tilt, so
+          // standing still never looks like a frozen cutout.
           const br = Math.sin(t * 3.1);
           ctx.scale(1 - br * 0.018, 1 + br * 0.022);
+          ctx.translate(Math.sin(t * 0.9) * 1.6, 0);
+          ctx.rotate(Math.sin(t * 0.62) * 0.028);
+        }
+        if (p.landTimer > 0) {
+          const k = Math.min(1, p.landTimer / 0.2);
+          ctx.scale(1 + 0.08 * k, 1 - 0.12 * k);
         }
 
         // Golden Conch or True Mask luminous aura accents
@@ -7518,9 +7561,14 @@
         const targetH = noirPose === 'pound' ? 74 : (noirPose === 'jump' ? 88 : 86);
         const headMix = (NoirCutout.HERO_HEAD[noirPose === 'walk' ? 'idle' : noirPose] || NoirCutout.HERO_HEAD.idle)[1];
         if (noirPose === 'run') {
-          this.drawRunCycle(ctx, cutout, targetH, t * 13, { hipFrac: 0.8, headFrac: headMix, legAmp: 0.66, bodyAmp: 0.22 });
+          // Stride cadence follows real velocity; amplitude swells as he winds up.
+          this.drawRunCycle(ctx, cutout, targetH, p.stride || 0, {
+            hipFrac: 0.8, headFrac: headMix,
+            legAmp: 0.42 + speedNorm * 0.32,
+            bodyAmp: 0.12 + speedNorm * 0.13
+          });
         } else if (noirPose === 'walk') {
-          this.drawWalkCycle(ctx, cutout, targetH, t * 8.5, { hipFrac: 0.8, headFrac: headMix });
+          this.drawWalkCycle(ctx, cutout, targetH, p.stride || 0, { hipFrac: 0.8, headFrac: headMix });
         } else {
           NoirCutout.draw(ctx, cutout, 0, 0, targetH, noirPose === 'pound' ? 4 : 3);
         }
@@ -7812,9 +7860,14 @@
           ctx.scale(1 + flap, 1 - flap * 0.6);
         }
         if (e.telegraphTimer > 0 && e.telegraphKind === 'lunge') {
-          // Coiled pre-lunge stance
-          ctx.scale(1.12, 0.88);
-          ctx.translate(0, 2);
+          // Coiled pre-lunge stance — a heavy charge crouches deeper and trembles
+          if (e.chargeKind) {
+            ctx.scale(1.24, 0.78);
+            ctx.translate(Math.sin(t * 48) * 1.7, 4);
+          } else {
+            ctx.scale(1.12, 0.88);
+            ctx.translate(0, 2);
+          }
         } else if (e.telegraphTimer > 0 && e.telegraphKind === 'dive') {
           ctx.rotate(0.22);
         }
@@ -8238,6 +8291,7 @@
     afterimages: [], // { x, y, dir, rot, scaleX, scaleY, cutout, targetH, color, footSink, life, maxLife }
     camX: 0,
     camLeadX: 0,
+    camYOff: 0,
     shake: 0,
     hitstop: 0,
     time: 0,
@@ -8332,6 +8386,7 @@
       this.afterimages = [];
       this.camX = 0;
       this.camLeadX = 0;
+      this.camYOff = 0;
       this.shake = 0;
       this.hitstop = 0;
       this.stageTime = 0;
@@ -8389,7 +8444,12 @@
         airChain: 0,
         airChainFlash: 0,
         powerSlamTimer: 0,
-        afterimageTimer: 0
+        afterimageTimer: 0,
+        skid: 0,
+        skidDust: 0,
+        landTimer: 0,
+        stride: 0,
+        lean: 0
       };
 
       // Initialize enemies (per-type hitboxes, telegraphs & aggressive AI stats)
@@ -8422,6 +8482,8 @@
           telegraphCooldown: 0.4 + Math.random() * 0.4,
           lungeTimer: 0,
           lungeDir: 1,
+          holdTimer: Math.random() * 1.3,
+          chargeKind: false,
           shotTelegraphed: false,
           diveArmed: false,
           hopTimer: 0.65 + Math.random() * 0.35,
@@ -8724,6 +8786,13 @@
       // Recover squash-and-stretch smoothly
       p.scaleX += (1 - p.scaleX) * (1 - Math.exp(-18 * dt));
       p.scaleY += (1 - p.scaleY) * (1 - Math.exp(-18 * dt));
+      // Turn / landing timers, and a stride phase driven by real distance so the
+      // legs always match the speed he is actually travelling.
+      if (p.skid > 0) p.skid = Math.max(0, p.skid - dt);
+      if (p.landTimer > 0) p.landTimer = Math.max(0, p.landTimer - dt);
+      p.stride = (p.stride || 0) + Math.abs(p.vx || 0) * dt * 0.058;
+      const leanTarget = p.onGround ? Math.max(-0.2, Math.min(0.2, (p.vx || 0) * 0.0005)) : 0;
+      p.lean += (leanTarget - p.lean) * (1 - Math.exp(-9 * dt));
       if (p.invuln > 0) p.invuln -= dt;
       if (p.barCooldown > 0) p.barCooldown -= dt;
       if (p.dropThrough > 0) p.dropThrough -= dt;
@@ -8929,18 +8998,52 @@
           Audio.stopFartLoop();
           // Ground / Air / Parachute Horizontal Steering strictly via Left Stick
           const targetVx = Input.moveX * (p.parachuting ? 330 : 400);
-          const reversing = Input.moveX * p.vx < 0;
-          const accel = p.onGround ? (reversing ? 5800 : 4400) : (reversing ? 3600 : 2600);
-          if (p.vx < targetVx) p.vx = Math.min(targetVx, p.vx + accel * dt);
-          else if (p.vx > targetVx) p.vx = Math.max(targetVx, p.vx - accel * dt);
+          const reversing = Math.abs(Input.moveX) > 0.12 && Input.moveX * p.vx < 0;
+          const spd = Math.abs(p.vx);
+
+          // Hard turnaround on the ground bites into a short skid: Keister keeps
+          // his momentum for a beat, boots spraying dust, before he powers back
+          // the other way. No more robot-instant direction flips.
+          if (p.onGround && reversing && spd > 150) {
+            if (p.skid <= 0) {
+              p.skid = 0.16;
+              p.skidDust = 0;
+              this.spawnBurst(p.x + p.w * 0.5, p.y + p.h - 4, '#cbd5e1', 5, 90);
+            }
+            p.vx -= Math.sign(p.vx) * 2350 * dt;
+            p.skidDust -= dt;
+            if (p.skidDust <= 0) {
+              p.skidDust = 0.05;
+              this.particles.push({
+                x: p.x + p.w * 0.5 + (Math.random() - 0.5) * 18,
+                y: p.y + p.h - 3,
+                vx: -Math.sign(p.vx) * (40 + Math.random() * 50),
+                vy: -30 - Math.random() * 40,
+                r: 3 + Math.random() * 4,
+                color: '#d6d3d1', life: 0.28, maxLife: 0.28
+              });
+            }
+          } else {
+            // Air steering keeps a little more momentum than ground traction, so
+            // arcs read as swooping weight instead of snapped vectors.
+            const accel = p.onGround ? 4400 : (reversing ? 2100 : 2500);
+            if (p.vx < targetVx) p.vx = Math.min(targetVx, p.vx + accel * dt);
+            else if (p.vx > targetVx) p.vx = Math.max(targetVx, p.vx - accel * dt);
+          }
         }
 
         if (p.onGround || p.farting) {
           p.parachuting = false;
         }
 
-        // Gravity
-        p.vy += 1650 * dt;
+        // Gravity — a soft "hang" at the top of the arc and a touch more bite on
+        // the way down. Jumps breathe instead of snapping through a linear curve.
+        let grav = 1650;
+        if (!p.farting && !p.onGround) {
+          if (p.vy < 0) grav = Math.abs(p.vy) < 175 ? 1120 : 1650;
+          else grav = 1760;
+        }
+        p.vy += grav * dt;
 
         // Auto-Parachute: falling from ANY height deploys Keister's shamrock briefs automatically!
         if (!p.onGround && !p.farting && !p.hanging && p.vy > 40) {
@@ -8995,6 +9098,8 @@
 
       // 6. Vertical Movement & Solid / One-Way / Moving / Crumbling Collisions
       const prevBottom = p.y + p.h;
+      const impactVy = p.vy;
+      const wasPounding = !!p.poundType;
       p.y += p.vy * dt;
       const wasOnGround = p.onGround;
       p.onGround = false;
@@ -9076,6 +9181,20 @@
               cp.timer = 0.48;
             }
           }
+        }
+      }
+
+      // Landing recovery: any touchdown from real height compresses the little
+      // luchador, puffs dust and gives the camera a soft dip before he springs
+      // back into stride. Scaled by how hard he hit.
+      if (!wasOnGround && p.onGround && !wasPounding && impactVy > 90) {
+        const impact = Math.min(1, impactVy / 900);
+        p.landTimer = 0.08 + impact * 0.15;
+        p.scaleX = 1 + impact * 0.24;
+        p.scaleY = 1 - impact * 0.26;
+        this.camYOff = Math.max(-12, (this.camYOff || 0) - impact * 9);
+        if (impact > 0.28) {
+          this.spawnBurst(p.x + p.w * 0.5, p.y + p.h - 3, '#d6d3d1', 3 + Math.round(impact * 6), 70 + impact * 110);
         }
       }
 
@@ -9414,6 +9533,14 @@
         : Math.max(0, Math.min(lvl.width - viewW, p.x - viewW * 0.36 + this.camLeadX));
       this.camX += (targetCam - this.camX) * (1 - Math.exp(-11 * dt));
 
+      // Camera life: a tiny sprint bob, a landing dip that settles, and a soft
+      // vertical drift that follows the jump arc instead of locking the frame.
+      const speedNormCam = Math.min(1, Math.abs(p.vx || 0) / 400);
+      const runBob = p.onGround ? Math.sin(p.stride * 2) * 1.6 * speedNormCam : 0;
+      const airDrift = p.onGround ? 0 : Math.max(-8, Math.min(8, -(p.vy || 0) * 0.012));
+      const wantYOff = runBob + airDrift;
+      this.camYOff += (wantYOff - this.camYOff) * (1 - Math.exp(-7 * dt));
+
       UI.refreshHUD();
     },
 
@@ -9629,7 +9756,7 @@
         if (e.telegraphTimer > 0) {
           e.telegraphTimer = Math.max(0, e.telegraphTimer - dt);
           if (e.telegraphTimer === 0 && e.telegraphKind === 'lunge') {
-            e.lungeTimer = 1.15;
+            e.lungeTimer = e.chargeKind ? 1.45 : 1.15;
             e.telegraphKind = null;
           } else if (e.telegraphTimer === 0) {
             e.telegraphKind = null;
@@ -9644,18 +9771,35 @@
         const isRanged = e.type === 'ninja' || e.type === 'cardshark' || e.type === 'trainee' || e.type === 'sentry';
         const isBruiser = e.type === 'brawler' || e.type === 'sumo' || e.type === 'bouncer' || e.type === 'pinata';
 
-        // Ground Bruiser: crisp 0.30s coiled telegraph ('!'), then high-speed aggro rush!
+        // Ground Bruiser: coiled telegraph ('!'), then an aggro rush — but now
+        // they box. After every committed rush a bruiser backs off and circles
+        // before stepping in again, and a third of their rushes are slower,
+        // heavier charges. Fights read as a rotation of threats, not a mob.
         if (isBruiser) {
           if (e.telegraphTimer > 0 && e.telegraphKind === 'lunge') {
             e.lungeDir = dx >= 0 ? 1 : -1;
             e.vx = e.lungeDir * 12; // Face player while coiled
           } else if (e.lungeTimer > 0) {
             e.lungeTimer -= dt;
-            e.vx = (e.lungeDir || 1) * (e.baseSpeed || 102) * 1.98;
+            e.vx = (e.lungeDir || 1) * (e.baseSpeed || 102) * (e.chargeKind ? 2.55 : 1.98);
+            if (e.lungeTimer <= 0) {
+              e.holdTimer = e.chargeKind ? 1.5 + Math.random() * 0.8 : 0.7 + Math.random() * 0.9;
+              e.chargeKind = false;
+              e.telegraphCooldown = Math.max(e.telegraphCooldown, 0.35);
+            }
+          } else if (e.holdTimer > 0) {
+            // Ring-work: hold a fighting distance and shuffle, waiting his turn.
+            e.holdTimer -= dt;
+            const want = 132;
+            const sgn = dx >= 0 ? 1 : -1;
+            if (Math.abs(dx) > want + 46) e.vx = sgn * (e.baseSpeed || 102) * 0.62;
+            else if (Math.abs(dx) < want - 34) e.vx = -sgn * (e.baseSpeed || 102) * 0.55;
+            else e.vx = Math.sin(this.time * 3.4 + e.x * 0.02) * (e.baseSpeed || 102) * 0.3;
           } else if (Math.abs(dx) < 330 && dy < 135 && e.telegraphCooldown <= 0) {
+            e.chargeKind = Math.random() < 0.3;
             e.telegraphKind = 'lunge';
-            e.telegraphTimer = 0.3;
-            e.telegraphCooldown = 1.65;
+            e.telegraphTimer = e.chargeKind ? 0.52 : 0.3;
+            e.telegraphCooldown = e.chargeKind ? 2.3 : 1.65;
             e.lungeDir = dx >= 0 ? 1 : -1;
             Audio.sfxTelegraph();
           } else {
@@ -9697,6 +9841,12 @@
             }
             Audio.sfxEnemyShot();
             e.shootTimer = Math.max(1.12, 2.0 - this.lvl.worldId * 0.24);
+          }
+          // Skirmisher footwork: give ground when Keister rushes in, then slide
+          // back into range. Keeps shooters mobile instead of turret-static.
+          if (e.type === 'ninja' || e.type === 'cardshark') {
+            if (Math.abs(dx) < 112) e.vx = -(dx >= 0 ? 1 : -1) * (e.baseSpeed || 140) * 0.85;
+            else if (Math.abs(dx) > 230) e.vx = (dx >= 0 ? 1 : -1) * (e.baseSpeed || 140) * 0.5;
           }
         }
 
@@ -10302,7 +10452,7 @@
       const sx = this.shake > 0 ? (Math.random() - 0.5) * this.shake : 0;
       const sy = this.shake > 0 ? (Math.random() - 0.5) * this.shake : 0;
       // Anchor stage ground cleanly; lift boss arenas slightly higher so full boss legs & boots stay unmistakably visible!
-      const camY = this.lvl.isBoss ? (vh - 565) : (vh - 585);
+      const camY = (this.lvl.isBoss ? (vh - 565) : (vh - 585)) + (this.camYOff || 0);
       ctx.translate(-this.camX + sx, camY + sy);
 
       Renderer.drawLevel(ctx, this.lvl, this.time, this.camX, vw);
