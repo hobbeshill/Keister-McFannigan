@@ -1176,6 +1176,7 @@
         <button id="btn-play-story" class="btn btn-primary">Play Story</button>
         <button id="btn-stage-select" class="btn btn-gold">Stage Select</button>
         <button id="btn-boss-rush" class="btn btn-gold">Boss Rush</button>
+        <button id="btn-endless" class="btn btn-gold">Endless Gauntlet</button>
         <button id="btn-title-scrapbook" class="btn btn-secondary">Scrapbook</button>
         <button id="btn-title-fullscreen" class="btn btn-secondary" data-fullscreen-toggle aria-label="Enter Fullscreen">Fullscreen</button>
         <button id="btn-restart-story" class="btn btn-danger">Restart Story</button>
@@ -1396,7 +1397,9 @@
     bestTimes: Array(16).fill(null),
     bestScores: Array(16).fill(0),
     bossRushBestTime: null,
-    bossRushBestRank: null
+    bossRushBestRank: null,
+    endlessBestWave: 0,
+    endlessBestScore: 0
   });
 
   const RANK_ORDER = { S: 4, A: 3, B: 2, C: 1 };
@@ -1486,6 +1489,19 @@
       }
       this.save();
       return newRecord;
+    },
+    recordEndless(wave, score) {
+      let newBestWave = false, newBestScore = false;
+      if (wave > (this.data.endlessBestWave || 0)) {
+        this.data.endlessBestWave = wave;
+        newBestWave = true;
+      }
+      if (score > (this.data.endlessBestScore || 0)) {
+        this.data.endlessBestScore = Math.round(score);
+        newBestScore = true;
+      }
+      this.save();
+      return { newBestWave, newBestScore };
     },
     hasCorkscrew() { return this.data.sandboxMode || this.data.bossesDefeated[0]; },
     hasLuchaVault() { return this.data.sandboxMode || this.data.bossesDefeated[1]; },
@@ -3234,7 +3250,7 @@
 
       // Illustrated Graphic Noir character staging (used only for pursuit/dossier overlays, never blocky pixels)
       const stageNoirHero = (kx, ky, targetH, pose = 'jump') => {
-        const sp = NoirCutout.getHero(pose);
+        const sp = NoirCutout.heroSprite(pose);
         if (!sp) return;
         ctx.save();
         ctx.translate(kx, ky);
@@ -3313,7 +3329,7 @@
         }
       } else if (art === 'truth') {
         // Spotlight El Abuelo Chingon's illustrated graphic-novel portrait in the Grand Arena
-        const abSp = NoirCutout.getBoss(3);
+        const abSp = NoirCutout.bossSprite(3);
         if (abSp) {
           ctx.save();
           const aGlow = ctx.createRadialGradient(cx + w * 0.16, y + h * 0.52, 10, cx + w * 0.16, y + h * 0.52, h * 0.55);
@@ -3850,6 +3866,77 @@
       fc.restore();
       ctx.drawImage(this._fxCanvas, 0, 0, dw, dh, anchorX - dw * 0.5, anchorY - dh + footSinkPx, dw, dh);
       return true;
+    },
+
+    // ---------- CHIBI "BIG HEAD, LITTLE BODY" SPRITE BAKER ----------
+    // Every illustrated character is warped into a cartoon chibi with a smooth
+    // vertical stretch: rows above the neck grow (big head) and rows below it
+    // shrink (tiny body), blending across the neck so there is never a seam.
+    // The result is cached on the sprite so hit-flash tints and afterimages
+    // reuse the exact same silhouette.
+    chibi(sp, headFrac = 0.34, headMix = 0.54) {
+      if (!sp || !sp.canvas) return sp;
+      sp._chibi = sp._chibi || {};
+      const ck = `${headFrac}_${headMix}`;
+      if (sp._chibi[ck]) return sp._chibi[ck];
+      const src = sp.canvas;
+      const sw = src.width, sh = src.height;
+      const neck = sh * headFrac;
+      const band = Math.max(3, sh * 0.05);
+      const sTop = Math.min(1.9, headMix / headFrac);
+      const effMix = sTop * headFrac;
+      const sBot = (1 - effMix) / (1 - headFrac);
+      // Smoothstep the local vertical scale from tiny body to huge head.
+      const scaleAt = (y) => {
+        const t = Math.max(0, Math.min(1, (neck + band - y) / (2 * band)));
+        const sm = t * t * (3 - 2 * t);
+        return sBot + (sTop - sBot) * sm;
+      };
+      // Normalise so the warped character keeps its original overall height.
+      let total = 0;
+      for (let y = 0; y < sh; y++) total += scaleAt(y);
+      const norm = sh / Math.max(1, total);
+      const outW = Math.ceil(sw * sTop * norm) + 2;
+      const c = document.createElement('canvas');
+      c.width = outW; c.height = sh;
+      const g = c.getContext('2d');
+      g.imageSmoothingEnabled = true;
+      g.imageSmoothingQuality = 'high';
+      const cx = outW * 0.5;
+      let dy = 0;
+      for (let y = 0; y < sh; y++) {
+        const s = scaleAt(y) * norm;
+        const y0 = Math.round(dy), y1 = Math.round(dy + s);
+        const w = sw * s;
+        if (y1 > y0) g.drawImage(src, 0, y, sw, 1, cx - w * 0.5, y0, w, y1 - y0);
+        dy += s;
+      }
+      const out = { canvas: c, w: outW, h: sh };
+      sp._chibi[ck] = out;
+      return out;
+    },
+
+    // Per-character neck lines (fraction of the cutout that is head) and the
+    // share of the final chibi height the head takes, tuned to each pose.
+    HERO_HEAD: { idle: [0.34, 0.54], run: [0.40, 0.54], jump: [0.34, 0.54], pound: [0.46, 0.56] },
+    FOE_HEAD: {
+      brawler: [0.24, 0.52], leaper: [0.30, 0.50], trainee: [0.22, 0.50],
+      ninja: [0.22, 0.50], sumo: [0.22, 0.48], lantern: [0.55, 0.66],
+      cardshark: [0.29, 0.52], bouncer: [0.24, 0.50], drone: [0.42, 0.52],
+      pinata: [0.33, 0.50], eagle: [0.32, 0.48]
+    },
+    BOSS_HEAD: [0.22, 0.46],
+    heroSprite(pose) {
+      const key = pose === 'walk' ? 'idle' : pose;
+      const [f, m] = this.HERO_HEAD[key] || this.HERO_HEAD.idle;
+      return this.chibi(this.getHero(key), f, m);
+    },
+    foeSprite(type) {
+      const [f, m] = this.FOE_HEAD[type] || [0.34, 0.55];
+      return this.chibi(this.getFoe(type), f, m);
+    },
+    bossSprite(worldId) {
+      return this.chibi(this.getBoss(worldId), this.BOSS_HEAD[0], this.BOSS_HEAD[1]);
     }
   };
   NoirArt.init();
@@ -5153,15 +5240,39 @@
     'TRASERO DE HIERRO! You defeated El Abuelo Chingon and reclaimed your true mask!'
   ];
 
-  function buildLevel(idx) {
-    const worldId = Math.floor(idx / 4);
-    const stageInWorld = idx % 4; // 0,1,2 normal, 3 boss
-    const isBoss = stageInWorld === 3;
+  // Deterministic-per-run PRNG: every stage build gets a fresh seed, so layouts
+  // are re-rolled on every attempt while staying stable for the life of a run.
+  function makeRng(seed) {
+    let s = seed >>> 0;
+    return function () {
+      s = (s + 0x6D2B79F5) >>> 0;
+      let t = s;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function buildLevel(idx, opts = {}) {
+    const endlessWave = opts.endlessWave || 0;
+    let worldId = Math.floor(idx / 4);
+    let stageInWorld = idx % 4; // 0,1,2 normal, 3 boss
+    let isBoss = stageInWorld === 3;
+    if (endlessWave > 0) {
+      worldId = (endlessWave - 1) % 4;
+      isBoss = endlessWave % 5 === 0;
+      stageInWorld = isBoss ? 3 : 1;
+    }
     const baseY = 480;
-    const stageLabel = (idx === 15 && Save.data.storyCompleted) ? 'Final Boss: El Abuelo Chingon' : LEVEL_NAMES[idx];
+    const stageLabel = endlessWave > 0
+      ? `Wave ${endlessWave}${isBoss ? ' · Boss' : ''}`
+      : ((idx === 15 && Save.data.storyCompleted) ? 'Final Boss: El Abuelo Chingon' : LEVEL_NAMES[idx]);
+    const runSeed = (opts.seed != null ? opts.seed : (Math.floor(Math.random() * 0xFFFFFFFF) ^ (idx * 2654435761))) >>> 0;
+    const rng = makeRng(runSeed);
 
     const lvl = {
       idx, worldId, stageInWorld, isBoss,
+      endlessWave, seed: runSeed, rng,
       name: stageLabel,
       world: WORLDS[worldId],
       width: isBoss ? 1120 : 5200,
@@ -5242,7 +5353,7 @@
       }
 
       const bossName = (worldId === 3 && Save.data.storyCompleted) ? 'El Abuelo Chingon' : WORLDS[worldId].bossName;
-      const bossHp = 28 + worldId * 10;
+      const bossHp = 28 + worldId * 10 + (endlessWave > 0 ? Math.max(0, Math.floor(endlessWave / 5) - 1) * 10 : 0);
       lvl.boss = {
         worldId,
         name: bossName,
@@ -5259,6 +5370,8 @@
         invuln: 0,
         projectiles: []
       };
+      // Endless waves must never touch story clues, shells or cutscenes
+      if (endlessWave > 0) { lvl.clue = null; lvl.shell = null; }
       return lvl;
     }
 
@@ -5266,7 +5379,8 @@
     // HAND-CURATED DISTINCT WORLD STAGE BLUEPRINTS (12 Unique Adventure Stages)
     // Varied elevations, distinct world mechanics, 4 unskippable flying tests, zero cabbages!
     // -------------------------------------------------------------------------
-    const tier = worldId * 3 + stageInWorld;      // 0..11 progression ramp
+    const tier = endlessWave > 0 ? endlessWave + 2 : worldId * 3 + stageInWorld; // 0..11 ramp (endless keeps climbing)
+    lvl.tier = tier;
     const foeHp = 4 + Math.floor(tier / 2);       // 4..9 HP — fast arcade brawling!
     const foeLvl = Math.floor(tier / 3);          // 0..3 pressure tier
 
@@ -5277,8 +5391,9 @@
       8: 480, 9: 470, 10: 435,  // Vegas:   Strip floor -> Fountain terrace -> Penthouse loft
       12: 485, 13: 500, 14: 475 // Mexico:  Fiesta plaza -> Pyramid base -> Grand Arena road
     };
-    let curY = startHeights[idx] || 480;
     const clampY = (y) => Math.max(355, Math.min(505, y));
+    // Fresh opening elevation each run so the skyline silhouette never repeats
+    let curY = clampY((startHeights[idx] || 470) + Math.floor((rng() - 0.5) * 80));
     lvl.spawn = { x: 90, y: curY - 60 };
 
     const addGround = (x, y, w) => {
@@ -5613,144 +5728,69 @@
       lvl.oneWays.push({ x: cursor - 168, y: curY - 115, w: 108 });
     };
 
-    // Execute the unique stage blueprint for this exact stage index!
-    switch (idx) {
-      case 0: // 1-1: Dublin Alleyways — Rooftop climb, intro Sky-Wall & 2-Ring Aerial Gate
-        addTerraceClimb(2, 30);
-        addSkyWall(210, false);
-        addCrackedCellar();
-        addIrelandVentBridge();
-        addCheckpoint();
-        addRingGate(2, 430);
-        placeClueHere();
-        addTerraceDrop(2, 34);
-        addBarrierVault();
-        break;
-      case 1: // 1-2: Emerald Pub Rooftops — Crumbling gorges, Abyssal Spike Chasm & Sky-Tunnel
-        addIrelandVentBridge();
-        addSpikeChasm(440, false);
-        addTerraceClimb(2, 32);
-        addSkyTunnel(195, 146, 260, false);
-        addCheckpoint();
-        addCrackedCellar();
-        addSkyWall(195, true);
-        placeClueHere();
-        addIrelandVentBridge();
-        break;
-      case 2: // 1-3: Cliffs of Moher Gauntlet — Dramatic cliff plunges, 3-Ring Gate & Sky-Tunnel
-        addTerraceDrop(3, 34);
-        addRingGate(3, 470);
-        addIrelandVentBridge();
-        addSkyTunnel(190, 140, 290, true);
-        addCheckpoint();
-        addTerraceClimb(3, 34);
-        addSpikeChasm(470, true);
-        placeClueHere();
-        addSkyWall(190, true);
-        break;
-      case 4: // 2-1: Kyoto Bamboo Temple — Multi-tier pagoda climbs & Sky-Wall temple gates
-        addJapanPagodaTower();
-        addSkyWall(195, false);
-        addTerraceClimb(3, 35);
-        addRingGate(2, 450);
-        addCheckpoint();
-        addSkyTunnel(185, 138, 280, false);
-        addJapanPagodaTower();
-        placeClueHere();
-        addTerraceDrop(2, 36);
-        break;
-      case 5: // 2-2: Shibuya Neon Express — Suspended transit cars, Sky-Tunnel & 3-Ring Skyline Gate
-        addTransitCars();
-        addSkyTunnel(190, 136, 300, true);
-        addJapanPagodaTower();
-        addSpikeChasm(480, true);
-        addCheckpoint();
-        addTransitCars();
-        addRingGate(3, 480);
-        placeClueHere();
-        addBarrierVault();
-        break;
-      case 6: // 2-3: Sumo Dojo Tower — High martial terraces, 3-Ring Gate, Sky-Wall & Chasm
-        addTerraceClimb(3, 38);
-        addRingGate(3, 480);
-        addJapanPagodaTower();
-        addSkyWall(185, true);
-        addCheckpoint();
-        addTransitCars();
-        addSkyTunnel(185, 134, 300, true);
-        placeClueHere();
-        addSpikeChasm(500, true);
-        break;
-      case 8: // 3-1: Casino Royale Strip — Rhythmic laser alleys, Fountain Vault & Ring Gate
-        addVegasLaserStrip();
-        addSkyWall(190, true);
-        addVegasFountainVault();
-        addRingGate(2, 460);
-        addCheckpoint();
-        addVegasLaserStrip();
-        addSkyTunnel(185, 134, 300, true);
-        placeClueHere();
-        addCrackedCellar();
-        break;
-      case 9: // 3-2: Bellagio Fountain Heights — Aqueduct updrafts, Spike Chasm & 3-Ring Gate
-        addVegasFountainVault();
-        addSpikeChasm(490, true);
-        addRingGate(3, 490);
-        addTransitCars();
-        addCheckpoint();
-        addVegasFountainVault();
-        addSkyWall(185, true);
-        placeClueHere();
-        addVegasLaserStrip();
-        break;
-      case 10: // 3-3: Elvis Penthouse Vault — High-security tunnels, laser strips & triple flying trial
-        addSkyTunnel(185, 130, 310, true);
-        addVegasLaserStrip();
-        addSkyWall(180, true);
-        addVegasFountainVault();
-        addCheckpoint();
-        addRingGate(3, 500);
-        addSpikeChasm(510, true);
-        placeClueHere();
-        addSkyTunnel(190, 128, 300, true);
-        break;
-      case 12: // 4-1: Oaxaca Fiesta Streets — Ziggurat plazas, volcanic canyon & 3-Ring Fiesta Gate
-        addMexicoZiggurat();
-        addSpikeChasm(495, true);
-        addMexicoVolcanoShaft();
-        addRingGate(3, 490);
-        addCheckpoint();
-        addTerraceClimb(3, 34);
-        addSkyWall(185, true);
-        placeClueHere();
-        addMexicoZiggurat();
-        break;
-      case 13: // 4-2: Ancient Luchador Temple — Steep pyramid climb/plunge & stone Sky-Tunnels
-        addTerraceClimb(3, 38);
-        addSkyTunnel(185, 130, 320, true);
-        addMexicoZiggurat();
-        addMexicoVolcanoShaft();
-        addCheckpoint();
-        addSkyWall(180, true);
-        addRingGate(3, 500);
-        placeClueHere();
-        addTerraceDrop(3, 36);
-        break;
-      default: // 4-3 (idx 14): Road to the Grand Arena — Final Championship All-4 Flying Trial!
-        addSkyWall(180, true);
-        addMexicoVolcanoShaft();
-        addSkyTunnel(180, 128, 320, true);
-        addMexicoZiggurat();
-        addCheckpoint();
-        addSpikeChasm(520, true);
-        addVegasLaserStrip();
-        placeClueHere();
-        addRingGate(3, 510);
-        break;
+    // =======================================================================
+    // PROCEDURAL STAGE ASSEMBLY — a brand-new seeded layout on every attempt.
+    // The authored chunk builders are shuffled, re-parameterised and re-ordered,
+    // so no two runs through the same stage are ever laid out alike.
+    // =======================================================================
+    const shuffleArr = (arr) => {
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(rng() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    };
+
+    const traversalChunks = [
+      () => addTerraceClimb(2 + Math.floor(rng() * 2), 26 + Math.floor(rng() * 16)),
+      () => addTerraceDrop(2 + Math.floor(rng() * 2), 28 + Math.floor(rng() * 16)),
+      () => addSkyWall(180 + Math.floor(rng() * 45), rng() < 0.55),
+      () => addSpikeChasm(420 + Math.floor(rng() * 170), rng() < 0.6),
+      () => addSkyTunnel(178 + Math.floor(rng() * 26), 122 + Math.floor(rng() * 22), 280 + Math.floor(rng() * 90), rng() < 0.5)
+    ];
+
+    const signatureChunks = {
+      0: [addIrelandVentBridge, addCrackedCellar, addBarrierVault],
+      1: [addJapanPagodaTower, addTransitCars, addBarrierVault],
+      2: [addVegasLaserStrip, addVegasFountainVault, addTransitCars],
+      3: [addMexicoZiggurat, addMexicoVolcanoShaft, addCrackedCellar]
+    }[worldId];
+    const signatures = shuffleArr(signatureChunks.slice());
+    let sigPtr = 0;
+    const nextSignature = () => signatures[sigPtr++ % signatures.length];
+
+    // Readable opening climb
+    addTerraceClimb(2, 30);
+
+    // First half: traversal challenge + a world set-piece
+    const halfA = 1 + (tier >= 4 ? 1 : 0);
+    shuffleArr(traversalChunks.slice()).slice(0, halfA).forEach((fn, i) => {
+      fn();
+      if (i === 0) nextSignature();
+    });
+
+    // Mid-stage checkpoint bell, always on safe ground
+    addCheckpoint();
+
+    // Mandatory aerial ring test stays in every generated stage
+    addRingGate(2 + (rng() < 0.5 ? 1 : 0), 400 + Math.floor(rng() * 130));
+    placeClueHere();
+
+    // Second half: escalate with more mixed chunks
+    const halfB = 2 + (tier >= 8 ? 1 : 0);
+    shuffleArr(traversalChunks.slice()).slice(0, halfB).forEach((fn, i) => {
+      fn();
+      if (i % 2 === 0) nextSignature();
+    });
+
+    // Re-roll every timed hazard's phase so trap timing differs each run
+    for (const hz of lvl.hazards) {
+      if (hz.period) hz.phase = rng() * hz.period;
+      else if (hz.kind === 'saw') hz.phase = rng() * Math.PI * 2;
     }
 
     // Dedicated Secret Sea Shell Alcove before the Goal Arch (guaranteed reachable, never buried in geometry!)
-    const shellStyle = idx % 4;
+    const shellStyle = Math.floor(rng() * 4);
     addGround(cursor, curY, 340);
     if (shellStyle === 0) {
       // High Wind-Vent Sky Perch
@@ -5819,12 +5859,46 @@
     if (!lvl.clue) lvl.clue = { x: cursor + 90, y: curY - 60 };
 
     // Sudden Mid-Level Cutscene Triggers (Cloaked Shadow Sightings + Fallback Accident Visions)
-    if (idx === 0) lvl.visionTriggers.push({ x: Math.round(lvl.width * 0.42), key: 'shadow_ireland', triggered: false });
-    if (idx === 1) lvl.visionTriggers.push({ x: Math.round(lvl.width * 0.76), key: 'vision_accident_1', triggered: false });
-    if (idx === 4) lvl.visionTriggers.push({ x: Math.round(lvl.width * 0.44), key: 'shadow_japan', triggered: false });
-    if (idx === 5) lvl.visionTriggers.push({ x: Math.round(lvl.width * 0.76), key: 'vision_accident_2', triggered: false });
-    if (idx === 9) lvl.visionTriggers.push({ x: Math.round(lvl.width * 0.76), key: 'vision_accident_3', triggered: false });
-    if (idx === 14) lvl.visionTriggers.push({ x: Math.round(lvl.width * 0.72), key: 'shadow_mexico', triggered: false });
+    if (endlessWave === 0) {
+      if (idx === 0) lvl.visionTriggers.push({ x: Math.round(lvl.width * 0.42), key: 'shadow_ireland', triggered: false });
+      if (idx === 1) lvl.visionTriggers.push({ x: Math.round(lvl.width * 0.76), key: 'vision_accident_1', triggered: false });
+      if (idx === 4) lvl.visionTriggers.push({ x: Math.round(lvl.width * 0.44), key: 'shadow_japan', triggered: false });
+      if (idx === 5) lvl.visionTriggers.push({ x: Math.round(lvl.width * 0.76), key: 'vision_accident_2', triggered: false });
+      if (idx === 9) lvl.visionTriggers.push({ x: Math.round(lvl.width * 0.76), key: 'vision_accident_3', triggered: false });
+      if (idx === 14) lvl.visionTriggers.push({ x: Math.round(lvl.width * 0.72), key: 'shadow_mexico', triggered: false });
+    }
+
+    // ---------------------------------------------------------------------
+    // SLAM-GATED ENCOUNTERS — each unlocked slam owns a foe that only it cracks,
+    // and every world gets a wire-hook that rips Keister off the ceiling rails.
+    // ---------------------------------------------------------------------
+    {
+      const grounds = lvl.solids.filter(s => s.kind === 'ground' && s.w >= 170 && s.x > 240 && s.y >= 330 && s.y <= 520);
+      const rndOf = (arr) => arr[Math.floor(rng() * arr.length)];
+      const addFoe = (type, spriteType, x, y, minX, maxX, hpBonus, extra) =>
+        lvl.enemies.push(Object.assign({ type, spriteType, x, y, minX, maxX, hp: foeHp + hpBonus }, extra || {}));
+
+      if (tier >= 1 && Save.hasCorkscrew() && grounds.length) {
+        const g = rndOf(grounds);
+        addFoe('bulwark', enemyPool[0], g.x + g.w * 0.62, g.y - 52, g.x + 24, g.x + g.w - 64, 1, { gate: 'corkscrew' });
+      }
+      if (tier >= 2 && Save.hasLuchaVault()) {
+        const bar = lvl.monkeyBars.find(mb => !mb.isCeiling && mb.w >= 160);
+        if (bar) addFoe('clinger', enemyPool[2], bar.x + bar.w * 0.5, bar.y + 30, bar.x + 24, bar.x + bar.w - 44, 1, { gate: 'vault' });
+      }
+      if (tier >= 3 && Save.hasMeteoraFlip() && grounds.length) {
+        const g = rndOf(grounds);
+        addFoe('sentry', enemyPool[1], g.x + g.w * 0.34, g.y - 46, g.x + 14, g.x + g.w - 44, 2, { gate: 'meteora' });
+      }
+      const rail = lvl.monkeyBars.find(mb => mb.isCeiling);
+      if (rail && rail.w > 700) {
+        const hx = Math.min(rail.x + rail.w - 260, 420 + rng() * Math.max(120, rail.w - 700));
+        addFoe('hook', enemyPool[2], hx, 168, hx - 190, hx + 190, 0, {});
+      }
+    }
+
+    // Endless waves must never touch story clues, shells or cutscenes
+    if (endlessWave > 0) { lvl.clue = null; lvl.shell = null; }
 
     return lvl;
   }
@@ -7333,18 +7407,22 @@
       }
     },
 
-    // Animated sprint for the illustrated hero: the run cutout is split at the
-    // hips so the legs scissor and the upper body (arms, head, cape) pumps
-    // through the stride cycle instead of sliding along as one frozen pose.
-    drawRunCycle(ctx, sp, targetH, phase) {
+    // Animated sprint for the illustrated hero: the chibi cutout is split into
+    // head, torso and leg bands so the little legs scissor, the torso pumps and
+    // the oversized head bobbles on its own lag for a goofy cartoon stride.
+    drawRunCycle(ctx, sp, targetH, phase, opt = {}) {
       if (!sp || !sp.canvas) return false;
+      const hipFrac = opt.hipFrac || 0.56;
+      const headFrac = opt.headFrac || 0;
+      const legAmp = opt.legAmp || 0.62;
+      const bodyAmp = opt.bodyAmp || 0.2;
       const scale = targetH / sp.h;
       const dw = sp.w * scale, dh = targetH;
       const x0 = -dw * 0.5, y0 = -dh + 3;
-      const hipY = y0 + dh * 0.56;
+      const hipY = y0 + dh * hipFrac;
       const swing = Math.sin(phase);
-      const legA = swing * 0.52;
-      const bodyA = -swing * 0.17;
+      const legA = swing * legAmp;
+      const bodyA = -swing * bodyAmp;
 
       const paint = (cx, cy, cw, ch, px, py, ang, lift) => {
         ctx.save();
@@ -7361,12 +7439,37 @@
         ctx.restore();
       };
 
-      // Legs scissor wide from the hips; the trailing leg also lifts clear of
-      // the ground so the stride reads as a sprint instead of a shuffle.
-      paint(x0 - dw * 0.25, hipY, dw * 0.78, dh, x0 + dw * 0.4, hipY, legA, -Math.max(0, swing) * dh * 0.055);
-      paint(x0 + dw * 0.47, hipY, dw * 0.78, dh, x0 + dw * 0.6, hipY, -legA, -Math.max(0, -swing) * dh * 0.055);
-      // Torso, arms and head counter-swing over the hip seam.
-      paint(x0 - dw * 0.25, y0 - dh * 0.1, dw * 1.5, hipY + dh * 0.07 - (y0 - dh * 0.1), x0 + dw * 0.5, hipY, bodyA, 0);
+      // Little legs scissor wide from the hips; the trailing leg also kicks
+      // clear of the ground so the stride reads as a sprint, not a shuffle.
+      paint(x0 - dw * 0.25, hipY, dw * 0.78, dh, x0 + dw * 0.4, hipY, legA, -Math.max(0, swing) * dh * 0.06);
+      paint(x0 + dw * 0.47, hipY, dw * 0.78, dh, x0 + dw * 0.6, hipY, -legA, -Math.max(0, -swing) * dh * 0.06);
+      if (headFrac > 0) {
+        const headY = y0 + dh * headFrac;
+        // Torso pumps under the big head...
+        paint(x0 - dw * 0.25, headY, dw * 1.5, hipY - headY + dh * 0.03, x0 + dw * 0.5, hipY, bodyA, 0);
+        // ...and the oversized head lags the opposite way for a bobblehead wobble.
+        paint(x0 - dw * 0.25, y0 - dh * 0.12, dw * 1.5, headY - y0 + dh * 0.16, x0 + dw * 0.5, headY, -bodyA * 1.8, 0);
+      } else {
+        paint(x0 - dw * 0.25, y0 - dh * 0.1, dw * 1.5, hipY + dh * 0.07 - (y0 - dh * 0.1), x0 + dw * 0.5, hipY, bodyA, 0);
+      }
+      return true;
+    },
+
+    // Goofy little waddle for strolling speeds: the cutout rocks side to side,
+    // bounces on each step and scuffs its tiny feet.
+    drawWalkCycle(ctx, sp, targetH, phase, opt = {}) {
+      if (!sp || !sp.canvas) return false;
+      const swing = Math.sin(phase);
+      ctx.save();
+      ctx.translate(0, -Math.abs(Math.cos(phase)) * targetH * 0.028);
+      ctx.rotate(swing * 0.075);
+      this.drawRunCycle(ctx, sp, targetH, phase, {
+        hipFrac: opt.hipFrac || 0.8,
+        headFrac: opt.headFrac || 0.54,
+        legAmp: 0.32,
+        bodyAmp: 0.1
+      });
+      ctx.restore();
       return true;
     },
 
@@ -7375,9 +7478,10 @@
       let noirPose = 'idle';
       if (p.poundType) noirPose = 'pound';
       else if (p.hanging || p.parachuting || !p.onGround) noirPose = 'jump';
-      else if (Math.abs(p.vx || 0) > 22) noirPose = 'run';
+      else if (Math.abs(p.vx || 0) > 150) noirPose = 'run';
+      else if (Math.abs(p.vx || 0) > 22) noirPose = 'walk';
 
-      const cutout = NoirCutout.getHero(noirPose);
+      const cutout = NoirCutout.heroSprite(noirPose);
       if (cutout) {
         ctx.save();
         const speedNorm = Math.min(1, Math.abs(p.vx || 0) / 260);
@@ -7412,8 +7516,11 @@
         }
 
         const targetH = noirPose === 'pound' ? 74 : (noirPose === 'jump' ? 88 : 86);
+        const headMix = (NoirCutout.HERO_HEAD[noirPose === 'walk' ? 'idle' : noirPose] || NoirCutout.HERO_HEAD.idle)[1];
         if (noirPose === 'run') {
-          this.drawRunCycle(ctx, cutout, targetH, t * 13);
+          this.drawRunCycle(ctx, cutout, targetH, t * 13, { hipFrac: 0.8, headFrac: headMix, legAmp: 0.66, bodyAmp: 0.22 });
+        } else if (noirPose === 'walk') {
+          this.drawWalkCycle(ctx, cutout, targetH, t * 8.5, { hipFrac: 0.8, headFrac: headMix });
         } else {
           NoirCutout.draw(ctx, cutout, 0, 0, targetH, noirPose === 'pound' ? 4 : 3);
         }
@@ -7500,7 +7607,7 @@
         trainee: ['#ea580c', '#22c55e'], pinata: ['#ec4899', '#facc15'], eagle: ['#92400e', '#f59e0b']
       };
       const [c1, c2] = colors[e.type] || ['#dc2626', '#fde047'];
-      const flyer = e.type === 'lantern' || e.type === 'drone' || e.type === 'eagle';
+      const flyer = e.type === 'lantern' || e.type === 'drone' || e.type === 'eagle' || e.type === 'hook';
 
       // Shared animation bundle: walk gait, breathing, blinking, lean
       const anim = {
@@ -7531,6 +7638,61 @@
       }
 
       this.drawFoeSilhouette(ctx, e, t, c1, c2, anim);
+
+      // Slam-gate badge: teaches which move cracks this foe
+      if (e.gate) {
+        const glyph = e.gate === 'corkscrew' ? '↺' : (e.gate === 'vault' ? '↷' : '★');
+        const col = e.gate === 'corkscrew' ? '#f87171' : (e.gate === 'vault' ? '#fbbf24' : '#c084fc');
+        ctx.save();
+        ctx.translate(0, -e.h - 30);
+        ctx.fillStyle = 'rgba(6,10,18,0.85)';
+        ctx.strokeStyle = col; ctx.lineWidth = 1.8;
+        ctx.beginPath(); ctx.arc(0, 0, 9, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = col;
+        ctx.font = '700 12px "Oswald", Impact, sans-serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(glyph, 0, 0.5);
+        ctx.restore();
+      }
+      // Archetype gear so each gated foe reads at a glance
+      if (e.type === 'bulwark') {
+        ctx.save();
+        ctx.translate(anim.face * (e.w * 0.5), -e.h * 0.52);
+        ctx.fillStyle = '#334155';
+        ctx.strokeStyle = '#0b1220'; ctx.lineWidth = 2.4;
+        ctx.beginPath();
+        ctx.moveTo(-6, -e.h * 0.34);
+        ctx.lineTo(10, -e.h * 0.26);
+        ctx.lineTo(10, e.h * 0.24);
+        ctx.lineTo(-6, e.h * 0.34);
+        ctx.closePath(); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#94a3b8';
+        for (let i = -1; i <= 1; i++) { ctx.beginPath(); ctx.arc(4, i * 12, 2.2, 0, Math.PI * 2); ctx.fill(); }
+        ctx.restore();
+      } else if (e.type === 'sentry') {
+        ctx.save();
+        ctx.fillStyle = 'rgba(148,163,184,0.92)';
+        ctx.strokeStyle = '#0b1220'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(0, -e.h * 0.55, e.w * 0.44, Math.PI, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#ef4444';
+        ctx.beginPath(); ctx.arc(0, -e.h * 0.55, 3.6, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+      } else if (e.type === 'clinger') {
+        ctx.save();
+        ctx.strokeStyle = 'rgba(226,232,240,0.6)'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(0, -e.h - 26); ctx.lineTo(0, -e.h + 4); ctx.stroke();
+        ctx.restore();
+      } else if (e.type === 'hook') {
+        ctx.save();
+        ctx.strokeStyle = 'rgba(203,213,225,0.55)'; ctx.lineWidth = 2;
+        ctx.beginPath();
+        for (let i = 0; i < 4; i++) {
+          const px = -anim.face * (8 + i * 8), py = -e.h * 0.6 + Math.sin(t * 8 + i) * 4;
+          i ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+        }
+        ctx.stroke();
+        ctx.restore();
+      }
 
       // Impact sparks fly off the silhouette while it flashes from a hit
       if (e.hitFlash > 0) {
@@ -7586,7 +7748,8 @@
     drawFoeSilhouette(ctx, e, t, c1, c2, anim) {
       ctx.save();
       ctx.scale(anim.face, 1);
-      const isFlyer = e.type === 'lantern' || e.type === 'drone' || e.type === 'eagle';
+      const spriteKey = e.spriteType || e.type;
+      const isFlyer = spriteKey === 'lantern' || spriteKey === 'drone' || spriteKey === 'eagle' || e.type === 'hook';
       const bobY = isFlyer
         ? Math.sin(t * 5.2 + e.x * 0.05) * 4.5
         : -Math.abs(Math.sin(anim.gait)) * (e.type === 'leaper' ? 4.2 : 2.6) * Math.max(0.25, anim.speed);
@@ -7621,7 +7784,7 @@
         ctx.rotate(anim.speed * 0.09);
       }
 
-      const foeCutout = NoirCutout.getFoe(e.type);
+      const foeCutout = NoirCutout.foeSprite(spriteKey);
       if (foeCutout) {
         const heights = {
           brawler: 74, leaper: 62, trainee: 70,
@@ -7629,17 +7792,23 @@
           cardshark: 74, bouncer: 82, drone: 58,
           pinata: 78, eagle: 70
         };
-        const targetH = heights[e.type] || 72;
+        const targetH = heights[spriteKey] || 72;
         ctx.save();
         if (!isFlyer) {
-          const rock = Math.sin(anim.gait) * (e.type === 'sumo' || e.type === 'bouncer' ? 0.045 : 0.075) * anim.speed;
+          // Funny big-head waddle: hop on every step, rock side to side and
+          // squash on landing, all scaled by how fast the foe is trotting.
+          const hop = Math.abs(Math.sin(anim.gait)) * anim.speed * 6;
+          ctx.translate(0, -hop);
+          const rock = Math.sin(anim.gait) * (0.06 + anim.speed * 0.12);
           ctx.rotate(rock);
+          const land = Math.cos(anim.gait * 2) * (0.01 + anim.speed * 0.05);
           const sq = e.type === 'leaper'
             ? Math.sin(t * 10 + e.x) * 0.065
-            : anim.breathe * 0.025;
+            : land + anim.breathe * 0.02;
           ctx.scale(1 - sq, 1 + sq);
         } else {
           const flap = Math.sin(t * 9 + e.x * 0.1) * 0.04;
+          ctx.translate(0, Math.sin(t * 5 + e.x * 0.08) * 2);
           ctx.scale(1 + flap, 1 - flap * 0.6);
         }
         if (e.telegraphTimer > 0 && e.telegraphKind === 'lunge') {
@@ -7661,7 +7830,7 @@
       } else {
         const rate = isFlyer ? 6.5 : (e.type === 'sumo' || e.type === 'bouncer' ? 4.2 : 7.5);
         const frame = Math.floor(t * rate + Math.abs(e.x) * 0.03) % 2;
-        const sprite = Pixel32.getEnemy(e.type, frame);
+        const sprite = Pixel32.getEnemy(spriteKey, frame);
         Pixel32.blit(ctx, sprite, 0, 0, 2, 2);
         if (e.hitFlash > 0) {
           ctx.fillStyle = `rgba(255, 250, 220, ${Math.min(0.55, e.hitFlash * 2.2)})`;
@@ -7739,7 +7908,7 @@
       ctx.beginPath(); ctx.arc(0, -64, 72, 0, Math.PI * 2); ctx.fill();
 
       // Illustrated Graphic Noir World Boss (Commanding Heavy-Ink Full-Body Plate + Grounded Boots!)
-      const bossCutout = NoirCutout.getBoss(b.worldId);
+      const bossCutout = NoirCutout.bossSprite(b.worldId);
       ctx.save();
       ctx.scale(b.dir || -1, 1);
       if (bossCutout) {
@@ -8035,7 +8204,7 @@
       ctx.fillStyle = halo;
       ctx.beginPath(); ctx.arc(kx, ky, 175, 0, Math.PI * 2); ctx.fill();
 
-      const titleHero = NoirCutout.getHero('jump');
+      const titleHero = NoirCutout.heroSprite('jump');
       if (titleHero) {
         ctx.save();
         ctx.translate(kx, ky + 66);
@@ -8082,6 +8251,7 @@
     cratesSmashed: 0,
     lastResult: null,
     bossRush: { active: false, round: 0, totalTime: 0, totalScore: 0, totalDamage: 0, maxCombo: 0 },
+    endless: { active: false, wave: 0, score: 0, time: 0, maxCombo: 0, damage: 0 },
     hintTimer: 7,
     staminaTickTimer: 0,
     stageCleared: false,
@@ -8091,9 +8261,52 @@
     vignetteColor: '#dc2626',
     pendingVision: null,
 
+    startEndless() {
+      Audio.init();
+      UI.closeAllModals();
+      this.bossRush.active = false;
+      this.endless = { active: true, wave: 1, score: 0, time: 0, maxCombo: 0, damage: 0 };
+      this.startEndlessWave();
+    },
+
+    startEndlessWave() {
+      if (!this.endless || !this.endless.active) return;
+      const wave = this.endless.wave;
+      const carryHp = wave > 1 && this.player ? Math.min(5, Math.max(1, this.player.hp) + 1) : 5;
+      this.startLevel(0, { endlessWave: wave, carryHp });
+      Input.showFeedback(`ENDLESS GAUNTLET · WAVE ${wave}${wave % 5 === 0 ? ' · BOSS!' : ''}`);
+    },
+
+    endEndless() {
+      const e = this.endless;
+      if (!e || !e.active) return;
+      e.active = false;
+      this.stageCleared = true;
+      Audio.stopFartLoop();
+      Audio.resetIntensity();
+      const reached = Math.max(1, e.wave);
+      const rank = reached >= 16 ? 'S' : reached >= 11 ? 'A' : reached >= 6 ? 'B' : 'C';
+      const rec = Save.recordEndless(reached, e.score);
+      this.lastResult = {
+        isEndless: true,
+        wave: reached,
+        rank,
+        timeSec: e.time,
+        score: e.score,
+        maxCombo: e.maxCombo,
+        damageTaken: e.damage,
+        newBestWave: rec.newBestWave,
+        newBestScore: rec.newBestScore
+      };
+      Audio.sfxRankStamp(rank);
+      UI.refreshTitleMeta();
+      UI.showStageEnd(0, this.lastResult);
+    },
+
     startBossRush() {
       Audio.init();
       UI.closeAllModals();
+      this.endless.active = false;
       this.bossRush = { active: true, round: 0, totalTime: 0, totalScore: 0, totalDamage: 0, maxCombo: 0 };
       this.startLevel(3, { keepBossRush: true });
       Input.showFeedback('BOSS RUSH · ROUND 1/4: PADDY O\'BRAWLER!');
@@ -8106,8 +8319,11 @@
       if (!opts.keepBossRush) {
         this.bossRush.active = false;
       }
+      if (!opts.endlessWave) {
+        this.endless.active = false;
+      }
       this.levelIdx = idx;
-      this.lvl = buildLevel(idx);
+      this.lvl = buildLevel(idx, opts);
       this.particles = [];
       this.shockwaves = [];
       this.comicPopups = [];
@@ -8179,12 +8395,17 @@
       // Initialize enemies (per-type hitboxes, telegraphs & aggressive AI stats)
       const foeSizes = {
         brawler: [38, 44], leaper: [34, 34], ninja: [30, 48], sumo: [54, 50], lantern: [34, 46],
-        cardshark: [32, 50], bouncer: [46, 56], drone: [40, 30], trainee: [32, 40], pinata: [52, 40], eagle: [48, 34]
+        cardshark: [32, 50], bouncer: [46, 56], drone: [40, 30], trainee: [32, 40], pinata: [52, 40], eagle: [48, 34],
+        bulwark: [46, 50], clinger: [34, 40], sentry: [46, 40], hook: [30, 34]
       };
-      const tier = Math.floor(idx / 4) * 3 + (idx % 4);
+      const tier = this.lvl.tier != null ? this.lvl.tier : (Math.floor(idx / 4) * 3 + (idx % 4));
       const speedMul = 1.24 + Math.min(0.55, tier * 0.045);
       this.lvl.enemies = this.lvl.enemies.map(e => {
-        const baseSpd = (e.type === 'ninja' || e.type === 'cardshark' ? 148 : 102) * speedMul;
+        const baseSpd = (e.type === 'ninja' || e.type === 'cardshark' ? 148
+          : e.type === 'hook' ? 132
+          : e.type === 'bulwark' ? 74
+          : (e.type === 'sentry' || e.type === 'clinger') ? 0
+          : 102) * speedMul;
         return {
           ...e,
           w: (foeSizes[e.type] || [34, 42])[0],
@@ -8216,7 +8437,7 @@
 
       // The first half of World 1 opens with the full control briefing;
       // the first stage after each defeated Boss clearly briefs the newly learned move!
-      if (idx < 2) {
+      if (idx < 2 && !opts.endlessWave) {
         UI.showTutorial();
       } else if (idx === 4 && Save.hasCorkscrew() && !Save.data.moveTutorialsShown.corkscrew) {
         UI.showMoveUnlockBriefing('corkscrew');
@@ -8407,12 +8628,12 @@
       });
     },
 
-    spawnShockwave(x, y, dir, golden, dmg) {
+    spawnShockwave(x, y, dir, golden, dmg, moveType) {
       this.shockwaves.push({
         x, y, vx: dir * (golden ? 540 : 410),
         r: golden ? 32 : 22,
         life: golden ? 0.65 : 0.38,
-        golden, dmg
+        golden, dmg, moveType
       });
     },
 
@@ -8882,7 +9103,7 @@
           : (p.poundType === 'butt' ? 0.24 : 0.36)));
         this.spawnAfterimage(
           p.x + p.w * 0.5, p.y + p.h, p.dir, rot, p.scaleX, p.scaleY,
-          NoirCutout.getHero(pose), p.poundType ? 74 : 88, ghostColor, p.poundType ? 4 : 3
+          NoirCutout.heroSprite(pose), p.poundType ? 74 : 88, ghostColor, p.poundType ? 4 : 3
         );
       }
 
@@ -9163,7 +9384,7 @@
       if (this.goalLockToastCooldown > 0) this.goalLockToastCooldown -= dt;
       if (lvl.goal && Math.abs((p.x + p.w * 0.5) - lvl.goal.x) < 42 && Math.abs((p.y + p.h) - lvl.goal.y) < 90) {
         const foesLeft = this.remainingEnemies();
-        if (foesLeft === 0) {
+        if (foesLeft === 0 || (this.endless && this.endless.active)) {
           this.completeStage();
         } else if (!this.goalLockToastCooldown || this.goalLockToastCooldown <= 0) {
           this.goalLockToastCooldown = 1.4;
@@ -9218,8 +9439,8 @@
 
       // Initial Butt Slam is a clean, fireball-free heavy stomp; unlocked boss slams & Golden Conch unleash twin side shockwaves!
       if (golden || type !== 'butt') {
-        this.spawnShockwave(cx, cy - 14, -1, waveGolden || type === 'vault', baseDmg);
-        this.spawnShockwave(cx, cy - 14, 1, waveGolden || type === 'vault', baseDmg);
+        this.spawnShockwave(cx, cy - 14, -1, waveGolden || type === 'vault', baseDmg, type);
+        this.spawnShockwave(cx, cy - 14, 1, waveGolden || type === 'vault', baseDmg, type);
       }
 
       const words = powerMul > 1 ? ['POWER SLAM!', 'MEGA CRUSH!']
@@ -9251,7 +9472,7 @@
       }
       for (const e of this.lvl.enemies) {
         if (!e.dead && Math.hypot((e.x + e.w * 0.5) - cx, (e.y + e.h) - cy) < aoe) {
-          this.hitEnemy(e, baseDmg, 'CRUNCH!');
+          this.hitEnemy(e, baseDmg, 'CRUNCH!', type);
         }
       }
       if (this.lvl.boss && this.lvl.boss.hp > 0) {
@@ -9267,8 +9488,26 @@
       return this.lvl.enemies.filter(e => !e.dead).length;
     },
 
-    hitEnemy(e, dmg, popupWord) {
+    hitEnemy(e, dmg, popupWord, moveType) {
       if (e.dead) return;
+      // Slam-gated foes only crack under their matching technique (counters pierce any guard)
+      if (e.gate && e.gate !== moveType && moveType !== 'counter') {
+        e.hitFlash = Math.max(e.hitFlash || 0, 0.08);
+        const gx = e.x + e.w * 0.5, gy = e.y + e.h * 0.5;
+        const gateWord = e.gate === 'corkscrew' ? 'BLOCKED!' : (e.gate === 'vault' ? 'TANGLED!' : 'ARMORED!');
+        this.spawnComicPopup(gx, gy - 10, gateWord, '#94a3b8', 0.92);
+        Audio.tone(150, 0.07, 'square', 0.05, 110);
+        Input.rumble(28, 0.12, 0.1);
+        this.hitstop = Math.max(this.hitstop, 0.02);
+        if (!e.gateHintShown) {
+          e.gateHintShown = true;
+          const hint = e.gate === 'corkscrew' ? 'CORKSCREW SLAM BREAKS THAT SHIELD!'
+            : (e.gate === 'vault' ? 'LUCHA VAULT SLAM DISLODGES IT!'
+            : 'METEORA FLIP SMASHES THAT ARMOR!');
+          Input.showFeedback(hint);
+        }
+        return;
+      }
       e.hp -= dmg;
       e.hitFlash = 0.16;
       const knockDir = (e.x + e.w * 0.5) >= (this.player.x + this.player.w * 0.5) ? 1 : -1;
@@ -9345,6 +9584,10 @@
       Input.rumble(135, 0.28, 0.62);
       this.spawnBurst(p.x + p.w * 0.5, p.y + p.h * 0.5, '#ef4444', 14, 210);
       if (p.hp <= 0) {
+        if (this.endless && this.endless.active) {
+          this.endEndless();
+          return;
+        }
         if (this.bossRush && this.bossRush.active) {
           Input.showFeedback('Knocked out in Boss Rush! Restarting Gauntlet...');
           setTimeout(() => this.startBossRush(), 700);
@@ -9397,8 +9640,8 @@
         const ecy = e.y + e.h * 0.5;
         const dx = pcx - ecx;
         const dy = Math.abs(pcy - ecy);
-        const isFlyer = e.type === 'lantern' || e.type === 'drone' || e.type === 'eagle';
-        const isRanged = e.type === 'ninja' || e.type === 'cardshark' || e.type === 'trainee';
+        const isFlyer = e.type === 'lantern' || e.type === 'drone' || e.type === 'eagle' || e.type === 'hook';
+        const isRanged = e.type === 'ninja' || e.type === 'cardshark' || e.type === 'trainee' || e.type === 'sentry';
         const isBruiser = e.type === 'brawler' || e.type === 'sumo' || e.type === 'bouncer' || e.type === 'pinata';
 
         // Ground Bruiser: crisp 0.30s coiled telegraph ('!'), then high-speed aggro rush!
@@ -9458,7 +9701,7 @@
         }
 
         // Aerial interceptors: brief dive warning badge before swooping on flying Keister!
-        if (isFlyer && Math.abs(dx) < 330) {
+        if (isFlyer && e.type !== 'hook' && Math.abs(dx) < 330) {
           if (!e.diveArmed && Math.abs(dx) < 285) {
             e.diveArmed = true;
             e.telegraphKind = 'dive';
@@ -9467,15 +9710,48 @@
           }
           const trackDir = dx >= 0 ? 1 : -1;
           e.vx = trackDir * (e.baseSpeed || 110) * 1.38;
-        } else if (isFlyer && Math.abs(dx) > 370) {
+        } else if (isFlyer && e.type !== 'hook' && Math.abs(dx) > 370) {
           e.diveArmed = false;
+        }
+
+        // Slam-gated archetypes & ceiling-rail harassers
+        if (e.type === 'bulwark') {
+          const sgn = dx >= 0 ? 1 : -1;
+          e.vx = sgn * (e.baseSpeed || 74);
+        } else if (e.type === 'sentry') {
+          e.vx = 0;
+        } else if (e.type === 'clinger') {
+          e.vx = 0;
+          e.y = e.baseY + Math.sin(this.time * 3.4 + e.x * 0.02) * 7;
+          if (p.hanging && Math.abs(dx) < 200) {
+            p.stamina = Math.max(0, p.stamina - dt * 2.8);
+            e.gripPing = (e.gripPing || 0) - dt;
+            if (e.gripPing <= 0) {
+              e.gripPing = 0.75;
+              Audio.sfxStaminaTick();
+              this.spawnComicPopup(ecx, ecy - 20, 'GRIP DRAIN!', '#f87171', 0.9);
+            }
+          }
+        } else if (e.type === 'hook') {
+          const targetY = p.hanging ? p.y + 26 : 168;
+          e.y += (targetY - e.y) * Math.min(1, dt * 2.4);
+          const chase = p.hanging ? 1.6 : 0.75;
+          e.vx = (Math.abs(dx) > 22 ? (dx >= 0 ? 1 : -1) : 0) * (e.baseSpeed || 132) * chase;
+          if (p.hanging && Math.abs(dx) < 72 && Math.abs((p.y + 18) - e.y) < 74) {
+            p.hanging = false;
+            p.barCooldown = 0.5;
+            p.stamina = Math.max(0, p.stamina - 0.7);
+            this.spawnComicPopup(pcx, p.y + 4, 'YOINK!', '#f87171', 1.1);
+            Audio.sfxHurt();
+            Input.showFeedback('HOOKED OFF THE BARS!');
+          }
         }
 
         e.x += e.vx * dt;
         if (e.x < e.minX) { e.x = e.minX; e.vx = Math.abs(e.vx); e.lungeTimer = 0; }
         if (e.x > e.maxX) { e.x = e.maxX; e.vx = -Math.abs(e.vx); e.lungeTimer = 0; }
 
-        if (isFlyer) {
+        if (isFlyer && e.type !== 'hook') {
           const wantSwoop = (Math.abs(dx) < 280 && e.telegraphTimer <= 0) ? Math.max(-68, Math.min(92, (pcy - (e.baseY - 46)) * 0.68)) : 0;
           e.swoopOffset = (e.swoopOffset || 0) + (wantSwoop - (e.swoopOffset || 0)) * Math.min(1, dt * 4.4);
           e.y = e.baseY - 46 + e.swoopOffset + Math.sin(this.time * 4.2 + e.x * 0.022) * 24;
@@ -9494,7 +9770,7 @@
         // Shockwave hits
         for (const sw of this.shockwaves) {
           if (Math.hypot((e.x + e.w * 0.5) - sw.x, (e.y + e.h * 0.5) - sw.y) < sw.r + 24) {
-            this.hitEnemy(e, sw.dmg);
+            this.hitEnemy(e, sw.dmg, null, sw.moveType);
           }
         }
         if (e.dead) continue;
@@ -9505,7 +9781,7 @@
             const chainMul = !p.onGround ? this.registerAirChain(ecx, ecy) : 1;
             const mult = p.poundType === 'meteora' ? 5 : (p.poundType === 'vault' ? 4 : (p.poundType === 'corkscrew' ? 3 : 2.2));
             const atkWord = p.poundType === 'corkscrew' ? 'DRILL!' : (p.poundType === 'vault' ? 'SMASH!' : 'WHAM!');
-            this.hitEnemy(e, mult * Save.strengthBonus() * chainMul, atkWord);
+            this.hitEnemy(e, mult * Save.strengthBonus() * chainMul, atkWord, p.poundType);
             p.stamina = Math.min(p.maxStamina, p.stamina + p.maxStamina * 0.35);
             if (p.poundType === 'butt') {
               p.vy = -475;
@@ -9513,7 +9789,7 @@
             }
           } else if (p.vy > 0 && p.y + p.h - e.y < 26) {
             const chainMul = this.registerAirChain(ecx, ecy);
-            this.hitEnemy(e, 1.5 * Save.strengthBonus() * chainMul, p.airChain >= 2 ? null : 'BOING!');
+            this.hitEnemy(e, 1.5 * Save.strengthBonus() * chainMul, p.airChain >= 2 ? null : 'BOING!', 'butt');
             p.vy = -525;
             p.scaleX = 1.24; p.scaleY = 0.8;
             p.stamina = Math.min(p.maxStamina, p.stamina + p.maxStamina * 0.35);
@@ -9541,7 +9817,7 @@
           for (const e of this.lvl.enemies) {
             if (e.dead) continue;
             if (rectsOverlap(ep.x - ep.r - 4, ep.y - ep.r - 4, (ep.r + 4) * 2, (ep.r + 4) * 2, e.x, e.y, e.w, e.h)) {
-              this.hitEnemy(e, 3.6 * Save.strengthBonus(), 'COUNTER!');
+              this.hitEnemy(e, 3.6 * Save.strengthBonus(), 'COUNTER!', 'counter');
               this.spawnBurst(ep.x, ep.y, '#fde047', 14, 280);
               hitFoe = true;
               break;
@@ -9671,7 +9947,7 @@
       b.afterimageTimer = (b.afterimageTimer || 0) - dt;
       if ((b.state === 'charge' || b.state === 'leap') && b.afterimageTimer <= 0) {
         b.afterimageTimer = 0.04;
-        const bossCut = NoirCutout.getBoss(b.worldId);
+        const bossCut = NoirCutout.bossSprite(b.worldId);
         this.spawnAfterimage(
           bcx, b.y + b.h, b.dir || -1, b.state === 'charge' ? b.dir * 0.14 : 0,
           1, 1, bossCut, b.worldId === 1 ? 148 : 144, enraged ? '#ef4444' : '#f59e0b', 1
@@ -9924,6 +10200,19 @@
       const noDmgBonus = this.damageTaken === 0 ? 1500 : 0;
       const finalScore = this.score + noDmgBonus;
       const rank = this.computeGrade(isBoss, this.stageTime, finalScore, this.damageTaken, this.maxCombo);
+
+      // Endless Gauntlet: bank the wave and keep the run alive!
+      if (this.endless && this.endless.active) {
+        this.endless.score += finalScore;
+        this.endless.time += this.stageTime;
+        this.endless.damage += this.damageTaken;
+        this.endless.maxCombo = Math.max(this.endless.maxCombo, this.maxCombo);
+        this.endless.wave += 1;
+        Save.recordEndless(this.endless.wave - 1, this.endless.score);
+        Input.showFeedback(`WAVE ${this.endless.wave - 1} CLEARED! WAVE ${this.endless.wave} INCOMING...`);
+        setTimeout(() => { if (this.endless.active) this.startEndlessWave(); }, 950);
+        return;
+      }
 
       // Boss Rush 4-Round World Tour Gauntlet progression!
       if (this.bossRush && this.bossRush.active) {
@@ -10327,7 +10616,10 @@
       const rushTxt = Save.data.bossRushBestTime !== null
         ? `<span>·</span><span>Boss Rush: <strong>${Save.data.bossRushBestRank || 'A'}</strong> (${formatRunTime(Save.data.bossRushBestTime)})</span>`
         : '';
-      meta.innerHTML = `<span>Title: <strong>${rank}</strong></span><span>·</span><span>S-Ranks: ${sRanks}/16</span><span>·</span><span>Clues: ${clues}/16</span><span>·</span><span>Sea Shells: ${shells}/16</span>${rushTxt}`;
+      const endlessTxt = Save.data.endlessBestWave
+        ? `<span>·</span><span>Endless: <strong>Wave ${Save.data.endlessBestWave}</strong></span>`
+        : '';
+      meta.innerHTML = `<span>Title: <strong>${rank}</strong></span><span>·</span><span>S-Ranks: ${sRanks}/16</span><span>·</span><span>Clues: ${clues}/16</span><span>·</span><span>Sea Shells: ${shells}/16</span>${rushTxt}${endlessTxt}`;
     },
 
     refreshHUD() {
@@ -10335,7 +10627,9 @@
       const p = Game.player;
       const lvl = Game.lvl;
       const wNum = lvl.worldId + 1, sNum = lvl.stageInWorld + 1;
-      if (Game.bossRush && Game.bossRush.active) {
+      if (Game.endless && Game.endless.active) {
+        document.getElementById('hud-stage').innerHTML = `ENDLESS · WAVE ${Game.endless.wave}${lvl.isBoss ? ' · BOSS' : ''} <span class="muted">(${lvl.world.name})</span>`;
+      } else if (Game.bossRush && Game.bossRush.active) {
         document.getElementById('hud-stage').innerHTML = `BOSS RUSH ${Game.bossRush.round + 1}/4 · ${lvl.name}`;
       } else {
         document.getElementById('hud-stage').innerHTML = `${wNum}-${sNum} · ${lvl.name} <span class="muted">(${lvl.world.name})</span>`;
@@ -10345,11 +10639,15 @@
       const timerEl = document.getElementById('hud-timer');
       const scoreEl = document.getElementById('hud-score');
       if (timerEl) {
-        const displaySec = (Game.bossRush && Game.bossRush.active) ? (Game.bossRush.totalTime + Game.stageTime) : Game.stageTime;
+        const displaySec = (Game.endless && Game.endless.active) ? (Game.endless.time + Game.stageTime)
+          : (Game.bossRush && Game.bossRush.active) ? (Game.bossRush.totalTime + Game.stageTime)
+          : Game.stageTime;
         timerEl.textContent = formatRunTime(displaySec);
       }
       if (scoreEl) {
-        const displayScore = (Game.bossRush && Game.bossRush.active) ? (Game.bossRush.totalScore + Game.score) : Game.score;
+        const displayScore = (Game.endless && Game.endless.active) ? (Game.endless.score + Game.score)
+          : (Game.bossRush && Game.bossRush.active) ? (Game.bossRush.totalScore + Game.score)
+          : Game.score;
         scoreEl.textContent = `${displayScore.toLocaleString()} PTS`;
       }
 
@@ -10429,7 +10727,16 @@
       const nextBtn = document.getElementById('btn-end-next');
       const replayBtn = document.getElementById('btn-end-replay');
 
-      if (res.isBossRush) {
+      if (res.isEndless) {
+        document.getElementById('end-title').textContent = `Endless Gauntlet — Wave ${res.wave}`;
+        document.getElementById('end-subtitle').textContent = 'One life. Endless remixed stages.';
+        document.getElementById('end-note').textContent = res.newBestWave
+          ? 'NEW BEST WAVE! The gauntlet remembers your name.'
+          : 'The gauntlet wins this round — run it back to reach a deeper wave.';
+        document.getElementById('end-stats').innerHTML = `<span>Best Wave: ${Save.data.endlessBestWave || res.wave}</span><span>·</span><span>Best Score: ${Math.round(Save.data.endlessBestScore || res.score).toLocaleString()}</span>`;
+        nextBtn.style.display = 'none';
+        replayBtn.textContent = 'Run Gauntlet Again';
+      } else if (res.isBossRush) {
         document.getElementById('end-title').textContent = 'Boss Rush Champion!';
         document.getElementById('end-subtitle').textContent = 'All 4 World Tour Bosses Defeated Back-to-Back';
         document.getElementById('end-note').textContent = 'Keister tore through Paddy, Yokozuna, Elvis, and El Abuelo in a single relentless gauntlet!';
@@ -10636,13 +10943,15 @@
       fl.innerHTML = ''; fr.innerHTML = '';
       if (this.scrapPausedFromGame) {
         const isRush = !!(Game.bossRush && Game.bossRush.active);
-        fl.innerHTML = `<button id="btn-scrap-restart" class="btn btn-secondary">${isRush ? 'Restart Boss Rush' : 'Restart Stage'}</button>
+        const isEndless = !!(Game.endless && Game.endless.active);
+        fl.innerHTML = `<button id="btn-scrap-restart" class="btn btn-secondary">${isEndless ? 'Restart Gauntlet' : isRush ? 'Restart Boss Rush' : 'Restart Stage'}</button>
           <button id="btn-scrap-select" class="btn btn-secondary">Stage Select</button>
           <button id="btn-scrap-title" class="btn btn-secondary">Title</button>`;
         fr.innerHTML = `<button id="btn-scrap-resume" class="btn btn-primary">Resume Game</button>`;
         document.getElementById('btn-scrap-restart').onclick = () => {
           this.closeAllModals();
-          if (Game.bossRush && Game.bossRush.active) Game.startBossRush();
+          if (Game.endless && Game.endless.active) Game.startEndless();
+          else if (Game.bossRush && Game.bossRush.active) Game.startBossRush();
           else Game.startLevel(Game.levelIdx);
         };
         document.getElementById('btn-scrap-select').onclick = () => { this.openStageSelect(); };
@@ -10708,7 +11017,8 @@
         `S-Ranks: ${sRanks}/16 · Sea Shells: ${shells}/16 · Clues: ${Save.clueCount()}/16${Save.data.goldenConchUnlocked ? ' · Golden Conch Unlocked!' : ''}`;
 
       const act = document.getElementById('select-actions');
-      let actHtml = `<button id="btn-select-boss-rush" class="btn btn-gold">Boss Rush</button>`;
+      let actHtml = `<button id="btn-select-boss-rush" class="btn btn-gold">Boss Rush</button>
+        <button id="btn-select-endless" class="btn btn-gold">Endless Gauntlet</button>`;
       if (shells === 16 && !Save.data.goldenConchUnlocked) {
         actHtml += `<button id="btn-return-shells" class="btn btn-gold">Return 16 Shells to Abuelo!</button>`;
       } else if (Save.data.storyCompleted) {
@@ -10716,6 +11026,7 @@
       }
       act.innerHTML = actHtml;
       document.getElementById('btn-select-boss-rush').onclick = () => Game.startBossRush();
+      document.getElementById('btn-select-endless').onclick = () => Game.startEndless();
       if (document.getElementById('btn-return-shells')) {
         document.getElementById('btn-return-shells').onclick = () => triggerGoldenConchReward();
       }
@@ -10887,6 +11198,7 @@
   };
   document.getElementById('btn-stage-select').onclick = () => { Audio.init(); UI.openStageSelect(); };
   document.getElementById('btn-boss-rush').onclick = () => Game.startBossRush();
+  document.getElementById('btn-endless').onclick = () => Game.startEndless();
   document.getElementById('btn-title-scrapbook').onclick = () => { Audio.init(); UI.openScrapbook('story', false); };
   document.getElementById('btn-restart-story').onclick = () => { Audio.init(); UI.openRestartConfirm(); };
   document.getElementById('btn-restart-confirm').onclick = () => restartAllProgressAndStory();
@@ -10919,7 +11231,9 @@
   };
   document.getElementById('btn-end-replay').onclick = () => {
     UI.closeAllModals();
-    if (Game.lastResult && Game.lastResult.isBossRush) {
+    if (Game.lastResult && Game.lastResult.isEndless) {
+      Game.startEndless();
+    } else if (Game.lastResult && Game.lastResult.isBossRush) {
       Game.startBossRush();
     } else {
       Game.startLevel(Game.levelIdx);
