@@ -3234,7 +3234,7 @@
 
       // Illustrated Graphic Noir character staging (used only for pursuit/dossier overlays, never blocky pixels)
       const stageNoirHero = (kx, ky, targetH, pose = 'jump') => {
-        const sp = NoirCutout.getHero(pose);
+        const sp = NoirCutout.heroSprite(pose);
         if (!sp) return;
         ctx.save();
         ctx.translate(kx, ky);
@@ -3313,7 +3313,7 @@
         }
       } else if (art === 'truth') {
         // Spotlight El Abuelo Chingon's illustrated graphic-novel portrait in the Grand Arena
-        const abSp = NoirCutout.getBoss(3);
+        const abSp = NoirCutout.bossSprite(3);
         if (abSp) {
           ctx.save();
           const aGlow = ctx.createRadialGradient(cx + w * 0.16, y + h * 0.52, 10, cx + w * 0.16, y + h * 0.52, h * 0.55);
@@ -3850,6 +3850,77 @@
       fc.restore();
       ctx.drawImage(this._fxCanvas, 0, 0, dw, dh, anchorX - dw * 0.5, anchorY - dh + footSinkPx, dw, dh);
       return true;
+    },
+
+    // ---------- CHIBI "BIG HEAD, LITTLE BODY" SPRITE BAKER ----------
+    // Every illustrated character is warped into a cartoon chibi with a smooth
+    // vertical stretch: rows above the neck grow (big head) and rows below it
+    // shrink (tiny body), blending across the neck so there is never a seam.
+    // The result is cached on the sprite so hit-flash tints and afterimages
+    // reuse the exact same silhouette.
+    chibi(sp, headFrac = 0.34, headMix = 0.54) {
+      if (!sp || !sp.canvas) return sp;
+      sp._chibi = sp._chibi || {};
+      const ck = `${headFrac}_${headMix}`;
+      if (sp._chibi[ck]) return sp._chibi[ck];
+      const src = sp.canvas;
+      const sw = src.width, sh = src.height;
+      const neck = sh * headFrac;
+      const band = Math.max(3, sh * 0.05);
+      const sTop = Math.min(1.9, headMix / headFrac);
+      const effMix = sTop * headFrac;
+      const sBot = (1 - effMix) / (1 - headFrac);
+      // Smoothstep the local vertical scale from tiny body to huge head.
+      const scaleAt = (y) => {
+        const t = Math.max(0, Math.min(1, (neck + band - y) / (2 * band)));
+        const sm = t * t * (3 - 2 * t);
+        return sBot + (sTop - sBot) * sm;
+      };
+      // Normalise so the warped character keeps its original overall height.
+      let total = 0;
+      for (let y = 0; y < sh; y++) total += scaleAt(y);
+      const norm = sh / Math.max(1, total);
+      const outW = Math.ceil(sw * sTop * norm) + 2;
+      const c = document.createElement('canvas');
+      c.width = outW; c.height = sh;
+      const g = c.getContext('2d');
+      g.imageSmoothingEnabled = true;
+      g.imageSmoothingQuality = 'high';
+      const cx = outW * 0.5;
+      let dy = 0;
+      for (let y = 0; y < sh; y++) {
+        const s = scaleAt(y) * norm;
+        const y0 = Math.round(dy), y1 = Math.round(dy + s);
+        const w = sw * s;
+        if (y1 > y0) g.drawImage(src, 0, y, sw, 1, cx - w * 0.5, y0, w, y1 - y0);
+        dy += s;
+      }
+      const out = { canvas: c, w: outW, h: sh };
+      sp._chibi[ck] = out;
+      return out;
+    },
+
+    // Per-character neck lines (fraction of the cutout that is head) and the
+    // share of the final chibi height the head takes, tuned to each pose.
+    HERO_HEAD: { idle: [0.34, 0.54], run: [0.40, 0.54], jump: [0.34, 0.54], pound: [0.46, 0.56] },
+    FOE_HEAD: {
+      brawler: [0.24, 0.52], leaper: [0.30, 0.50], trainee: [0.22, 0.50],
+      ninja: [0.22, 0.50], sumo: [0.22, 0.48], lantern: [0.55, 0.66],
+      cardshark: [0.29, 0.52], bouncer: [0.24, 0.50], drone: [0.42, 0.52],
+      pinata: [0.33, 0.50], eagle: [0.32, 0.48]
+    },
+    BOSS_HEAD: [0.22, 0.46],
+    heroSprite(pose) {
+      const key = pose === 'walk' ? 'idle' : pose;
+      const [f, m] = this.HERO_HEAD[key] || this.HERO_HEAD.idle;
+      return this.chibi(this.getHero(key), f, m);
+    },
+    foeSprite(type) {
+      const [f, m] = this.FOE_HEAD[type] || [0.34, 0.55];
+      return this.chibi(this.getFoe(type), f, m);
+    },
+    bossSprite(worldId) {
+      return this.chibi(this.getBoss(worldId), this.BOSS_HEAD[0], this.BOSS_HEAD[1]);
     }
   };
   NoirArt.init();
@@ -7333,18 +7404,22 @@
       }
     },
 
-    // Animated sprint for the illustrated hero: the run cutout is split at the
-    // hips so the legs scissor and the upper body (arms, head, cape) pumps
-    // through the stride cycle instead of sliding along as one frozen pose.
-    drawRunCycle(ctx, sp, targetH, phase) {
+    // Animated sprint for the illustrated hero: the chibi cutout is split into
+    // head, torso and leg bands so the little legs scissor, the torso pumps and
+    // the oversized head bobbles on its own lag for a goofy cartoon stride.
+    drawRunCycle(ctx, sp, targetH, phase, opt = {}) {
       if (!sp || !sp.canvas) return false;
+      const hipFrac = opt.hipFrac || 0.56;
+      const headFrac = opt.headFrac || 0;
+      const legAmp = opt.legAmp || 0.62;
+      const bodyAmp = opt.bodyAmp || 0.2;
       const scale = targetH / sp.h;
       const dw = sp.w * scale, dh = targetH;
       const x0 = -dw * 0.5, y0 = -dh + 3;
-      const hipY = y0 + dh * 0.56;
+      const hipY = y0 + dh * hipFrac;
       const swing = Math.sin(phase);
-      const legA = swing * 0.52;
-      const bodyA = -swing * 0.17;
+      const legA = swing * legAmp;
+      const bodyA = -swing * bodyAmp;
 
       const paint = (cx, cy, cw, ch, px, py, ang, lift) => {
         ctx.save();
@@ -7361,12 +7436,37 @@
         ctx.restore();
       };
 
-      // Legs scissor wide from the hips; the trailing leg also lifts clear of
-      // the ground so the stride reads as a sprint instead of a shuffle.
-      paint(x0 - dw * 0.25, hipY, dw * 0.78, dh, x0 + dw * 0.4, hipY, legA, -Math.max(0, swing) * dh * 0.055);
-      paint(x0 + dw * 0.47, hipY, dw * 0.78, dh, x0 + dw * 0.6, hipY, -legA, -Math.max(0, -swing) * dh * 0.055);
-      // Torso, arms and head counter-swing over the hip seam.
-      paint(x0 - dw * 0.25, y0 - dh * 0.1, dw * 1.5, hipY + dh * 0.07 - (y0 - dh * 0.1), x0 + dw * 0.5, hipY, bodyA, 0);
+      // Little legs scissor wide from the hips; the trailing leg also kicks
+      // clear of the ground so the stride reads as a sprint, not a shuffle.
+      paint(x0 - dw * 0.25, hipY, dw * 0.78, dh, x0 + dw * 0.4, hipY, legA, -Math.max(0, swing) * dh * 0.06);
+      paint(x0 + dw * 0.47, hipY, dw * 0.78, dh, x0 + dw * 0.6, hipY, -legA, -Math.max(0, -swing) * dh * 0.06);
+      if (headFrac > 0) {
+        const headY = y0 + dh * headFrac;
+        // Torso pumps under the big head...
+        paint(x0 - dw * 0.25, headY, dw * 1.5, hipY - headY + dh * 0.03, x0 + dw * 0.5, hipY, bodyA, 0);
+        // ...and the oversized head lags the opposite way for a bobblehead wobble.
+        paint(x0 - dw * 0.25, y0 - dh * 0.12, dw * 1.5, headY - y0 + dh * 0.16, x0 + dw * 0.5, headY, -bodyA * 1.8, 0);
+      } else {
+        paint(x0 - dw * 0.25, y0 - dh * 0.1, dw * 1.5, hipY + dh * 0.07 - (y0 - dh * 0.1), x0 + dw * 0.5, hipY, bodyA, 0);
+      }
+      return true;
+    },
+
+    // Goofy little waddle for strolling speeds: the cutout rocks side to side,
+    // bounces on each step and scuffs its tiny feet.
+    drawWalkCycle(ctx, sp, targetH, phase, opt = {}) {
+      if (!sp || !sp.canvas) return false;
+      const swing = Math.sin(phase);
+      ctx.save();
+      ctx.translate(0, -Math.abs(Math.cos(phase)) * targetH * 0.028);
+      ctx.rotate(swing * 0.075);
+      this.drawRunCycle(ctx, sp, targetH, phase, {
+        hipFrac: opt.hipFrac || 0.8,
+        headFrac: opt.headFrac || 0.54,
+        legAmp: 0.32,
+        bodyAmp: 0.1
+      });
+      ctx.restore();
       return true;
     },
 
@@ -7375,9 +7475,10 @@
       let noirPose = 'idle';
       if (p.poundType) noirPose = 'pound';
       else if (p.hanging || p.parachuting || !p.onGround) noirPose = 'jump';
-      else if (Math.abs(p.vx || 0) > 22) noirPose = 'run';
+      else if (Math.abs(p.vx || 0) > 150) noirPose = 'run';
+      else if (Math.abs(p.vx || 0) > 22) noirPose = 'walk';
 
-      const cutout = NoirCutout.getHero(noirPose);
+      const cutout = NoirCutout.heroSprite(noirPose);
       if (cutout) {
         ctx.save();
         const speedNorm = Math.min(1, Math.abs(p.vx || 0) / 260);
@@ -7412,8 +7513,11 @@
         }
 
         const targetH = noirPose === 'pound' ? 74 : (noirPose === 'jump' ? 88 : 86);
+        const headMix = (NoirCutout.HERO_HEAD[noirPose === 'walk' ? 'idle' : noirPose] || NoirCutout.HERO_HEAD.idle)[1];
         if (noirPose === 'run') {
-          this.drawRunCycle(ctx, cutout, targetH, t * 13);
+          this.drawRunCycle(ctx, cutout, targetH, t * 13, { hipFrac: 0.8, headFrac: headMix, legAmp: 0.66, bodyAmp: 0.22 });
+        } else if (noirPose === 'walk') {
+          this.drawWalkCycle(ctx, cutout, targetH, t * 8.5, { hipFrac: 0.8, headFrac: headMix });
         } else {
           NoirCutout.draw(ctx, cutout, 0, 0, targetH, noirPose === 'pound' ? 4 : 3);
         }
@@ -7621,7 +7725,7 @@
         ctx.rotate(anim.speed * 0.09);
       }
 
-      const foeCutout = NoirCutout.getFoe(e.type);
+      const foeCutout = NoirCutout.foeSprite(e.type);
       if (foeCutout) {
         const heights = {
           brawler: 74, leaper: 62, trainee: 70,
@@ -7632,14 +7736,20 @@
         const targetH = heights[e.type] || 72;
         ctx.save();
         if (!isFlyer) {
-          const rock = Math.sin(anim.gait) * (e.type === 'sumo' || e.type === 'bouncer' ? 0.045 : 0.075) * anim.speed;
+          // Funny big-head waddle: hop on every step, rock side to side and
+          // squash on landing, all scaled by how fast the foe is trotting.
+          const hop = Math.abs(Math.sin(anim.gait)) * anim.speed * 6;
+          ctx.translate(0, -hop);
+          const rock = Math.sin(anim.gait) * (0.06 + anim.speed * 0.12);
           ctx.rotate(rock);
+          const land = Math.cos(anim.gait * 2) * (0.01 + anim.speed * 0.05);
           const sq = e.type === 'leaper'
             ? Math.sin(t * 10 + e.x) * 0.065
-            : anim.breathe * 0.025;
+            : land + anim.breathe * 0.02;
           ctx.scale(1 - sq, 1 + sq);
         } else {
           const flap = Math.sin(t * 9 + e.x * 0.1) * 0.04;
+          ctx.translate(0, Math.sin(t * 5 + e.x * 0.08) * 2);
           ctx.scale(1 + flap, 1 - flap * 0.6);
         }
         if (e.telegraphTimer > 0 && e.telegraphKind === 'lunge') {
@@ -7739,7 +7849,7 @@
       ctx.beginPath(); ctx.arc(0, -64, 72, 0, Math.PI * 2); ctx.fill();
 
       // Illustrated Graphic Noir World Boss (Commanding Heavy-Ink Full-Body Plate + Grounded Boots!)
-      const bossCutout = NoirCutout.getBoss(b.worldId);
+      const bossCutout = NoirCutout.bossSprite(b.worldId);
       ctx.save();
       ctx.scale(b.dir || -1, 1);
       if (bossCutout) {
@@ -8035,7 +8145,7 @@
       ctx.fillStyle = halo;
       ctx.beginPath(); ctx.arc(kx, ky, 175, 0, Math.PI * 2); ctx.fill();
 
-      const titleHero = NoirCutout.getHero('jump');
+      const titleHero = NoirCutout.heroSprite('jump');
       if (titleHero) {
         ctx.save();
         ctx.translate(kx, ky + 66);
@@ -8882,7 +8992,7 @@
           : (p.poundType === 'butt' ? 0.24 : 0.36)));
         this.spawnAfterimage(
           p.x + p.w * 0.5, p.y + p.h, p.dir, rot, p.scaleX, p.scaleY,
-          NoirCutout.getHero(pose), p.poundType ? 74 : 88, ghostColor, p.poundType ? 4 : 3
+          NoirCutout.heroSprite(pose), p.poundType ? 74 : 88, ghostColor, p.poundType ? 4 : 3
         );
       }
 
@@ -9671,7 +9781,7 @@
       b.afterimageTimer = (b.afterimageTimer || 0) - dt;
       if ((b.state === 'charge' || b.state === 'leap') && b.afterimageTimer <= 0) {
         b.afterimageTimer = 0.04;
-        const bossCut = NoirCutout.getBoss(b.worldId);
+        const bossCut = NoirCutout.bossSprite(b.worldId);
         this.spawnAfterimage(
           bcx, b.y + b.h, b.dir || -1, b.state === 'charge' ? b.dir * 0.14 : 0,
           1, 1, bossCut, b.worldId === 1 ? 148 : 144, enraged ? '#ef4444' : '#f59e0b', 1
