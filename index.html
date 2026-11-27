@@ -969,80 +969,80 @@
   .world-tabs .tab-btn.active { border-color: var(--noir-brass) !important; }
 
   /* Newly Learned Move Level-Start Briefing Modal */
-  .move-unlock-box {
+  .relic-earned-box {
     width: min(600px, 94vw);
     max-height: min(88vh, 88dvh);
     padding: 0 !important;
     display: flex; flex-direction: column; overflow: hidden;
     text-align: left;
   }
-  .move-unlock-head {
+  .relic-earned-head {
     flex: 0 0 auto;
     padding: 14px 20px 12px;
     background: linear-gradient(180deg, #2b1218, #140b12);
     border-bottom: 2px solid var(--noir-ink);
     box-shadow: inset 0 3px 0 var(--noir-brass);
   }
-  .move-unlock-kicker {
+  .relic-earned-kicker {
     font-family: var(--noir-mono); font-size: 10.5px; font-weight: 700;
-    letter-spacing: 0.16em; text-transform: uppercase; color: #4ade80;
+    letter-spacing: 0.16em; text-transform: uppercase; color: #f59e0b;
     margin-bottom: 3px;
   }
-  .move-unlock-head h2 {
+  .relic-earned-head h2 {
     margin: 0 !important; font-size: clamp(20px, 3.6vw, 27px) !important;
     color: var(--noir-brass) !important;
   }
-  .move-unlock-body {
+  .relic-earned-body {
     flex: 1 1 auto; min-height: 0; overflow-y: auto;
     padding: 14px 20px; display: flex; flex-direction: column; gap: 11px;
     background: #101522;
   }
-  .move-cmd-bar {
+  .relic-cmd-bar {
     display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
     padding: 10px 12px; background: #0a0e18;
     border: 2px solid var(--noir-ink);
     border-left: 4px solid var(--noir-brass);
   }
-  .move-cmd-arrow {
-    font-family: var(--noir-head); font-size: 20px; font-weight: 700;
+  .relic-cmd-arrow {
+    font-family: var(--noir-head); font-size: 22px; font-weight: 700;
     padding: 4px 12px; background: linear-gradient(180deg, #f59e0b, #b45309);
     color: #05070c; border: 2px solid #04060a; letter-spacing: 0.06em;
   }
-  .move-cmd-keys {
+  .relic-cmd-keys {
     font-family: var(--noir-mono); font-size: 11px; font-weight: 700;
     color: #fde68a; line-height: 1.45;
   }
-  .move-unlock-steps {
+  .relic-earned-steps {
     display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
   }
-  .move-step-card {
+  .relic-step-card {
     background: #0b101b; border: 2px solid var(--noir-line);
     padding: 10px 12px;
   }
-  .move-step-card h4 {
+  .relic-step-card h4 {
     margin: 0 0 4px; font-family: var(--noir-head); font-size: 13px;
     letter-spacing: 0.08em; text-transform: uppercase; color: var(--noir-brass);
   }
-  .move-step-card p {
+  .relic-step-card p {
     margin: 0; font-size: 12.5px; line-height: 1.45; color: var(--noir-bone);
   }
-  .move-unlock-foot {
+  .relic-earned-foot {
     flex: 0 0 auto; padding: 11px 20px 14px;
     background: #0b0f19; border-top: 2px solid var(--noir-ink);
     display: flex; align-items: center; justify-content: space-between; gap: 12px;
   }
-  .move-unlock-tip {
+  .relic-earned-tip {
     font-family: var(--noir-mono); font-size: 10.5px; color: var(--noir-ash);
   }
   @media (max-width: 560px) {
-    .move-unlock-steps { grid-template-columns: 1fr; }
-    .move-unlock-foot { flex-direction: column; align-items: stretch; text-align: center; }
+    .relic-earned-steps { grid-template-columns: 1fr; }
+    .relic-earned-foot { flex-direction: column; align-items: stretch; text-align: center; }
   }
   @media (max-height: 540px) {
-    .move-unlock-box { width: min(680px, 95vw); max-height: min(94vh, 94dvh); }
-    .move-unlock-head { padding: 9px 16px 8px; }
-    .move-unlock-body { padding: 10px 16px; gap: 8px; }
-    .move-unlock-foot { padding: 8px 16px 10px; flex-direction: row; }
+    .relic-earned-box { width: min(680px, 95vw); max-height: min(94vh, 94dvh); }
+    .relic-earned-head { padding: 9px 16px 8px; }
+    .relic-earned-body { padding: 10px 16px; gap: 8px; }
+    .relic-earned-foot { padding: 8px 16px 10px; flex-direction: row; }
   }
 
   /* Arcade Run Metrics, Championship Rank Stamp & Boss Rush Styling */
@@ -1227,7 +1227,7 @@
           <div class="tut-key">RIGHT STICK<br>ATTACKS ONLY<br>(B / C / L)</div>
           <div>
             <div class="tut-name">Right Stick — Attack Moves Only</div>
-            <div class="tut-desc">Right touchscreen/controller stick is dedicated purely to fast ground-pound attacks! Flick Down (or press B / C / L) for an instant Butt Slam. Tap Up / LB-LT again mid-slam to Fart-Jet it into reverse and save yourself from spikes. Defeat World Bosses to master 3 secret directional slams!</div>
+            <div class="tut-desc">Right touchscreen/controller stick is dedicated purely to fast ground-pound attacks! Flick Down (or press B / C / L) for an instant Butt Slam, and flick Left / Right / Up (or Q / E / V) for the Corkscrew, Lucha Vault and Meteora Flip slams — all unlocked from the very first stage! Tap Up / LB-LT again mid-slam to Fart-Jet it into reverse and save yourself from spikes.</div>
           </div>
         </div>
         <div class="tut-row">
@@ -1254,32 +1254,32 @@
     </div>
   </div>
 
-  <!-- Newly Learned Boss Move Briefing Popup (Shown at the start of the next level!) -->
-  <div id="move-unlock-overlay" class="overlay scrim" role="dialog" aria-modal="true" aria-labelledby="move-unlock-title">
-    <div class="popup-box move-unlock-box">
-      <div class="move-unlock-head">
-        <div id="move-unlock-kicker" class="move-unlock-kicker">NEW BOSS TECHNIQUE LEARNED!</div>
-        <h2 id="move-unlock-title">Corkscrew Ground Pound</h2>
+  <!-- Boss Trophy Relic Briefing Popup (Shown at the start of the next level!) -->
+  <div id="relic-earned-overlay" class="overlay scrim" role="dialog" aria-modal="true" aria-labelledby="relic-earned-title">
+    <div class="popup-box relic-earned-box">
+      <div class="relic-earned-head">
+        <div id="relic-earned-kicker" class="relic-earned-kicker">BOSS TROPHY RELIC EARNED!</div>
+        <h2 id="relic-earned-title">🛢️ Barrel-Stave Gauntlets</h2>
       </div>
-      <div class="move-unlock-body">
-        <div class="move-cmd-bar">
-          <div id="move-unlock-arrow" class="move-cmd-arrow">RIGHT STICK ← LEFT</div>
-          <div id="move-unlock-keys" class="move-cmd-keys">Touch: Swipe Left on Right Side · Gamepad: Right Stick Left or X · Keys: Q / U</div>
+      <div class="relic-earned-body">
+        <div class="relic-cmd-bar">
+          <div id="relic-earned-arrow" class="relic-cmd-arrow">🛢️</div>
+          <div id="relic-earned-keys" class="relic-cmd-keys">Equip it — or any other boss trophy relic — from the Scrapbook's Moves tab. One relic equipped at a time.</div>
         </div>
-        <div class="move-unlock-steps">
-          <div class="move-step-card">
-            <h4>How To Perform It</h4>
-            <p id="move-unlock-how"></p>
+        <div class="relic-earned-steps">
+          <div class="relic-step-card">
+            <h4>What It Does</h4>
+            <p id="relic-earned-how"></p>
           </div>
-          <div class="move-step-card">
-            <h4>What It Crushes</h4>
-            <p id="move-unlock-effect"></p>
+          <div class="relic-step-card">
+            <h4>Permanent Boss Boost</h4>
+            <p id="relic-earned-effect"></p>
           </div>
         </div>
       </div>
-      <div class="move-unlock-foot">
-        <span id="move-unlock-tip" class="move-unlock-tip">Also unlocked: +1.2s Max Grip Stamina &amp; +40% Attack Power!</span>
-        <button id="btn-move-unlock-close" class="btn btn-gold">Got It — Fight On!</button>
+      <div class="relic-earned-foot">
+        <span id="relic-earned-tip" class="relic-earned-tip">Relics change the rules instead of your moves — swap them anytime in the Scrapbook.</span>
+        <button id="btn-relic-earned-close" class="btn btn-gold">Got It — Fight On!</button>
       </div>
     </div>
   </div>
@@ -1394,7 +1394,7 @@
     goldenConchEquipped: false,
     sandboxMode: false,
     visionsSeen: {},
-    moveTutorialsShown: { corkscrew: false, vault: false, meteora: false },
+    relicBriefingsShown: [false, false, false, false], // boss relic briefing popups already seen (W1..W4)
     bestRanks: Array(16).fill(null),
     bestTimes: Array(16).fill(null),
     bestScores: Array(16).fill(0),
@@ -1434,8 +1434,8 @@
           if (!Array.isArray(this.data.bestTimes) || this.data.bestTimes.length !== 16) this.data.bestTimes = Array(16).fill(null);
           if (!Array.isArray(this.data.bestScores) || this.data.bestScores.length !== 16) this.data.bestScores = Array(16).fill(0);
           if (!this.data.visionsSeen || typeof this.data.visionsSeen !== 'object') this.data.visionsSeen = {};
-          if (!this.data.moveTutorialsShown || typeof this.data.moveTutorialsShown !== 'object') {
-            this.data.moveTutorialsShown = { corkscrew: false, vault: false, meteora: false };
+          if (!Array.isArray(this.data.relicBriefingsShown) || this.data.relicBriefingsShown.length !== 4) {
+            this.data.relicBriefingsShown = [false, false, false, false];
           }
         }
       } catch (_) { this.data = defaultSave(); }
@@ -1516,9 +1516,11 @@
       if (id === null || id === undefined) return null;
       return this.data.relicsUnlocked[id] ? id : null;
     },
-    hasCorkscrew() { return this.data.sandboxMode || this.data.bossesDefeated[0]; },
-    hasLuchaVault() { return this.data.sandboxMode || this.data.bossesDefeated[1]; },
-    hasMeteoraFlip() { return this.data.sandboxMode || this.data.bossesDefeated[2]; },
+    // Every directional slam is unlocked from the very first stage; bosses award
+    // trophy relics and permanent stat boosts instead of moves.
+    hasCorkscrew() { return true; },
+    hasLuchaVault() { return true; },
+    hasMeteoraFlip() { return true; },
     isGoldenConch() { return this.data.goldenConchUnlocked && this.data.goldenConchEquipped; },
     maxStamina() {
       if (this.data.sandboxMode) return 12.4;
@@ -2320,7 +2322,7 @@
           }
         }
         if (UI.isModalOpen() && !e.repeat && (e.code === 'Enter' || e.code === 'Space' || e.code === 'Escape')) {
-          if (document.getElementById('move-unlock-overlay').classList.contains('active')) {
+          if (document.getElementById('relic-earned-overlay').classList.contains('active')) {
             UI.closeAllModals();
             return;
           }
@@ -2478,27 +2480,21 @@
     },
 
     handleRightSwipe(dir) {
-      // Right stick is dedicated strictly to Attack Moves Only (4 cardinal directions)
-      // Never display names of locked moves when swiping before they are earned!
+      // Right stick is dedicated strictly to Attack Moves Only (4 cardinal directions).
+      // All four directional slams are unlocked from the very first stage.
       if (dir === 'down') {
         this.parachuteTriggered = false;
         this.queuePound('butt');
         this.showFeedback('BUTT SLAM!');
       } else if (dir === 'up') {
-        if (Save.hasMeteoraFlip()) {
-          this.queuePound('meteora');
-          this.showFeedback('METEORA FLIP!');
-        }
+        this.queuePound('meteora');
+        this.showFeedback('METEORA FLIP!');
       } else if (dir === 'left') {
-        if (Save.hasCorkscrew()) {
-          this.queuePound('corkscrew');
-          this.showFeedback('CORKSCREW SLAM!');
-        }
+        this.queuePound('corkscrew');
+        this.showFeedback('CORKSCREW SLAM!');
       } else if (dir === 'right') {
-        if (Save.hasLuchaVault()) {
-          this.queuePound('vault');
-          this.showFeedback('LUCHA VAULT!');
-        }
+        this.queuePound('vault');
+        this.showFeedback('LUCHA VAULT!');
       }
     },
 
@@ -2569,8 +2565,8 @@
         if (aJust || startJust) {
           if (document.getElementById('tutorial-overlay').classList.contains('active')) {
             document.getElementById('btn-tutorial-close').click();
-          } else if (document.getElementById('move-unlock-overlay').classList.contains('active')) {
-            document.getElementById('btn-move-unlock-close').click();
+          } else if (document.getElementById('relic-earned-overlay').classList.contains('active')) {
+            document.getElementById('btn-relic-earned-close').click();
           } else if (document.getElementById('clue-overlay').classList.contains('active')) {
             document.getElementById('btn-clue-close').click();
           } else if (document.getElementById('stage-end-overlay').classList.contains('active')) {
@@ -2697,14 +2693,11 @@
       if (this.justPressed['KeyC'] || this.justPressed['KeyL'] || this.justPressed['KeyX'] || this.justPressed['KeyK']) {
         this.queuePound('butt'); this.showFeedback('BUTT SLAM!');
       } else if (this.justPressed['KeyQ'] || this.justPressed['KeyU']) {
-        if (Save.hasCorkscrew()) { this.queuePound('corkscrew'); this.showFeedback('CORKSCREW SLAM!'); }
-        else this.showFeedback('Beat World 1 Boss to unlock!');
+        this.queuePound('corkscrew'); this.showFeedback('CORKSCREW SLAM!');
       } else if (this.justPressed['KeyE'] || this.justPressed['KeyI']) {
-        if (Save.hasLuchaVault()) { this.queuePound('vault'); this.showFeedback('LUCHA VAULT!'); }
-        else this.showFeedback('Beat World 2 Boss to unlock!');
+        this.queuePound('vault'); this.showFeedback('LUCHA VAULT!');
       } else if (this.justPressed['KeyV'] || this.justPressed['KeyO']) {
-        if (Save.hasMeteoraFlip()) { this.queuePound('meteora'); this.showFeedback('METEORA FLIP!'); }
-        else this.showFeedback('Beat World 3 Boss to unlock!');
+        this.queuePound('meteora'); this.showFeedback('METEORA FLIP!');
       }
 
       if (this.justPressed['Escape'] || this.justPressed['KeyP']) {
@@ -2950,19 +2943,19 @@
     // --- WORLD CLEAR INTERMISSIONS (Subtle & Spoiler-Free!) ---
     world1_clear: [
       { art: 'escape_japan', title: 'IRELAND CLEARED!', speaker: 'OG Luchadores',
-        text: 'Paddy O\'Brawler goes down for the three-count! Out on Dublin Bay, the OG Luchadores vault onto an outbound steamer: "Not bad, greenhorn—let\'s see if you survive JAPAN!" Keister unlocks the CORKSCREW GROUND POUND (Swipe Left) & Permanent Stamina Upgrade!' },
+        text: 'Paddy O\'Brawler goes down for the three-count! Out on Dublin Bay, the OG Luchadores vault onto an outbound steamer: "Not bad, greenhorn—let\'s see if you survive JAPAN!" Keister claims the BARREL-STAVE GAUNTLETS — a boss trophy relic that sends slam shockwaves 40% faster and farther, ricocheting off arena walls!' },
       { art: 'beat1', title: 'UNANSWERED QUESTIONS', speaker: 'Keister McFannigan',
         text: 'Stowing away for Kyoto, Keister flips over the torn silver-edged photo from the cliffs. "Two flyers... a missing third silhouette... and that cloaked guy watching me in Dublin. This heist is getting weirder by the mile."' }
     ],
     world2_clear: [
       { art: 'escape_vegas', title: 'JAPAN CLEARED!', speaker: 'OG Luchadores',
-        text: 'Yokozuna Tatsumaki bows in defeat as the OG Luchadores vanish through the skylights, tossing down a glittering LAS VEGAS chip! Keister unlocks the LUCHA VAULT GROUND POUND (Swipe Right) & Permanent Stamina Upgrade!' },
+        text: 'Yokozuna Tatsumaki bows in defeat as the OG Luchadores vanish through the skylights, tossing down a glittering LAS VEGAS chip! Keister claims the TYPHOON SASH — a boss trophy relic that doubles Grip refunds on mid-air chain bounces and adds +1.5s to the combo timer!' },
       { art: 'beat2', title: 'GHOSTS OF THE RING', speaker: 'Keister McFannigan',
         text: 'On the red-eye to Vegas, Keister stares at the scorched Twin Comets program. "Every trap in that dojo felt built to push my moves—not stop me. Whoever runs this syndicate knows Lucha Libre inside and out..."' }
     ],
     world3_clear: [
       { art: 'escape_mexico', title: 'LAS VEGAS CLEARED!', speaker: 'OG Luchadores',
-        text: '"Elvis" El Relampago bows out as the OG Luchador blimp cruises south toward MEXICO! Keister unlocks the METEORA FLIP GROUND POUND (Double-Swipe Up) & Permanent Stamina Upgrade!' },
+        text: '"Elvis" El Relampago bows out as the OG Luchador blimp cruises south toward MEXICO! Keister claims the RHINESTONE SHADES — a boss trophy relic that widens the slam-deflect window and makes every deflected shot pierce through foes!' },
       { art: 'beat3', title: 'THE FINAL STOP', speaker: 'Keister McFannigan',
         text: 'Gazing south toward Oaxaca, Keister clutches the red-ink rigging chart. "That doorstep vision... the shells... the cloaked watcher. All roads end in Mexico\'s Grand Arena—and I\'m taking my mask back tonight!"' }
     ],
@@ -8530,15 +8523,12 @@
       UI.refreshHUD();
 
       // The first half of World 1 opens with the full control briefing;
-      // the first stage after each defeated Boss clearly briefs the newly learned move!
+      // the first stage after each defeated Boss spells out the trophy relic claimed.
       if (idx < 2 && !opts.endlessWave) {
         UI.showTutorial();
-      } else if (idx === 4 && Save.hasCorkscrew() && !Save.data.moveTutorialsShown.corkscrew) {
-        UI.showMoveUnlockBriefing('corkscrew');
-      } else if (idx === 8 && Save.hasLuchaVault() && !Save.data.moveTutorialsShown.vault) {
-        UI.showMoveUnlockBriefing('vault');
-      } else if (idx === 12 && Save.hasMeteoraFlip() && !Save.data.moveTutorialsShown.meteora) {
-        UI.showMoveUnlockBriefing('meteora');
+      } else if (idx === 4 || idx === 8 || idx === 12) {
+        const relicWorld = idx / 4 - 1;
+        if (!Save.data.relicBriefingsShown[relicWorld]) UI.showRelicBriefing(relicWorld);
       }
     },
 
@@ -10511,9 +10501,7 @@
         Save.data.bossesDefeated[worldId] = true;
         Save.data.relicsUnlocked[worldId] = true;
         if (Save.data.relicEquipped === null || Save.data.relicEquipped === undefined) Save.data.relicEquipped = worldId;
-        if (worldId === 0) Save.data.moveTutorialsShown.corkscrew = false;
-        if (worldId === 1) Save.data.moveTutorialsShown.vault = false;
-        if (worldId === 2) Save.data.moveTutorialsShown.meteora = false;
+        if (worldId < 3) Save.data.relicBriefingsShown[worldId] = false;
         if (worldId === 3) Save.data.storyCompleted = true;
       }
       Save.save();
@@ -10774,12 +10762,12 @@
     selectedWorld: 0,
 
     isModalOpen() {
-      return ['clue-overlay', 'tutorial-overlay', 'move-unlock-overlay', 'restart-overlay', 'stage-end-overlay', 'scrapbook-overlay', 'select-overlay']
+      return ['clue-overlay', 'tutorial-overlay', 'relic-earned-overlay', 'restart-overlay', 'stage-end-overlay', 'scrapbook-overlay', 'select-overlay']
         .some(id => document.getElementById(id).classList.contains('active'));
     },
 
     closeAllModals() {
-      ['clue-overlay', 'tutorial-overlay', 'move-unlock-overlay', 'restart-overlay', 'stage-end-overlay', 'scrapbook-overlay', 'select-overlay']
+      ['clue-overlay', 'tutorial-overlay', 'relic-earned-overlay', 'restart-overlay', 'stage-end-overlay', 'scrapbook-overlay', 'select-overlay']
         .forEach(id => document.getElementById(id).classList.remove('active'));
     },
 
@@ -10792,53 +10780,22 @@
       if (ov) ov.classList.add('active');
     },
 
-    // Dedicated level-start briefing popup for newly learned boss moves!
-    showMoveUnlockBriefing(moveKey) {
-      const infoMap = {
-        corkscrew: {
-          kicker: 'NEW MOVE LEARNED · WORLD 1 BOSS REWARD',
-          title: 'Corkscrew Ground Pound',
-          arrow: 'RIGHT STICK ← LEFT',
-          keys: 'Touch: Swipe Left on Right Side · Gamepad: Right Stick Left or X · Keys: Q / U',
-          how: 'Flick LEFT on the Right Stick (or press X / Q / U) on the ground or in mid-air to rocket forward in a blazing horizontal drill spin, then crash down!',
-          effect: 'Shatters RED CRACKED SIDE BARRIERS guarding secret vaults & Sea Shells, rips through heavy enemies, and blasts twin side ground shockwaves!',
-          tip: 'Passive bonus active: +1.2s Max Grip Stamina & +40% Attack Power!'
-        },
-        vault: {
-          kicker: 'NEW MOVE LEARNED · WORLD 2 BOSS REWARD',
-          title: 'Lucha Vault Ground Pound',
-          arrow: 'RIGHT STICK → RIGHT',
-          keys: 'Touch: Swipe Right on Right Side · Gamepad: Right Stick Right or Y · Keys: E / I',
-          how: 'Flick RIGHT on the Right Stick (or press Y / E / I) anytime to spring-vault high into a blinding acrobatic somersault and slam straight down!',
-          effect: 'Clears projectiles and gaps in one motion, hits with massive crushing power, and unleashes heavy GOLDEN twin shockwaves across the arena!',
-          tip: 'Passive bonus active: +1.2s Max Grip Stamina & +40% Attack Power!'
-        },
-        meteora: {
-          kicker: 'NEW MOVE LEARNED · WORLD 3 BOSS REWARD',
-          title: 'Meteora Flip Ground Pound',
-          arrow: 'RIGHT STICK ↑ UP',
-          keys: 'Touch: Swipe Up on Right Side · Gamepad: Right Stick Up or RB / RT · Keys: V / O',
-          how: 'Flick UP on the Right Stick (or press RB / RT / V / O) to skyrocket upward with a blazing luchador uppercut, then plummet in an apocalyptic meteor slam!',
-          effect: 'Shatters PURPLE OVERHEAD SHIELDS blocking secret lofts & Sea Shells and detonates MEGA GOLDEN twin shockwaves that obliterate entire squads!',
-          tip: 'Passive bonus active: +1.2s Max Grip Stamina & +40% Attack Power!'
-        }
-      };
-      const cfg = infoMap[moveKey];
-      if (!cfg) return;
-      const relicId = { corkscrew: 0, vault: 1, meteora: 2 }[moveKey];
-      const relic = RELICS[relicId];
-      Save.data.moveTutorialsShown[moveKey] = true;
+    // Boss trophy relic briefing: shown at the start of the first stage after a
+    // World Boss falls, so the reward that was just claimed is spelled out.
+    showRelicBriefing(worldId) {
+      const relic = RELICS[worldId];
+      if (!relic || !Save.data.relicsUnlocked[worldId]) return;
+      Save.data.relicBriefingsShown[worldId] = true;
       Save.save();
-      document.getElementById('move-unlock-kicker').textContent = cfg.kicker;
-      document.getElementById('move-unlock-title').textContent = cfg.title;
-      document.getElementById('move-unlock-arrow').textContent = cfg.arrow;
-      document.getElementById('move-unlock-keys').textContent = cfg.keys;
-      document.getElementById('move-unlock-how').textContent = cfg.how;
-      document.getElementById('move-unlock-effect').textContent = cfg.effect;
-      document.getElementById('move-unlock-tip').textContent = (relic && Save.data.relicsUnlocked[relicId])
-        ? `${cfg.tip} New trophy relic: ${relic.name} — equip it in the Scrapbook.`
-        : cfg.tip;
-      document.getElementById('move-unlock-overlay').classList.add('active');
+      document.getElementById('relic-earned-kicker').textContent = `BOSS TROPHY RELIC EARNED · WORLD ${relic.world} REWARD`;
+      document.getElementById('relic-earned-title').textContent = `${relic.icon} ${relic.name}`;
+      document.getElementById('relic-earned-arrow').textContent = relic.icon;
+      document.getElementById('relic-earned-keys').textContent = 'Equip it — or any other boss trophy relic — from the Scrapbook\'s Moves tab. One relic equipped at a time.';
+      document.getElementById('relic-earned-how').textContent = relic.desc;
+      const bossWins = Save.data.bossesDefeated.filter(Boolean).length;
+      document.getElementById('relic-earned-effect').textContent = `Permanent boss boost: +${(bossWins * 1.2).toFixed(1)}s Max Grip Stamina and +${Math.min(bossWins, 3) * 40}% Attack Power.`;
+      document.getElementById('relic-earned-tip').textContent = 'Relics change the rules instead of your moves — swap them anytime in the Scrapbook.';
+      document.getElementById('relic-earned-overlay').classList.add('active');
     },
 
     openRestartConfirm() {
@@ -11104,12 +11061,12 @@
             desc: 'Falling from any height automatically pops open Keister\'s oversized shamrock briefs for a smooth glide and upward wind-vent lift — steer horizontally with the Left Stick while keeping the Right Stick ready for instant slams.' },
           { name: 'Instant Butt Slam', gesture: 'Right Stick Down · B Button · C / L / X / K', unlocked: true,
             desc: 'Zero-delay hyper-fast vertical ground pound! Flick Down on the Right Stick anytime in mid-air or while hanging to smash foes directly underneath and shatter cracked floors. Tap Up / LB-LT again mid-plummet to Fart-Jet the slam into reverse and pull up before hitting spikes!' },
-          { name: 'Corkscrew Ground Pound', worldNum: 1, gesture: 'Right Stick Left · X Button · Q / U', unlocked: Save.hasCorkscrew(),
-            desc: 'Unlocked by beating World 1 Boss (Ireland). Blazing horizontal torpedo spin-slam that shatters red cracked side barriers and unleashes twin ground shockwaves!' },
-          { name: 'Lucha Vault Ground Pound', worldNum: 2, gesture: 'Right Stick Right · Y Button · E / I', unlocked: Save.hasLuchaVault(),
-            desc: 'Unlocked by beating World 2 Boss (Japan). Rapid spring-loaded somersault slam triggering heavy golden twin shockwaves!' },
-          { name: 'Meteora Flip Ground Pound', worldNum: 3, gesture: 'Right Stick Up · RB / RT · V / O', unlocked: Save.hasMeteoraFlip(),
-            desc: 'Unlocked by beating World 3 Boss (Las Vegas). Lightning skyrocket uppercut into an apocalyptic meteor slam with mega golden twin shockwaves that shatters purple overhead shields!' }
+          { name: 'Corkscrew Ground Pound', gesture: 'Right Stick Left · X Button · Q / U', unlocked: true,
+            desc: 'Blazing horizontal torpedo spin-slam that shatters red cracked side barriers and unleashes twin ground shockwaves!' },
+          { name: 'Lucha Vault Ground Pound', gesture: 'Right Stick Right · Y Button · E / I', unlocked: true,
+            desc: 'Rapid spring-loaded somersault slam that clears projectiles and gaps, triggering heavy golden twin shockwaves!' },
+          { name: 'Meteora Flip Ground Pound', gesture: 'Right Stick Up · RB / RT · V / O', unlocked: true,
+            desc: 'Lightning skyrocket uppercut into an apocalyptic meteor slam with mega golden twin shockwaves that shatters purple overhead shields!' }
         ];
 
         let html = '';
@@ -11127,13 +11084,10 @@
           Ceiling Grip Stamina: <span style="color:#f59e0b;">${Save.maxStamina().toFixed(2)}s</span> <span style="color:#94a3b8;font-weight:600;">(Base 3.6s · ${bossWins}/4 Bosses · ${shells}/16 Sea Shells)</span> · Strength: <span style="color:#4ade80;">${Save.strengthBonus().toFixed(1)}x</span>
         </div><div class="move-grid">`;
         moves.forEach(m => {
-          const dispGesture = m.unlocked ? m.gesture : `LOCKED · BEAT WORLD ${m.worldNum} BOSS`;
-          const dispName = m.unlocked ? m.name : '??? (Secret Boss Move)';
-          const dispDesc = m.unlocked ? m.desc : `Defeat the World ${m.worldNum} Boss to discover and master this secret technique!`;
-          html += `<div class="scrap-item ${m.unlocked ? 'found' : ''}">
-            <div class="move-gesture">${dispGesture}</div>
-            <h4>${dispName}</h4>
-            <p>${dispDesc}</p>
+          html += `<div class="scrap-item found">
+            <div class="move-gesture">${m.gesture}</div>
+            <h4>${m.name}</h4>
+            <p>${m.desc}</p>
           </div>`;
         });
         html += '</div>';
@@ -11496,8 +11450,8 @@
   document.getElementById('btn-select-close').onclick = () => { UI.closeAllModals(); };
   document.getElementById('btn-clue-close').onclick = () => { document.getElementById('clue-overlay').classList.remove('active'); };
   document.getElementById('btn-tutorial-close').onclick = () => { Audio.init(); UI.closeAllModals(); };
-  document.getElementById('btn-move-unlock-close').onclick = () => { Audio.init(); UI.closeAllModals(); };
-  document.getElementById('move-unlock-overlay').onclick = (e) => {
+  document.getElementById('btn-relic-earned-close').onclick = () => { Audio.init(); UI.closeAllModals(); };
+  document.getElementById('relic-earned-overlay').onclick = (e) => {
     if (e.target === e.currentTarget) { Audio.init(); UI.closeAllModals(); }
   };
   document.getElementById('btn-cutscene-next').onclick = () => Cutscene.advance();
