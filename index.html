@@ -1385,6 +1385,8 @@
     maxUnlockedLevel: 0, // 0..15
     completedLevels: Array(16).fill(false),
     bossesDefeated: [false, false, false, false], // W1, W2, W3, W4
+    relicsUnlocked: [false, false, false, false], // Boss trophy relics: W1, W2, W3, W4
+    relicEquipped: null, // one relic equipped at a time (index into RELICS)
     cluesCollected: Array(16).fill(false),
     shellsCollected: Array(16).fill(false),
     storyCompleted: false,
@@ -1423,6 +1425,11 @@
           if (!Array.isArray(this.data.cluesCollected) || this.data.cluesCollected.length !== 16) this.data.cluesCollected = Array(16).fill(false);
           if (!Array.isArray(this.data.shellsCollected) || this.data.shellsCollected.length !== 16) this.data.shellsCollected = Array(16).fill(false);
           if (!Array.isArray(this.data.bossesDefeated) || this.data.bossesDefeated.length !== 4) this.data.bossesDefeated = [false, false, false, false];
+          if (!Array.isArray(this.data.relicsUnlocked) || this.data.relicsUnlocked.length !== 4) this.data.relicsUnlocked = [false, false, false, false];
+          if (this.data.relicEquipped !== null && this.data.relicEquipped !== undefined &&
+              (this.data.relicEquipped < 0 || this.data.relicEquipped > 3 || !this.data.relicsUnlocked[this.data.relicEquipped])) {
+            this.data.relicEquipped = null;
+          }
           if (!Array.isArray(this.data.bestRanks) || this.data.bestRanks.length !== 16) this.data.bestRanks = Array(16).fill(null);
           if (!Array.isArray(this.data.bestTimes) || this.data.bestTimes.length !== 16) this.data.bestTimes = Array(16).fill(null);
           if (!Array.isArray(this.data.bestScores) || this.data.bestScores.length !== 16) this.data.bestScores = Array(16).fill(0);
@@ -1450,6 +1457,7 @@
         d.goldenConchUnlocked ||
         d.sandboxMode ||
         d.completedLevels.some(Boolean) ||
+        d.relicsUnlocked.some(Boolean) ||
         d.bossesDefeated.some(Boolean) ||
         d.cluesCollected.some(Boolean) ||
         d.shellsCollected.some(Boolean) ||
@@ -1502,6 +1510,11 @@
       }
       this.save();
       return { newBestWave, newBestScore };
+    },
+    relic() {
+      const id = this.data.relicEquipped;
+      if (id === null || id === undefined) return null;
+      return this.data.relicsUnlocked[id] ? id : null;
     },
     hasCorkscrew() { return this.data.sandboxMode || this.data.bossesDefeated[0]; },
     hasLuchaVault() { return this.data.sandboxMode || this.data.bossesDefeated[1]; },
@@ -2819,6 +2832,20 @@
       skyTop: '#0a0507', skyBot: '#3f160c', hillFar: '#220d0b', hillNear: '#130708', ground: '#241410', groundTop: '#c2410c', accent: '#f59e0b' }
   ];
 
+  // Boss Trophy Relics — one per defeated World Boss, one equipped at a time.
+  // Rule-changers rather than moves, so they still matter in Sandbox mode where
+  // every slam is already unlocked.
+  const RELICS = [
+    { id: 0, world: 1, name: 'Barrel-Stave Gauntlets', icon: '🛢️',
+      desc: 'Slam shockwaves fly 40% faster and farther, and ricochet off arena walls once.' },
+    { id: 1, world: 2, name: 'Typhoon Sash', icon: '🌪️',
+      desc: 'Mid-air chain bounces refund double Grip and add +1.5s to your combo timer.' },
+    { id: 2, world: 3, name: 'Rhinestone Shades', icon: '🕶️',
+      desc: 'Wider slam-deflect window, and deflected shots pierce through every foe they hit.' },
+    { id: 3, world: 4, name: "Abuelo's Sash", icon: '🎗️',
+      desc: 'Start every stage with +1 Max HP and one automatic last-second save.' }
+  ];
+
   const SHELL_NAMES = [
     'Emerald Scallop', 'Cliffs of Moher Periwinkle', 'Dublin Bay Whelk', 'Shamrock Cowrie',
     'Kyoto Pearl Conch', 'Shibuya Sakura Shell', 'Dojo Tide Nautilus', 'Typhoon Spiral Shell',
@@ -2949,7 +2976,9 @@
       { art: 'family_reunion', title: 'TWO FAMILIES UNITED', speaker: 'Ma & Pa McFannigan',
         text: 'Keister\'s adoptive Irish wrestling family leaps into the ring with giant bear hugs! "We\'re so proud of ya, lad! And nice to finally meet ya, Grandpa Chingon!"' },
       { art: 'shell_twist', title: 'THE SEA SHELL TWIST!', speaker: 'El Abuelo Chingon',
-        text: 'Donning a straw beach hat, Abuelo sighs: "Now I retire to my true passion: collecting SEA SHELLS! Ay... I accidentally dropped my 16 prized shells across all four countries while setting up your trials!" STAGE SELECT REPLAY MODE UNLOCKED — find all 16 shells for Abuelo!' }
+        text: 'Donning a straw beach hat, Abuelo sighs: "Now I retire to my true passion: collecting SEA SHELLS! Ay... I accidentally dropped my 16 prized shells across all four countries while setting up your trials!" STAGE SELECT REPLAY MODE UNLOCKED — find all 16 shells for Abuelo!' },
+      { art: 'shell_twist', title: "BOSS TROPHY RELIC: ABUELO'S SASH!", speaker: 'System Reward',
+        text: 'Abuelo presses his crimson sash into Keister\'s hands: "+1 Max HP and one automatic last-second save in every stage." Equip it — or any World Boss trophy relic — from the Scrapbook\'s Moves tab!' }
     ],
     golden_conch: [
       { art: 'shells_returned', title: 'ALL 16 SEA SHELLS RETURNED!', speaker: 'El Abuelo Chingon',
@@ -8406,7 +8435,10 @@
       this.pendingVision = null;
 
       const maxStam = Save.maxStamina();
-      const startHp = (opts.carryHp && opts.carryHp > 0) ? Math.min(5, opts.carryHp) : 5;
+      const relicHp = Save.relic() === 3 ? 1 : 0;
+      const maxHp = 5 + relicHp;
+      const startHp = (opts.carryHp && opts.carryHp > 0) ? Math.min(maxHp, opts.carryHp + relicHp) : maxHp;
+      this.relicSaveUsed = false;
       this.player = {
         x: this.lvl.spawn.x,
         y: this.lvl.spawn.y,
@@ -8416,7 +8448,7 @@
         vy: 0,
         dir: 1,
         hp: startHp,
-        maxHp: 5,
+        maxHp,
         fuel: 100,
         stamina: maxStam,
         maxStamina: maxStam,
@@ -8566,8 +8598,10 @@
       p.airChain = (p.airChain || 0) + 1;
       p.airChainFlash = 1.0;
       const mult = 1 + Math.min(1.0, (p.airChain - 1) * 0.15);
-      // Extra Grip reward for chaining mid-air hits
-      p.stamina = Math.min(p.maxStamina, p.stamina + p.maxStamina * (p.airChain >= 3 ? 0.25 : 0.15));
+      // Extra Grip reward for chaining mid-air hits (Typhoon Sash doubles it)
+      const typhoon = Save.relic() === 1;
+      p.stamina = Math.min(p.maxStamina, p.stamina + p.maxStamina * (p.airChain >= 3 ? 0.25 : 0.15) * (typhoon ? 2 : 1));
+      if (typhoon) this.comboTimer += 1.5;
       if (p.airChain >= 2) {
         Audio.sfxBounceChain(p.airChain);
         const label = p.airChain >= 5 ? `${p.airChain}× LUCHA GOD!`
@@ -8691,11 +8725,13 @@
     },
 
     spawnShockwave(x, y, dir, golden, dmg, moveType) {
+      const gauntlets = Save.relic() === 0;
       this.shockwaves.push({
-        x, y, vx: dir * (golden ? 540 : 410),
+        x, y, vx: dir * (golden ? 540 : 410) * (gauntlets ? 1.4 : 1),
         r: golden ? 32 : 22,
         life: golden ? 0.65 : 0.38,
-        golden, dmg, moveType
+        golden, dmg, moveType,
+        bounced: false
       });
     },
 
@@ -9420,6 +9456,17 @@
         const sw = this.shockwaves[i];
         sw.x += sw.vx * dt;
         sw.life -= dt;
+        // Barrel-Stave Gauntlets: shockwaves ricochet once off the arena walls
+        if (Save.relic() === 0 && !sw.bounced && this.lvl) {
+          const minX = 26, maxX = this.lvl.width - 26;
+          if (sw.x <= minX || sw.x >= maxX) {
+            sw.x = Math.max(minX, Math.min(maxX, sw.x));
+            sw.vx *= -1;
+            sw.bounced = true;
+            sw.life = Math.max(sw.life, 0.16);
+            this.spawnBurst(sw.x, sw.y, sw.golden ? '#fde047' : '#fb923c', 8, 180);
+          }
+        }
         if (Math.random() < 0.7) {
           this.particles.push({ x: sw.x, y: sw.y, vx: 0, vy: -55, r: 5.5, color: sw.golden ? '#fde047' : '#fb923c', life: 0.22, maxLife: 0.22 });
         }
@@ -9711,6 +9758,17 @@
       Input.rumble(135, 0.28, 0.62);
       this.spawnBurst(p.x + p.w * 0.5, p.y + p.h * 0.5, '#ef4444', 14, 210);
       if (p.hp <= 0) {
+        // Abuelo's Sash: one automatic last-second save per stage
+        if (Save.relic() === 3 && !this.relicSaveUsed) {
+          this.relicSaveUsed = true;
+          p.hp = 2;
+          p.invuln = 2.2;
+          this.spawnBurst(p.x + p.w * 0.5, p.y + p.h * 0.5, '#fde047', 28, 300);
+          this.spawnImpactRing(p.x + p.w * 0.5, p.y + p.h * 0.5, 120, '#fde047', 6);
+          this.spawnComicPopup(p.x + p.w * 0.5, p.y - 8, "ABUELO'S SASH!", '#fde047', 1.2);
+          Input.showFeedback("ABUELO'S SASH SAVED YOU! +2 HP");
+          return;
+        }
         if (this.endless && this.endless.active) {
           this.endEndless();
           return;
@@ -9963,14 +10021,22 @@
             this.particles.push({ x: ep.x, y: ep.y, vx: -ep.vx * 0.08, vy: -20, r: 3.5, color: '#fde047', life: 0.18, maxLife: 0.18 });
           }
           // Deflected shot slams straight into enemies for heavy counter damage!
+          // Rhinestone Shades: the shot pierces every foe instead of stopping at the first.
+          const shades = Save.relic() === 2;
           let hitFoe = false;
           for (const e of this.lvl.enemies) {
             if (e.dead) continue;
+            if (shades && ep.pierced && ep.pierced.includes(e)) continue;
             if (rectsOverlap(ep.x - ep.r - 4, ep.y - ep.r - 4, (ep.r + 4) * 2, (ep.r + 4) * 2, e.x, e.y, e.w, e.h)) {
               this.hitEnemy(e, 3.6 * Save.strengthBonus(), 'COUNTER!', 'counter');
               this.spawnBurst(ep.x, ep.y, '#fde047', 14, 280);
-              hitFoe = true;
-              break;
+              if (shades) {
+                ep.pierced = ep.pierced || [];
+                ep.pierced.push(e);
+              } else {
+                hitFoe = true;
+                break;
+              }
             }
           }
           if (hitFoe) { projs.splice(i, 1); continue; }
@@ -9981,7 +10047,9 @@
             this.deflectProjectile(ep, false);
             continue;
           }
-          if (rectsOverlap(p.x + 2, p.y + 2, p.w - 4, p.h - 4, ep.x - ep.r, ep.y - ep.r, ep.r * 2, ep.r * 2)) {
+          // Negative pad widens the slam-deflect window; 2 keeps the original near-miss inset.
+          const shadesPad = (Save.relic() === 2 && p.poundType) ? -12 : 2;
+          if (rectsOverlap(p.x + shadesPad, p.y + shadesPad, p.w - shadesPad * 2, p.h - shadesPad * 2, ep.x - ep.r, ep.y - ep.r, ep.r * 2, ep.r * 2)) {
             if (p.poundType) {
               this.deflectProjectile(ep, false);
               continue;
@@ -10288,7 +10356,8 @@
             this.deflectProjectile(pr, true);
             continue;
           }
-          if (rectsOverlap(p.x, p.y, p.w, p.h, pr.x - pr.r, pr.y - pr.r, pr.r * 2, pr.r * 2)) {
+          const bossPad = (Save.relic() === 2 && p.poundType) ? 14 : 0;
+          if (rectsOverlap(p.x - bossPad, p.y - bossPad, p.w + bossPad * 2, p.h + bossPad * 2, pr.x - pr.r, pr.y - pr.r, pr.r * 2, pr.r * 2)) {
             if (deflectable && p.poundType) {
               this.deflectProjectile(pr, true);
               continue;
@@ -10370,6 +10439,10 @@
         this.bossRush.totalScore += finalScore;
         this.bossRush.totalDamage += this.damageTaken;
         this.bossRush.maxCombo = Math.max(this.bossRush.maxCombo, this.maxCombo);
+        // Boss Rush is still a boss fight: clear a round, claim that world's relic.
+        Save.data.relicsUnlocked[this.bossRush.round] = true;
+        if (Save.data.relicEquipped === null || Save.data.relicEquipped === undefined) Save.data.relicEquipped = this.bossRush.round;
+        Save.save();
         const nextRound = this.bossRush.round + 1;
         if (nextRound < 4) {
           this.bossRush.round = nextRound;
@@ -10417,6 +10490,8 @@
       if (idx + 1 > Save.data.maxUnlockedLevel && idx + 1 < 16) Save.data.maxUnlockedLevel = idx + 1;
       if (isBoss) {
         Save.data.bossesDefeated[worldId] = true;
+        Save.data.relicsUnlocked[worldId] = true;
+        if (Save.data.relicEquipped === null || Save.data.relicEquipped === undefined) Save.data.relicEquipped = worldId;
         if (worldId === 0) Save.data.moveTutorialsShown.corkscrew = false;
         if (worldId === 1) Save.data.moveTutorialsShown.vault = false;
         if (worldId === 2) Save.data.moveTutorialsShown.meteora = false;
@@ -10731,6 +10806,8 @@
       };
       const cfg = infoMap[moveKey];
       if (!cfg) return;
+      const relicId = { corkscrew: 0, vault: 1, meteora: 2 }[moveKey];
+      const relic = RELICS[relicId];
       Save.data.moveTutorialsShown[moveKey] = true;
       Save.save();
       document.getElementById('move-unlock-kicker').textContent = cfg.kicker;
@@ -10739,7 +10816,9 @@
       document.getElementById('move-unlock-keys').textContent = cfg.keys;
       document.getElementById('move-unlock-how').textContent = cfg.how;
       document.getElementById('move-unlock-effect').textContent = cfg.effect;
-      document.getElementById('move-unlock-tip').textContent = cfg.tip;
+      document.getElementById('move-unlock-tip').textContent = (relic && Save.data.relicsUnlocked[relicId])
+        ? `${cfg.tip} New trophy relic: ${relic.name} — equip it in the Scrapbook.`
+        : cfg.tip;
       document.getElementById('move-unlock-overlay').classList.add('active');
     },
 
@@ -10748,7 +10827,7 @@
       const body = document.getElementById('restart-popup-body');
       if (Save.hasProgress()) {
         const cleared = Save.data.completedLevels.filter(Boolean).length;
-        body.textContent = `This will erase all saved progress (${cleared}/16 stages cleared, ${Save.clueCount()}/16 clues, ${Save.shellCount()}/16 sea shells, boss upgrades, and masks) and start Keister's story all the way over from the opening prologue cutscene.`;
+        body.textContent = `This will erase all saved progress (${cleared}/16 stages cleared, ${Save.clueCount()}/16 clues, ${Save.shellCount()}/16 sea shells, boss upgrades, relics, and masks) and start Keister's story all the way over from the opening prologue cutscene.`;
       } else {
         body.textContent = `Start a brand-new adventure from the very first prologue cutscene in Dublin!`;
       }
@@ -11039,7 +11118,34 @@
           </div>`;
         });
         html += '</div>';
+
+        // Boss Trophy Relics — one equipped at a time
+        const relicsOwned = Save.data.relicsUnlocked.filter(Boolean).length;
+        html += `<h3 style="margin:18px 0 8px;font-family:var(--noir-head);font-size:16px;letter-spacing:0.06em;text-transform:uppercase;color:#f59e0b;">Boss Trophy Relics (${relicsOwned}/4 · Equip One)</h3>
+          <p style="margin:0 0 10px;font-size:13px;color:#94a3b8;">Relics change the rules instead of your moves, so they still matter in Sandbox mode.</p>
+          <div class="move-grid">`;
+        RELICS.forEach(r => {
+          const owned = Save.data.relicsUnlocked[r.id];
+          const equipped = Save.relic() === r.id;
+          html += `<div class="scrap-item ${owned ? 'golden' : ''}">
+            <div class="move-gesture">${owned ? (equipped ? 'EQUIPPED' : 'CLICK TO EQUIP') : `LOCKED · BEAT WORLD ${r.world} BOSS`}</div>
+            <h4>${owned ? `${r.icon} ${r.name}` : '??? (Boss Relic)'}</h4>
+            <p>${owned ? r.desc : `Defeat ${WORLDS[r.id].bossName} to claim this trophy.`}</p>
+            ${owned ? `<button class="btn ${equipped ? 'btn-gold' : 'btn-secondary'} btn-equip-relic" data-relic="${r.id}" style="margin-top:8px;padding:5px 12px !important;font-size:11.5px !important;">${equipped ? 'Unequip' : 'Equip'}</button>` : ''}
+          </div>`;
+        });
+        html += '</div>';
         body.innerHTML = html;
+
+        body.querySelectorAll('.btn-equip-relic').forEach(btn => {
+          btn.onclick = () => {
+            const id = Number(btn.dataset.relic);
+            Save.data.relicEquipped = Save.relic() === id ? null : id;
+            Save.save();
+            UI.refreshHUD();
+            UI.renderScrapbook();
+          };
+        });
 
         const gChk = document.getElementById('chk-golden');
         if (gChk) {
@@ -11163,8 +11269,10 @@
 
       const shells = Save.shellCount();
       const sRanks = Save.sRankCount();
+      const equippedRelic = Save.relic();
+      const relicTxt = equippedRelic === null ? '' : ` · Relic: ${RELICS[equippedRelic].name}`;
       document.getElementById('select-summary').textContent =
-        `S-Ranks: ${sRanks}/16 · Sea Shells: ${shells}/16 · Clues: ${Save.clueCount()}/16${Save.data.goldenConchUnlocked ? ' · Golden Conch Unlocked!' : ''}`;
+        `S-Ranks: ${sRanks}/16 · Sea Shells: ${shells}/16 · Clues: ${Save.clueCount()}/16${Save.data.goldenConchUnlocked ? ' · Golden Conch Unlocked!' : ''}${relicTxt}`;
 
       const act = document.getElementById('select-actions');
       let actHtml = `<button id="btn-select-boss-rush" class="btn btn-gold">Boss Rush</button>
