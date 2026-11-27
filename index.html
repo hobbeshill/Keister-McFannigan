@@ -1227,7 +1227,7 @@
           <div class="tut-key">RIGHT STICK<br>ATTACKS ONLY<br>(B / C / L)</div>
           <div>
             <div class="tut-name">Right Stick — Attack Moves Only</div>
-            <div class="tut-desc">Right touchscreen/controller stick is dedicated purely to fast ground-pound attacks! Flick Down (or press B / C / L) for an instant Butt Slam. Defeat World Bosses to master 3 secret directional slams!</div>
+            <div class="tut-desc">Right touchscreen/controller stick is dedicated purely to fast ground-pound attacks! Flick Down (or press B / C / L) for an instant Butt Slam. Tap Up / LB-LT again mid-slam to Fart-Jet it into reverse and save yourself from spikes. Defeat World Bosses to master 3 secret directional slams!</div>
           </div>
         </div>
         <div class="tut-row">
@@ -8834,6 +8834,11 @@
       if (p.dropThrough > 0) p.dropThrough -= dt;
       if (p.paraSfxCd > 0) p.paraSfxCd -= dt;
 
+      // Fart-Jet edge detection: a FRESH press of the fly control (not just
+      // holding it from flight) is what reverses a plummeting Butt Slam.
+      const fartTap = Input.fartHeld && !p.fartHeldPrev;
+      p.fartHeldPrev = Input.fartHeld;
+
       // 1. Instant Zero-Delay Arcade Attack Trigger from Right Joystick / Hotkeys
       if (Input.poundQueue && !p.poundType) {
         const req = Input.poundQueue;
@@ -8888,7 +8893,21 @@
         p.poundTimer += dt;
         Audio.stopFartLoop();
         const pcx = p.x + p.w * 0.5, pcy = p.y + p.h * 0.5;
-        if (p.poundType === 'butt') {
+        if (p.poundType === 'butt' && fartTap && !p.onGround) {
+          // Fart-Jet Bailout: a fresh burst of gas reverses the plummet, letting
+          // Keister pull up and kill the Butt Slam before it lands on spikes.
+          p.poundType = null;
+          p.poundTimer = 0;
+          p.farting = true;
+          p.vy = -640;
+          p.vx *= 0.55;
+          p.scaleX = 0.8; p.scaleY = 1.26;
+          Audio.updateFartLoop(true, 0.95);
+          Input.rumble(40, 0.16, 0.1);
+          this.spawnImpactRing(pcx, p.y + p.h, 56, '#4ade80', 3.8);
+          this.spawnBurst(pcx, p.y + p.h - 4, '#4ade80', 12, 230);
+          this.spawnComicPopup(pcx, p.y - 18, 'TOOT-LIFT!', '#4ade80');
+        } else if (p.poundType === 'butt') {
           p.vy = 1480;
           const targetVx = Input.moveX * 260;
           p.vx += (targetVx - p.vx) * (1 - Math.exp(-15 * dt));
@@ -11084,7 +11103,7 @@
           { name: 'Auto-Deploy Underwear Parachute', gesture: 'Automatic on ANY Fall · Steer with Left Stick', unlocked: true,
             desc: 'Falling from any height automatically pops open Keister\'s oversized shamrock briefs for a smooth glide and upward wind-vent lift — steer horizontally with the Left Stick while keeping the Right Stick ready for instant slams.' },
           { name: 'Instant Butt Slam', gesture: 'Right Stick Down · B Button · C / L / X / K', unlocked: true,
-            desc: 'Zero-delay hyper-fast vertical ground pound! Flick Down on the Right Stick anytime in mid-air or while hanging to smash foes directly underneath and shatter cracked floors.' },
+            desc: 'Zero-delay hyper-fast vertical ground pound! Flick Down on the Right Stick anytime in mid-air or while hanging to smash foes directly underneath and shatter cracked floors. Tap Up / LB-LT again mid-plummet to Fart-Jet the slam into reverse and pull up before hitting spikes!' },
           { name: 'Corkscrew Ground Pound', worldNum: 1, gesture: 'Right Stick Left · X Button · Q / U', unlocked: Save.hasCorkscrew(),
             desc: 'Unlocked by beating World 1 Boss (Ireland). Blazing horizontal torpedo spin-slam that shatters red cracked side barriers and unleashes twin ground shockwaves!' },
           { name: 'Lucha Vault Ground Pound', worldNum: 2, gesture: 'Right Stick Right · Y Button · E / I', unlocked: Save.hasLuchaVault(),
